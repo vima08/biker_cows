@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Redline Rampage — Gauntlet Workbench</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-monospace, "Cascadia Code", monospace; color: #f7edf5; background: #07040c; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(circle at 50% 0, #351247 0, #100617 42rem, #050308 100%); }
+    header, main { width: min(1500px, 94vw); margin: auto; }
+    header { padding: 52px 0 26px; border-bottom: 1px solid #66345f; }
+    h1, h2, p { margin-top: 0; }
+    h1 { color: #ffd94a; text-transform: uppercase; letter-spacing: .08em; font-size: clamp(2rem, 5vw, 5rem); margin-bottom: 10px; }
+    h2 { color: #ff5a87; text-transform: uppercase; letter-spacing: .06em; }
+    .lede { color: #c9b3cb; max-width: 80ch; line-height: 1.6; }
+    .iteration { margin: 36px 0 64px; padding: 24px; background: #0d0913dd; border: 1px solid #4d294e; box-shadow: 0 18px 60px #0008; }
+    .meta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    .tag { padding: 7px 10px; color: #120716; background: #5be0dd; font-weight: 800; text-transform: uppercase; }
+    .tag.warn { background: #ffcf45; }
+    .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+    figure { margin: 0; background: #050408; border: 1px solid #302238; overflow: hidden; }
+    img { width: 100%; display: block; aspect-ratio: 16 / 9; object-fit: cover; image-rendering: pixelated; }
+    figcaption { padding: 9px 12px; color: #a995ad; font-size: .78rem; text-transform: uppercase; }
+    .finding { margin-top: 22px; padding: 18px 20px; border-left: 5px solid #ff4b72; background: #1a0e1c; line-height: 1.55; }
+    .finding strong { color: #ffd94a; }
+    footer { color: #876f89; padding: 0 0 52px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gauntlet Workbench</h1>
+    <p class="lede">Только реальные кадры запущенной игры. Страница фиксирует визуальные итерации, крупнейший найденный разрыв и результат следующего прохода; она не заменяет разработку и тестирование.</p>
+  </header>
+  <main>
+    <section class="iteration">
+      <h2>Iteration 0 — playable spine</h2>
+      <div class="meta"><span class="tag warn">Build pass</span><span class="tag">5 required scenes</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-0/menu.png" alt="Title menu"><figcaption>Menu</figcaption></figure>
+        <figure><img src="captures/iteration-0/select.png" alt="Hero select"><figcaption>Hero select</figcaption></figure>
+        <figure><img src="captures/iteration-0/ride.png" alt="Normal ride"><figcaption>Normal movement</figcaption></figure>
+        <figure><img src="captures/iteration-0/combat.png" alt="Combat"><figcaption>Combat</figcaption></figure>
+        <figure><img src="captures/iteration-0/boss.png" alt="Final boss"><figcaption>Final boss</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Крупнейший разрыв:</strong> gameplay-поле заметно беднее сильной заставки — плоский skyline, пустая дорога и схематичные фигуры не создают плотности и глубины лучших 16-битных шутеров.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 1 — integration &amp; smoothing</h2>
+      <div class="meta"><span class="tag">Audio bridge</span><span class="tag">Crisp ×2 sprites</span><span class="tag">Smoke pass</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-1/menu.png" alt="Integrated menu"><figcaption>Menu retained</figcaption></figure>
+        <figure><img src="captures/iteration-1/select.png" alt="Integrated hero select"><figcaption>Hero select retained</figcaption></figure>
+        <figure><img src="captures/iteration-1/ride.png" alt="Integrated ride"><figcaption>Hero / bike integration</figcaption></figure>
+        <figure><img src="captures/iteration-1/combat.png" alt="Integrated combat"><figcaption>Enemy scale pass</figcaption></figure>
+        <figure><img src="captures/iteration-1/boss-exchange.png" alt="Boss bullet exchange"><figcaption>Boss exchange + effects</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Сделано:</strong> единая pixel grid, новые персонажи/транспорт/враги/боссы, процедурный рок и SFX, исправленные boss/debug paths. Build и Playwright smoke проходят без runtime errors. Следующий арт-проход должен уплотнить окружение и разделить секции уровня.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 2 — production gameplay pass</h2>
+      <div class="meta"><span class="tag">4 visual zones</span><span class="tag">5+ parallax planes</span><span class="tag">Boss rebuild</span><span class="tag">Runtime clean</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-2/menu.png" alt="Iteration 2 menu"><figcaption>Menu</figcaption></figure>
+        <figure><img src="captures/iteration-2/select.png" alt="Iteration 2 hero select"><figcaption>Hero select</figcaption></figure>
+        <figure><img src="captures/iteration-2/ride.png" alt="Detailed Mars highway"><figcaption>Mars outskirts</figcaption></figure>
+        <figure><img src="captures/iteration-2/combat.png" alt="Refinery miniboss combat"><figcaption>Neon refinery miniboss</figcaption></figure>
+        <figure><img src="captures/iteration-2/boss-exchange.png" alt="Fortress boss exchange"><figcaption>Fortress boss exchange</figcaption></figure>
+      </div>
+      <div class="shots" style="margin-top:14px">
+        <figure><img src="captures/iteration-2/ride-sequence-a.png" alt="Motion frame A"><figcaption>Motion A</figcaption></figure>
+        <figure><img src="captures/iteration-2/ride-sequence-b.png" alt="Motion frame B"><figcaption>Motion B</figcaption></figure>
+        <figure><img src="captures/iteration-2/ride-sequence-c.png" alt="Motion frame C"><figcaption>Motion C</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Вердикт critic 2:</strong> environment, композиция и читаемость приняты, но premium-планка ещё не достигнута: в motion A/B/C мир убедительно движется на разных скоростях, тогда как подвеска, корпус и поза героя меняются слишком слабо. Следующая итерация сфокусирована только на authored sprite animation и impact choreography.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 3 — motion &amp; impact</h2>
+      <div class="meta"><span class="tag">6-phase ride</span><span class="tag">Recoil states</span><span class="tag">Staged impacts</span><span class="tag">Smoke PASS</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-3/ride.png" alt="Final ride gameplay"><figcaption>Authored ride frame</figcaption></figure>
+        <figure><img src="captures/iteration-3/combat.png" alt="Final miniboss combat"><figcaption>Muzzle / projectile / reaction</figcaption></figure>
+        <figure><img src="captures/iteration-3/boss-exchange.png" alt="Final boss impact"><figcaption>Boss impact choreography</figcaption></figure>
+      </div>
+      <div class="shots" style="margin-top:14px">
+        <figure><img src="captures/iteration-3/ride-sequence-a.png" alt="Ride animation A"><figcaption>Loaded suspension</figcaption></figure>
+        <figure><img src="captures/iteration-3/ride-sequence-b.png" alt="Ride animation B"><figcaption>Rebound / shifted frame</figcaption></figure>
+        <figure><img src="captures/iteration-3/ride-sequence-c.png" alt="Ride animation C"><figcaption>Compression / contact</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Сделано:</strong> шеститактовый цикл меняет колёса, высоту подвески, раму, корпус, уши/хвост и дорожный контакт; fire/recoil/hit/jump получили отдельные состояния. Снаряды теперь различаются ядром и хвостом, попадания развиваются от white-hot core через осколки к дыму, boss hit добавляет локальную вспышку и ограниченный shake.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 4 — causal combat beat</h2>
+      <div class="meta"><span class="tag">Real collision</span><span class="tag">6 causal frames</span><span class="tag">3 target poses</span><span class="tag">Build + smoke PASS</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-4/ride.png" alt="Final ride"><figcaption>Final ride</figcaption></figure>
+        <figure><img src="captures/iteration-4/combat.png" alt="Final miniboss"><figcaption>Final miniboss</figcaption></figure>
+        <figure><img src="captures/iteration-4/boss-exchange.png" alt="Final boss exchange"><figcaption>Final boss exchange</figcaption></figure>
+        <figure><img src="captures/iteration-4/victory.png" alt="Victory screen"><figcaption>Verified victory</figcaption></figure>
+      </div>
+      <div class="shots" style="margin-top:14px">
+        <figure><img src="captures/iteration-4/combat-beat-0.png" alt="Muzzle frame"><figcaption>0 · muzzle / anticipation</figcaption></figure>
+        <figure><img src="captures/iteration-4/combat-beat-1.png" alt="Projectile travel"><figcaption>1 · projectile travel</figcaption></figure>
+        <figure><img src="captures/iteration-4/combat-beat-2.png" alt="Contact and crush"><figcaption>2 · contact / crushed pose</figcaption></figure>
+        <figure><img src="captures/iteration-4/combat-beat-3.png" alt="Deformation hold"><figcaption>3 · deformation hold</figcaption></figure>
+        <figure><img src="captures/iteration-4/combat-beat-4.png" alt="Recoil"><figcaption>4 · recoil</figcaption></figure>
+        <figure><img src="captures/iteration-4/combat-beat-5.png" alt="Recovery and debris"><figcaption>5 · debris / recovery</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Финальный verdict:</strong> сильный, стильный и технически законченный fan prototype, но не premium/AAA-16-bit. Muzzle и полёт снаряда читаются; contact слаб, recoil-деформация не проходит строгий DoD, debris/recovery проходит частично. После четырёх волн это потолок code-generated polygon art; следующий качественный скачок требует art-directed sprite sheets с вручную заданными contact/recoil/recovery frames.</div>
+    </section>
+  </main>
+  <footer>Redline Rampage · local noncommercial fan prototype · captures produced by automated browser runs</footer>
+</body>
+</html>
