@@ -1,0 +1,118 @@
+{
+  "ok": true,
+  "checkpoints": {
+    "menu": {
+      "state": "title",
+      "hero": "throttle",
+      "score": 0,
+      "health": null,
+      "armor": null,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0,
+      "combo": 1,
+      "weapon": null
+    },
+    "select": {
+      "state": "select",
+      "hero": "throttle",
+      "score": 0,
+      "health": null,
+      "armor": null,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0,
+      "combo": 1,
+      "weapon": null
+    },
+    "start": {
+      "state": "playing",
+      "hero": "vinnie",
+      "score": 0,
+      "health": 90,
+      "armor": 15,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0.35,
+      "combo": 1,
+      "weapon": "laser"
+    },
+    "ride": {
+      "state": "playing",
+      "hero": "vinnie",
+      "score": 0,
+      "health": 85.52,
+      "armor": 3.4800000000000004,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 2.58,
+      "combo": 1,
+      "weapon": "laser"
+    },
+    "combat": {
+      "state": "playing",
+      "hero": "vinnie",
+      "score": 29,
+      "health": 85.52,
+      "armor": 3.4800000000000004,
+      "enemies": 1,
+      "boss": {
+        "kind": "miniboss",
+        "health": 816,
+        "maxHealth": 900
+      },
+      "elapsed": 145.19,
+      "combo": 1.4,
+      "weapon": "laser"
+    },
+    "pause": {
+      "state": "paused",
+      "hero": "vinnie",
+      "score": 78,
+      "health": 85.52,
+      "armor": 3.4800000000000004,
+      "enemies": 1,
+      "boss": {
+        "kind": "miniboss",
+        "health": 708,
+        "maxHealth": 900
+      },
+      "elapsed": 145.42,
+      "combo": 1.9,
+      "weapon": "laser"
+    },
+    "boss": {
+      "state": "playing",
+      "hero": "vinnie",
+      "score": 132,
+      "health": 90,
+      "armor": 30,
+      "enemies": 1,
+      "boss": {
+        "kind": "boss",
+        "health": 3440,
+        "maxHealth": 3500
+      },
+      "elapsed": 465,
+      "combo": 2.3,
+      "weapon": "rockets"
+    },
+    "afterBossExchange": {
+      "state": "playing",
+      "hero": "vinnie",
+      "score": 639,
+      "health": 90,
+      "armor": 30,
+      "enemies": 1,
+      "boss": {
+        "kind": "boss",
+        "health": 2108,
+        "maxHealth": 3500
+      },
+      "elapsed": 465,
+      "combo": 4.8,
+      "weapon": "rockets"
+    }
+  },
+  "runtimeErrors": []
+}

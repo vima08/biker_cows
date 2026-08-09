@@ -1,0 +1,118 @@
+{
+  "ok": true,
+  "checkpoints": {
+    "menu": {
+      "state": "title",
+      "hero": "throttle",
+      "score": 0,
+      "health": null,
+      "armor": null,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0,
+      "combo": 1,
+      "weapon": null
+    },
+    "select": {
+      "state": "select",
+      "hero": "throttle",
+      "score": 0,
+      "health": null,
+      "armor": null,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0,
+      "combo": 1,
+      "weapon": null
+    },
+    "start": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 0,
+      "health": 150,
+      "armor": 40,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0.37,
+      "combo": 1,
+      "weapon": "spread"
+    },
+    "ride": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 8,
+      "health": 150,
+      "armor": 40,
+      "enemies": 3,
+      "boss": null,
+      "elapsed": 1.8,
+      "combo": 1.1,
+      "weapon": "spread"
+    },
+    "combat": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 466,
+      "health": 145.52,
+      "armor": 28.48,
+      "enemies": 1,
+      "boss": {
+        "kind": "miniboss",
+        "health": 890,
+        "maxHealth": 900
+      },
+      "elapsed": 145.12,
+      "combo": 1.1,
+      "weapon": "spread"
+    },
+    "pause": {
+      "state": "paused",
+      "hero": "modo",
+      "score": 474,
+      "health": 145.52,
+      "armor": 28.48,
+      "enemies": 1,
+      "boss": {
+        "kind": "miniboss",
+        "health": 870,
+        "maxHealth": 900
+      },
+      "elapsed": 145.36,
+      "combo": 1.2,
+      "weapon": "spread"
+    },
+    "boss": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 482,
+      "health": 150,
+      "armor": 80,
+      "enemies": 1,
+      "boss": {
+        "kind": "boss",
+        "health": 3490,
+        "maxHealth": 3500
+      },
+      "elapsed": 465,
+      "combo": 1.3,
+      "weapon": "rockets"
+    },
+    "afterBossExchange": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 602,
+      "health": 150,
+      "armor": 80,
+      "enemies": 1,
+      "boss": {
+        "kind": "boss",
+        "health": 2906,
+        "maxHealth": 3500
+      },
+      "elapsed": 465,
+      "combo": 2.4,
+      "weapon": "rockets"
+    }
+  },
+  "runtimeErrors": []
+}

@@ -1,0 +1,184 @@
+{
+  "ok": true,
+  "checkpoints": {
+    "menu": {
+      "state": "title",
+      "hero": "throttle",
+      "score": 0,
+      "health": null,
+      "armor": null,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0,
+      "combo": 1,
+      "weapon": null,
+      "beat": null
+    },
+    "select": {
+      "state": "select",
+      "hero": "throttle",
+      "score": 0,
+      "health": null,
+      "armor": null,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0,
+      "combo": 1,
+      "weapon": null,
+      "beat": null
+    },
+    "start": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 0,
+      "health": 150,
+      "armor": 40,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0.38,
+      "combo": 1,
+      "weapon": "spread",
+      "beat": null
+    },
+    "ride": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 0,
+      "health": 150,
+      "armor": 40,
+      "enemies": 3,
+      "boss": null,
+      "elapsed": 2.6,
+      "combo": 1,
+      "weapon": "spread",
+      "beat": null
+    },
+    "beatStart": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 0,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 92.15,
+      "combo": 1,
+      "weapon": "blaster",
+      "beat": {
+        "riderReaction": 0,
+        "shots": 0
+      }
+    },
+    "beatAftermath": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 4,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 94.52,
+      "combo": 1,
+      "weapon": "blaster",
+      "beat": {
+        "riderReaction": 0.21,
+        "shots": 0
+      }
+    },
+    "combat": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 8,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": {
+        "kind": "miniboss",
+        "health": 886,
+        "maxHealth": 900
+      },
+      "elapsed": 145.97,
+      "combo": 1.1,
+      "weapon": "blaster",
+      "beat": null
+    },
+    "pause": {
+      "state": "paused",
+      "hero": "throttle",
+      "score": 12,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": {
+        "kind": "miniboss",
+        "health": 872,
+        "maxHealth": 900
+      },
+      "elapsed": 146.04,
+      "combo": 1.1,
+      "weapon": "blaster",
+      "beat": null
+    },
+    "boss": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 16,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": {
+        "kind": "boss",
+        "health": 3486,
+        "maxHealth": 3500
+      },
+      "elapsed": 465,
+      "combo": 1.2,
+      "weapon": "rockets",
+      "beat": null
+    },
+    "afterBossExchange": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 94,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": {
+        "kind": "boss",
+        "health": 3076,
+        "maxHealth": 3500
+      },
+      "elapsed": 465,
+      "combo": 2,
+      "weapon": "rockets",
+      "beat": null
+    },
+    "victory": {
+      "state": "win",
+      "hero": "throttle",
+      "score": 61550,
+      "health": 107.48,
+      "armor": 38.52,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 465,
+      "combo": 1,
+      "weapon": "rockets",
+      "beat": null
+    },
+    "restart": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 0,
+      "health": 110,
+      "armor": 22.5,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0.18,
+      "combo": 1,
+      "weapon": "blaster",
+      "beat": null
+    }
+  },
+  "runtimeErrors": []
+}
