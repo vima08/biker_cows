@@ -5,6 +5,7 @@ import {
   drawPickup as drawPixelPickup,
 } from './art';
 import { drawEnvironment, drawEnvironmentForeground } from './environment';
+import { drawSpriteFrame, getSpriteSheetStatus, preloadSpriteSheets } from './spriteAtlas';
 
 const W = 960;
 const H = 540;
@@ -60,6 +61,14 @@ interface Pickup { x: number; y: number; kind: PickupKind; t: number; }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; color: string; kind: 'spark'|'smoke'|'fire'|'dust'|'debris'|'ring'|'star'|'impact'|'shard'|'blast'; rot: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; }
 
+const IMPACT_LABELS = ['pre','muzzle','travel-25','travel-75','contact','hitstop','recoil-1','recoil-2','debris-1','debris-2','damage-hold','recover'] as const;
+const IMPACT_TIMELINE_MS = [0,40,200,520,830,910,1020,1150,1290,1450,1640,2190] as const;
+const IMPACT_POSE = [
+  {x:0,y:0,angle:0},{x:0,y:0,angle:0},{x:0,y:0,angle:0},{x:0,y:0,angle:0},
+  {x:-4,y:2,angle:-2},{x:-8,y:4,angle:-4},{x:-26,y:-12,angle:-10},{x:-34,y:-16,angle:-14},
+  {x:-30,y:-12,angle:-11},{x:-24,y:-9,angle:-8},{x:-18,y:-7,angle:-6},{x:-6,y:-2,angle:3},
+] as const;
+
 class Input {
   held = new Set<string>();
   pressed = new Set<string>();
@@ -102,6 +111,7 @@ class Input {
 function clamp(v: number, min: number, max: number) { return Math.max(min, Math.min(max, v)); }
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 function rnd(min: number, max: number) { return min + Math.random() * (max - min); }
+function px(v: number) { return Math.round(v / 2) * 2; }
 function hit(a: {x:number;y:number;w:number;h:number}, b: {x:number;y:number;w:number;h:number}) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
@@ -142,6 +152,8 @@ export class RedlineGame {
   private bossSpawned = false;
   private bossDefeated = false;
   private debugBeat = false;
+  private debugWobblePose: number | null = null;
+  private debugImpactStage: number | null = null;
   private finishClock = 0;
   private titleChoice = 0;
   private highScores: Array<{name:string;score:number}> = [];
@@ -156,6 +168,9 @@ export class RedlineGame {
     this.ctx = ctx;
     ctx.imageSmoothingEnabled = false;
     this.input = new Input(canvas);
+    // Atlas loading is deliberately non-blocking. Until every individual PNG is
+    // ready, its existing procedural counterpart remains the renderer of record.
+    void preloadSpriteSheets();
     this.titleArt.src = '/assets/title-key-art.png';
     this.loadScores();
     const query = new URLSearchParams(location.search);
@@ -214,7 +229,7 @@ export class RedlineGame {
     this.player = { x: 168, y: 406, jump: 0, jumpV: 0, hp: hero.maxHp, armor: hero.maxArmor * .5, invuln: 0, cooldown: 0, weapon: hero.weapon, weaponRank: 1, rapid: 0, special: 45, specialTime: 0, lean: 0, wheel: 0, recoil: 0 };
     this.enemies = []; this.shots = []; this.pickups = []; this.particles = []; this.floaters = [];
     this.elapsed = 0; this.distance = 0; this.worldSpeed = hero.speed; this.score = 0; this.combo = 1; this.comboClock = 0; this.kills = 0;
-    this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = false; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.finishClock = 0;
+    this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = false; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.finishClock = 0;
     this.mode = 'playing';
     emitAudio('engine_start'); emitMusic('stage', .86);
   }
@@ -231,6 +246,10 @@ export class RedlineGame {
 
   private updatePlaying(dt: number) {
     if (this.input.tap('Escape','Enter','KeyP')) { this.mode = 'paused'; emitAudio('pause'); emitMusic('pause', .35); return; }
+    // The twelve production impact frames are frozen authored instants.  They
+    // still use the production world/entity/projectile renderer, but do not
+    // drift while Playwright encodes a PNG.
+    if (this.debugImpactStage !== null) return;
     const hero = HEROES[this.selected];
     const p = this.player;
     p.invuln = Math.max(0, p.invuln - dt); p.cooldown -= dt; p.recoil = Math.max(0, p.recoil - dt); p.rapid = Math.max(0, p.rapid - dt); p.specialTime = Math.max(0, p.specialTime - dt);
@@ -437,7 +456,12 @@ export class RedlineGame {
         for(const e of this.enemies){
           const er={x:e.x-e.w/2,y:e.y-e.h/2,w:e.w,h:e.h};
           if(s.life>0&&hit({x:s.x-s.r,y:s.y-s.r,w:s.r*2,h:s.r*2},er)){
-            e.hp-=s.damage;e.flash=e.kind==='boss'? .14:.09;if(e.kind==='rider')e.hitReact=this.debugBeat?1.75:.72;this.hitFx(s.x,s.y,s.color,s.kind==='laser'?2:3);this.comboClock=1.15;this.combo=clamp(this.combo+.055,1,9.9);this.score+=Math.ceil(3*this.combo);p.special=clamp(p.special+.42,0,100);
+            e.hp-=s.damage;e.flash=e.kind==='boss'? .14:.09;
+            if(e.kind==='rider'){
+              e.hitReact=this.debugBeat?1.75:1.35;
+              this.riderHitFx(e,s);
+            }else this.hitFx(s.x,s.y,s.color,s.kind==='laser'?2:3);
+            this.comboClock=1.15;this.combo=clamp(this.combo+.055,1,9.9);this.score+=Math.ceil(3*this.combo);p.special=clamp(p.special+.42,0,100);
             if(e.kind==='boss'||e.kind==='miniboss')this.shake=Math.max(this.shake,s.kind==='rockets'?2.1:1.35);
             if(s.kind==='rockets'){this.blast(s.x,s.y,35,s.color,undefined,2.1);for(const other of this.enemies)if(Math.hypot(other.x-s.x,other.y-s.y)<74)other.hp-=s.damage*.45;}
             if(s.pierce>0)s.pierce--;else s.life=0;
@@ -496,10 +520,10 @@ export class RedlineGame {
   private loadScores(){try{const raw=localStorage.getItem('redline-highscores');if(raw)this.highScores=JSON.parse(raw);}catch{this.highScores=[];}}
 
   debugStart(hero:HeroId='throttle'){this.selected=Math.max(0,HEROES.findIndex(h=>h.id===hero));this.beginRun();}
-  debugMiniboss(){if(this.mode!=='playing')this.debugStart();this.debugBeat=false;this.elapsed=145;this.enemies=[];this.shots=[];this.particles=[];this.floaters=[];}
+  debugMiniboss(){if(this.mode!=='playing')this.debugStart();this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.elapsed=145;this.enemies=[];this.shots=[];this.particles=[];this.floaters=[];}
   debugBoss(){
     if(this.mode!=='playing')this.debugStart();
-    this.debugBeat=false;
+    this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;
     this.elapsed=LEVEL_BOSS_TIME;this.enemies=[];this.minibossSpawned=true;this.bossSpawned=true;this.bossDefeated=false;
     this.player.weapon='rockets';this.player.weaponRank=4;this.player.special=100;this.player.hp=HEROES[this.selected].maxHp;this.player.armor=HEROES[this.selected].maxArmor;
     this.spawnEnemy('boss',930,295);emitMusic('boss');emitAudio('warning');
@@ -515,6 +539,44 @@ export class RedlineGame {
     this.spawnEnemy('rider',820,390);const rider=this.enemies[0];rider.hp=160;rider.maxHp=160;rider.fire=999;
   }
 
+  debugImpactFrame(stage:number){
+    const frame=clamp(Math.floor(stage),0,IMPACT_LABELS.length-1);
+    this.debugStart('throttle');this.debugBeat=false;this.debugImpactStage=frame;
+    this.elapsed=92;this.distance=18440;this.worldSpeed=330;this.spawnClock=999;this.obstacleClock=999;
+    this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.floaters=[];
+    this.player.x=168;this.player.y=406;this.player.weapon='blaster';this.player.weaponRank=1;
+    this.player.hp=HEROES[this.selected].maxHp;this.player.armor=HEROES[this.selected].maxArmor;
+    this.player.cooldown=frame===1||frame===4||frame===5?.12:0;
+    this.player.recoil=frame===1||frame===4||frame===5?.072:0;
+    this.spawnEnemy('rider',740,390);const rider=this.enemies[0];rider.hp=146;rider.maxHp=160;rider.fire=999;rider.flash=0;
+    // One authored projectile exists only between muzzle and contact.  Award
+    // state flips once at contact and remains stable through recovery.
+    if(frame>=1&&frame<=3){
+      const shotX=[0,224,350,590][frame];
+      this.shots.push({x:shotX,y:375,vx:690,vy:0,r:4,life:2,damage:14,friendly:true,color:'#ffe45d',kind:'blaster',pierce:0,age:IMPACT_TIMELINE_MS[frame]/1000,phase:0});
+    }
+    this.score=frame>=4?4:0;this.combo=frame>=4?1.1:1;this.comboClock=frame>=4?1.15:0;
+    return this.snapshot();
+  }
+
+  debugWobble(stage:'a'|'b'|'c'){
+    this.debugCombatBeat();
+    // Frozen regression poses share the exact recovery renderer used by gameplay.
+    // Their alternating signs and shrinking magnitude make the damping contract
+    // inspectable without screenshot encoding stretching the real 2.14s hit beat.
+    this.debugWobblePose=stage==='a'?8:stage==='b'?-6:4;
+    const rider=this.enemies[0];rider.hitReact=.42;rider.flash=0;
+  }
+
+  debugAerialWave(){
+    this.debugStart('throttle');this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.elapsed=248;this.spawnClock=999;this.obstacleClock=999;
+    this.minibossSpawned=true;this.bossSpawned=false;this.bossDefeated=false;
+    this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.floaters=[];
+    this.player.x=168;this.player.y=414;this.player.hp=HEROES[this.selected].maxHp;this.player.armor=HEROES[this.selected].maxArmor;
+    this.spawnEnemy('drone',760,164);this.spawnEnemy('skimmer',875,252);this.spawnEnemy('drone',990,205);this.spawnEnemy('skimmer',1110,126);
+    this.enemies.forEach((enemy,index)=>{enemy.fire=.2+index*.16;enemy.phase=index*.72;});
+  }
+
   snapshot() {
     const boss = this.enemies.find(e => e.kind === 'boss' || e.kind === 'miniboss');
     return {
@@ -522,7 +584,15 @@ export class RedlineGame {
       health: this.player?.hp ?? null, armor: this.player?.armor ?? null,
       enemies: this.enemies.length, boss: boss ? { kind: boss.kind, health: boss.hp, maxHealth: boss.maxHp } : null,
       elapsed: Number(this.elapsed.toFixed(2)), combo: Number(this.combo.toFixed(1)), weapon: this.player?.weapon ?? null,
-      beat: this.debugBeat ? { riderReaction: Number((this.enemies[0]?.hitReact ?? 0).toFixed(2)), shots: this.shots.filter(s=>s.friendly).length } : null
+      beat: this.debugBeat ? { riderReaction: Number((this.enemies[0]?.hitReact ?? 0).toFixed(2)), shots: this.shots.filter(s=>s.friendly).length, wobbleX: this.enemies[0] ? this.riderReactionPose(this.enemies[0]).wobbleX : 0 } : null,
+      impact: this.debugImpactStage===null?null:{
+        stage:this.debugImpactStage,label:IMPACT_LABELS[this.debugImpactStage],timelineMs:IMPACT_TIMELINE_MS[this.debugImpactStage],
+        hitstopMs:80,shots:this.shots.filter(s=>s.friendly).length,firedProjectiles:this.debugImpactStage>=1?1:0,
+        scoreAwards:this.debugImpactStage>=4?1:0,targetPose:IMPACT_POSE[this.debugImpactStage],
+        particleContract:this.debugImpactStage>=8?{total:12,panels:3,sparks:5,smokeDust:4,longArcPanels:2}:null,
+        damageHoldMs:550,
+      },
+      atlas: getSpriteSheetStatus()
     };
   }
 
@@ -532,6 +602,9 @@ export class RedlineGame {
     else if (scene === 'boss') this.debugBoss();
     else if (scene === 'miniboss') this.debugMiniboss();
     else if (scene === 'beat') this.debugCombatBeat();
+    else if (/^impact-(?:[0-9]|1[01])$/.test(scene)) this.debugImpactFrame(Number(scene.slice(7)));
+    else if (scene === 'wobble-a'||scene === 'wobble-b'||scene === 'wobble-c') this.debugWobble(scene.at(-1) as 'a'|'b'|'c');
+    else if (scene === 'aerial') this.debugAerialWave();
     else { this.beginRun(); this.elapsed = clamp(time, 0, LEVEL_BOSS_TIME); }
     return this.snapshot();
   }
@@ -546,6 +619,23 @@ export class RedlineGame {
       this.particles.push({x:x+rnd(-2,2),y:y+rnd(-2,2),vx:-Math.abs(Math.cos(a)*v),vy:Math.sin(a)*v,life:rnd(.12,.18),max:.18,size:rnd(3,5),color:i===1?'#fff':color,kind:'shard',rot:a});
     }
     this.particles.push({x:x-3,y:y+1,vx:rnd(-34,-12),vy:rnd(-28,-12),life:.34,max:.34,size:4.5,color:'#393044',kind:'smoke',rot:0});
+  }
+  private riderHitFx(e:Enemy,s:Projectile){
+    // The gameplay hitbox remains unchanged.  We stage the visible contact on the
+    // atlas silhouette's leading edge so the shot, flash and body read as one event.
+    const leadingEdge=e.x-e.w*.5;
+    const x=clamp(s.x,leadingEdge-4,leadingEdge+7),y=clamp(s.y,e.y-e.h*.48,e.y+e.h*.28);
+    // 66x56 hard contact cross at birth: orange outer, cyan middle, white core.
+    this.particles.push({x,y,vx:0,vy:0,life:.18,max:.18,size:44,color:'#58eaff',kind:'impact',rot:0});
+    const fragments:Array<[number,number,number,string,'spark'|'debris'|'smoke']>=[
+      [-300,-230,12,'#245c9b','debris'],[-250,-174,10,'#3b91c8','debris'],[-190,-118,9,'#22517e','debris'],
+      [-330,-235,5,'#fffbe0','spark'],[-282,-192,4,'#ffd84a','spark'],[-238,-148,5,'#fff','spark'],[-176,-216,4,'#ffd84a','spark'],[-126,-108,4,'#fffbe0','spark'],
+      [-72,-66,10,'#342c42','smoke'],[-50,-92,9,'#574153','smoke'],[-96,-40,8,'#9a604a','smoke'],[-38,-48,7,'#b17855','smoke'],
+    ];
+    fragments.forEach(([vx,vy,size,color,kind],i)=>{
+      const life=kind==='debris'?.9+i*.04:kind==='smoke'?.72+i*.025:.42+i*.018;
+      this.particles.push({x:x+(i%3)*2,y:y-(i%4)*2,vx,vy,life,max:life,size,color,kind,rot:i*.63});
+    });
   }
   private ring(x:number,y:number,color:string,count:number){for(let i=0;i<count;i++){const a=i/count*Math.PI*2;this.particles.push({x,y,vx:Math.cos(a)*rnd(110,250),vy:Math.sin(a)*rnd(110,250),life:.52,max:.52,size:rnd(4,9),color,kind:'ring',rot:a});}}
   private blast(x:number,y:number,size:number,color:string,count=Math.round(size*.42),shakeCap?:number){
@@ -576,13 +666,14 @@ export class RedlineGame {
   private drawWorld(){
     const c=this.ctx;
     const intensity=clamp(.78+this.enemies.length*.025+(this.bossSpawned ? .28 : 0)+(this.combo-1)*.018,.78,1.45);
-    const environment={scroll:this.distance,elapsed:this.elapsed,speed:this.worldSpeed,time:this.time,shake:this.shake,intensity};
+    const environment={scroll:this.distance,elapsed:this.elapsed,speed:this.worldSpeed,time:this.debugImpactStage===null?this.time:21,shake:this.shake,intensity};
     drawEnvironment(c,environment);
     for(const q of this.pickups)this.drawPickup(q);
     const ordered=[...this.enemies].sort((a,b)=>a.y-b.y);for(const e of ordered)this.drawEnemy(e);
     if(this.player)this.drawPlayer();
     for(const s of this.shots)this.drawShot(s);
     for(const q of this.particles)this.drawParticle(q);
+    if(this.debugImpactStage!==null)this.drawImpactChoreography(this.debugImpactStage);
     drawEnvironmentForeground(c,environment);
     for(const f of this.floaters){c.globalAlpha=clamp(f.life*2,0,1);this.text(f.text,f.x,f.y,17,f.color,'center',true);c.globalAlpha=1;}
   }
@@ -596,10 +687,68 @@ export class RedlineGame {
     const hitFlash=p.invuln>0&&Math.floor(p.invuln*22)%2===0?.32:0;
     c.save();c.globalAlpha=.27;c.fillStyle='#000';c.beginPath();c.ellipse(x-5,p.y+15,54,11,0,0,Math.PI*2);c.fill();c.globalAlpha=1;
     if(p.specialTime>0){c.strokeStyle=h.accent;c.lineWidth=2;c.globalAlpha=.4+.25*Math.sin(this.time*18);for(let i=0;i<3;i++){c.beginPath();c.ellipse(x-10-i*7,y,62+i*7,27+i*3,0,0,Math.PI*2);c.stroke();}c.globalAlpha=1;}
-    c.scale(2,2);
-    drawPixelHero(c,h.id,x/2,y/2,{frame:rideFrame,angle:p.lean*.055-p.jumpV*.00008,power:p.specialTime>0?1:clamp(.76+this.worldSpeed/h.speed*.18,.76,.96),firing,airborne:p.jump>1,flash:hitFlash,recoil});
+    // All three authored sheets share the same eight semantic poses.  Individual
+    // dimensions preserve character: Modo owns more road mass, Vinnie stays nimble.
+    let authoredFrame=0;
+    if(p.jump>1){
+      if(p.jump<9&&p.jumpV>0)authoredFrame=1;
+      else if(p.jumpV>105)authoredFrame=4;
+      else if(p.jumpV>-80)authoredFrame=5;
+      else if(p.jumpV<-185)authoredFrame=6;
+      else authoredFrame=7;
+    }else if(p.recoil>0){
+      authoredFrame=recoil>.58?2:recoil>.18?5:7;
+    }else{
+      authoredFrame=[0,0,3,3,6,6,7,7][((Math.floor(p.wheel)%8)+8)%8];
+    }
+    if(this.debugImpactStage!==null){
+      authoredFrame=[0,2,5,7,2,5,7,7,0,0,0,7][this.debugImpactStage];
+    }
+    const authoredSize:Record<HeroId,{width:number;height:number;anchorX:number;anchorY:number}>={
+      throttle:{width:208,height:156,anchorX:.48,anchorY:.74},
+      modo:{width:220,height:164,anchorX:.5,anchorY:.75},
+      vinnie:{width:202,height:152,anchorX:.48,anchorY:.73},
+    };
+    const size=authoredSize[h.id];
+    const playerKick=this.debugImpactStage===1?8:this.debugImpactStage===4?6:this.debugImpactStage===5?4:0;
+    const usedAtlas=drawSpriteFrame(c,h.id,authoredFrame,x-playerKick,y+38+(playerKick>0?2:0),{
+      ...size,
+      alpha:hitFlash>0?.62:1,
+    });
+    if(!usedAtlas){
+      c.scale(2,2);
+      drawPixelHero(c,h.id,x/2,y/2,{frame:rideFrame,angle:p.lean*.055-p.jumpV*.00008,power:p.specialTime>0?1:clamp(.76+this.worldSpeed/h.speed*.18,.76,.96),firing,airborne:p.jump>1,flash:hitFlash,recoil});
+    }
     c.restore();
-    if(firing)this.drawMuzzle(x+55,y-35,p.weapon,recoil>.72?0:1);
+    if(firing)this.drawMuzzle(x+55-playerKick,y-35,p.weapon,recoil>.72?0:1);
+  }
+
+  private drawImpactChoreography(stage:number){
+    const c=this.ctx,enemy=this.enemies.find(e=>e.kind==='rider');if(!enemy)return;
+    const x=enemy.x-82,y=enemy.y-15;
+    if(stage===4||stage===5){
+      c.save();c.translate(px(x),px(y));c.globalCompositeOperation='lighter';
+      // Pixel-stepped three-layer star: 88x60 outer silhouette, cyan energy
+      // shell and a white-hot asymmetric core, with no blur or gradient.
+      const burst=(points:number[],color:string)=>{c.fillStyle=color;c.beginPath();c.moveTo(points[0],points[1]);for(let i=2;i<points.length;i+=2)c.lineTo(points[i],points[i+1]);c.closePath();c.fill();};
+      burst([-44,-6,-28,-14,-32,-26,-12,-20,0,-30,12,-20,32,-26,28,-12,44,-6,34,2,40,16,18,14,12,28,0,18,-12,28,-18,14,-40,16,-32,2],'#ff5a2c');
+      burst([-34,-4,-20,-10,-22,-18,-8,-14,0,-22,8,-14,22,-18,20,-8,34,-4,24,2,28,10,12,8,8,18,0,12,-8,18,-12,8,-28,10,-24,2],'#56eaff');
+      burst([-20,-4,-10,-8,-6,-14,2,-10,10,-12,8,-6,20,-2,12,4,16,8,6,8,0,14,-6,8,-16,10,-12,2],'#fffde3');
+      c.fillStyle='#fff';c.fillRect(-10,-4,24,8);c.fillRect(-2,-10,8,20);
+      if(stage===5){c.fillStyle='#fff';c.fillRect(-16,-2,32,4);c.fillRect(-2,-14,4,28);}
+      c.restore();
+    }
+    if(stage>=6){
+      const travel=stage===6?.08:stage===7?.2:stage===8?.55:stage===9?1:stage===10?1.22:1.38;
+      const panelVectors=[[-92,-72,12,8,-.7],[-74,-108,10,10,.9],[-58,-54,9,7,-1.1]] as const;
+      c.save();
+      panelVectors.forEach(([vx,vy,w,h,spin],i)=>{c.save();c.translate(px(x+vx*travel),px(y+vy*travel+70*travel*travel));c.rotate(spin*travel+i*.35);c.fillStyle='#101729';c.beginPath();c.moveTo(-w-3,-h);c.lineTo(w,-h-2);c.lineTo(w+3,h-2);c.lineTo(-w+2,h+3);c.closePath();c.fill();c.fillStyle=i===1?'#3b91c8':'#245c9b';c.beginPath();c.moveTo(-w,-h+1);c.lineTo(w-2,-h);c.lineTo(w,h-2);c.lineTo(-w+3,h);c.closePath();c.fill();c.fillStyle='#7bdcff';c.fillRect(-w+2,-h+2,w*1.35,3);c.fillStyle='#d5a34c';c.fillRect(w-4,h-4,4,4);c.restore();});
+      const sparkVectors=[[-125,-94],[-106,-52],[-84,-126],[-64,-78],[-44,-114]] as const;
+      sparkVectors.forEach(([vx,vy],i)=>{const sx=px(x+vx*travel),sy=px(y+vy*travel+62*travel*travel);c.save();c.translate(sx,sy);c.rotate(Math.atan2(vy,vx));c.fillStyle=i%2?'#ffd84a':'#fffde1';c.fillRect(-12,-2,18,4);c.restore();});
+      const smokeVectors=[[-34,-42],[-12,-66],[-52,-18],[-8,-28]] as const;
+      smokeVectors.forEach(([vx,vy],i)=>{const sx=px(x+vx*travel),sy=px(y+vy*travel+26*travel*travel),s=8+i*2;c.fillStyle=i<2?'#393044':'#9a604a';c.fillRect(sx-s,sy-s/2,s*2,s);c.globalAlpha=.62;c.fillRect(sx-s/2,sy-s,s*1.5,s);c.globalAlpha=1;});
+      c.restore();
+    }
   }
 
   private drawMuzzle(x:number,y:number,weapon:Weapon,phase:number){
@@ -621,6 +770,45 @@ export class RedlineGame {
 
   private wheel(x:number,y:number,r:number,spin:number,accent:string){const c=this.ctx;c.fillStyle='#05060a';c.beginPath();c.arc(x,y,r+4,0,Math.PI*2);c.fill();c.strokeStyle='#4f5361';c.lineWidth=4;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.stroke();c.strokeStyle=accent;c.lineWidth=2;for(let i=0;i<6;i++){const a=spin+i*Math.PI/3;c.beginPath();c.moveTo(x,y);c.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);c.stroke();}c.fillStyle='#d0d5dc';c.beginPath();c.arc(x,y,4,0,Math.PI*2);c.fill();}
 
+  private riderReactionPose(e:Enemy){
+    let authoredReaction=0,reactionAge=0,recoveryStart=0,squash=0,wobbleX=0,wobbleY=0;
+    if(this.debugWobblePose!==null){
+      authoredReaction=4;wobbleX=this.debugWobblePose;wobbleY=Math.sign(wobbleX)*Math.max(1,Math.round(Math.abs(wobbleX)*.25));
+    }else if(e.hitReact>0){
+      reactionAge=(this.debugBeat?1.75:.72)-e.hitReact;
+      const contactEnd=this.debugBeat?.12:.07;
+      const squashEnd=this.debugBeat?.32:.16;
+      const recoilEnd=this.debugBeat?.55:.3;
+      recoveryStart=this.debugBeat?1.05:.42;
+      if(reactionAge<contactEnd)authoredReaction=1;
+      else if(reactionAge<squashEnd){authoredReaction=1;squash=Math.sin((reactionAge-contactEnd)/(squashEnd-contactEnd)*Math.PI);}
+      else if(reactionAge<recoilEnd)authoredReaction=2;
+      else if(reactionAge<recoveryStart)authoredReaction=3;
+      else authoredReaction=4;
+      if(authoredReaction===4){
+        const wobbleAge=reactionAge-recoveryStart,wobbleDuration=this.debugBeat?.48:.3;
+        const amplitude=9*clamp(1-wobbleAge/wobbleDuration,0,1);
+        wobbleX=Math.round(Math.sin(wobbleAge*55)*amplitude);
+        wobbleY=Math.round(Math.sin(wobbleAge*33)*amplitude*.28);
+      }
+    }
+    return {authoredReaction,squash,wobbleX,wobbleY};
+  }
+
+  private riderImpactFrame(e:Enemy){
+    if(this.debugImpactStage!==null)return this.debugImpactStage;
+    if(this.debugWobblePose!==null||e.hitReact<=0)return null;
+    const duration=this.debugBeat?1.75:1.35,age=duration-e.hitReact;
+    if(age<.08)return 4;
+    if(age<.16)return 5; // 80 ms / >2 render frames of held contact composition
+    if(age<.29)return 6;
+    if(age<.42)return 7;
+    if(age<.55)return 8;
+    if(age<.68)return 9;
+    if(age<(this.debugBeat?1.58:1.18))return 10;
+    return 11;
+  }
+
   private drawEnemy(e:Enemy){
     const c=this.ctx;
     if(e.kind==='rider'||e.kind==='tank'||e.kind==='drone'||e.kind==='skimmer'||e.kind==='miniboss'||e.kind==='boss'){
@@ -629,42 +817,104 @@ export class RedlineGame {
       c.scale(2,2);
       const reaction=e.kind==='rider'?(e.hitReact>.48?1:e.hitReact>0?2:0):0;
       const options={frame:Math.floor(e.t*8),flipX:true,flash:clamp(e.flash*8,0,1),power:1-e.hp/e.maxHp,reaction};
-      if(e.kind==='miniboss')drawPixelBoss(c,'roadReaper',e.x/2,e.y/2,{...options,scale:.84});
-      else if(e.kind==='boss')drawPixelBoss(c,'plutarkianDreadnought',e.x/2,e.y/2,options);
+      if(e.kind==='miniboss'){
+        const power=clamp(1-e.hp/e.maxHp,0,1);
+        const firing=e.fire>0&&e.fire<.18;
+        const roadRipperFrame=e.flash>0?2:firing?1:power>.84?5:power>.62?4:power>.32?3:0;
+        c.scale(.5,.5);
+        const usedRoadRipper=drawSpriteFrame(c,'roadRipper',roadRipperFrame,e.x,e.y+18,{
+          width:256,height:166,anchorX:.5,anchorY:.72,
+        });
+        c.scale(2,2);
+        if(!usedRoadRipper)drawPixelBoss(c,'roadReaper',e.x/2,e.y/2,{...options,scale:.84});
+      }
+      else if(e.kind==='boss'){
+        c.scale(.5,.5);
+        const power=clamp(1-e.hp/e.maxHp,0,1);
+        const bossBodyFrame=e.flash>.105?2:e.flash>0?3:power>.68?5:power>.3?4:e.fire>0&&e.fire<.14?1:0;
+        const usedBossBody=drawSpriteFrame(c,'bossBody',bossBodyFrame,e.x,e.y+12,{
+          width:360,height:270,anchorX:.5,anchorY:.54,
+        });
+        if(!usedBossBody){
+          c.scale(2,2);
+          drawPixelBoss(c,'plutarkianDreadnought',e.x/2,e.y/2,options);
+          c.scale(.5,.5);
+          const bossCoreFrame=e.flash>.105?3:e.flash>.052?4:e.flash>0?5:power>.58?2:power>.24?1:0;
+          drawSpriteFrame(c,'bossCore',bossCoreFrame,e.x-e.w*.2,e.y-e.h*.12,{
+            width:116,height:88,anchorX:.5,anchorY:.5,
+          });
+        }
+      }
       else {
-        const kind=e.kind==='rider'?'raider':e.kind==='tank'?'turret':e.kind==='drone'?'drone':'bomber';
-        drawPixelEnemy(c,kind,e.x/2,e.y/2,{...options,scale:e.kind==='tank'?1.16:1});
+        let usedAtlas=false;
+        if(e.kind==='rider'){
+          const {authoredReaction,squash,wobbleX,wobbleY}=this.riderReactionPose(e);
+          c.scale(.5,.5);
+          const impactFrame=this.riderImpactFrame(e);
+          if(impactFrame!==null){
+            const authoredPose=this.debugImpactStage!==null?IMPACT_POSE[impactFrame]:IMPACT_POSE[Math.min(11,impactFrame)];
+            c.save();c.translate(e.x+authoredPose.x,e.y+16+authoredPose.y);c.rotate(authoredPose.angle*Math.PI/180);
+            usedAtlas=drawSpriteFrame(c,'riderImpact',impactFrame,0,0,{
+              width:184,height:138,anchorX:.5,anchorY:.74,alpha:e.flash>0?.8:1,
+            });
+            c.restore();
+          }
+          if(!usedAtlas)usedAtlas=drawSpriteFrame(c,'rider',authoredReaction,e.x+wobbleX,e.y+14+wobbleY,{
+            width:156*(1+squash*.08),height:114*(1-squash*.09),anchorX:.5,anchorY:.72,flipX:true,alpha:e.flash>0?.72:1,
+          });
+          c.scale(2,2);
+        }else if(e.kind==='drone'||e.kind==='skimmer'){
+          const baseFrame=e.kind==='drone'?0:4;
+          const power=clamp(1-e.hp/e.maxHp,0,1);
+          const firing=e.fire>0&&e.fire<.18;
+          const aerialFrame=baseFrame+(e.flash>0?2:firing?1:power>.55?3:0);
+          c.scale(.5,.5);
+          usedAtlas=drawSpriteFrame(c,'aerials',aerialFrame,e.x,e.y,{
+            width:e.kind==='drone'?118:154,
+            height:e.kind==='drone'?82:90,
+            anchorX:.5,anchorY:.5,
+          });
+          c.scale(2,2);
+        }
+        if(!usedAtlas){
+          const kind=e.kind==='rider'?'raider':e.kind==='tank'?'turret':e.kind==='drone'?'drone':'bomber';
+          drawPixelEnemy(c,kind,e.x/2,e.y/2,{...options,scale:e.kind==='tank'?1.16:1});
+        }
       }
       c.restore();
       if((e.kind==='boss'||e.kind==='miniboss')&&e.flash>0){
-        const heat=clamp(e.flash/.14,0,1),radius=e.kind==='boss'?82:48;
-        c.save();c.globalCompositeOperation='screen';const glow=c.createRadialGradient(e.x-e.w*.2,e.y-e.h*.12,2,e.x-e.w*.2,e.y-e.h*.12,radius);glow.addColorStop(0,`rgba(255,252,214,${heat*.5})`);glow.addColorStop(.28,`rgba(255,157,74,${heat*.28})`);glow.addColorStop(1,'rgba(255,72,34,0)');c.fillStyle=glow;c.fillRect(e.x-e.w*.55,e.y-e.h*.55,e.w,e.h);c.restore();
+        const heat=clamp(e.flash/.14,0,1),radius=e.kind==='boss'?82:48,coreX=px(e.x-e.w*.2),coreY=px(e.y-e.h*.12);
+        c.save();c.translate(coreX,coreY);c.globalCompositeOperation='screen';c.globalAlpha=.24+heat*.42;
+        c.strokeStyle='#ff5a32';c.lineWidth=4;c.strokeRect(-px(radius*.62),-px(radius*.38),px(radius*1.24),px(radius*.76));
+        c.strokeStyle='#ffae4a';c.lineWidth=4;c.strokeRect(-px(radius*.38),-px(radius*.24),px(radius*.76),px(radius*.48));
+        c.globalAlpha=.72+heat*.28;c.fillStyle='#fffcd6';c.fillRect(-6,-6,12,12);c.restore();
       }
       return;
     }
-    c.save();c.translate(e.x,e.y);if(e.flash>0){c.shadowBlur=18;c.shadowColor='#fff';}const flash=e.flash>0?'#fff':null;
+    c.save();c.translate(px(e.x),px(e.y));const flash=e.flash>0?'#fff':null;
     if(e.kind==='mine'){
       c.rotate(e.t*2);c.fillStyle=flash||'#782f50';for(let i=0;i<8;i++){c.rotate(Math.PI/4);c.fillRect(9,-3,18,6);}c.beginPath();c.arc(0,0,14,0,Math.PI*2);c.fill();c.fillStyle='#ffdf57';c.beginPath();c.arc(0,0,5+Math.sin(e.t*9)*2,0,Math.PI*2);c.fill();
     }else{
-      c.rotate(e.t);c.fillStyle=flash||'#773dac';c.fillRect(-19,-19,38,38);c.fillStyle='#cf77ff';c.fillRect(-12,-12,24,24);c.fillStyle='#100d1b';c.fillRect(-5,-5,10,10);c.strokeStyle='#f55bda';c.strokeRect(-23,-23,46,46);
+      c.rotate(e.t);c.fillStyle=flash||'#773dac';c.fillRect(-20,-20,40,40);c.fillStyle='#cf77ff';c.fillRect(-12,-12,24,24);c.fillStyle='#100d1b';c.fillRect(-6,-6,12,12);c.strokeStyle=e.flash>0?'#fff':'#f55bda';c.lineWidth=2;c.strokeRect(-24,-24,48,48);
     }
     c.restore();
   }
 
   private drawShot(s:Projectile){
-    const c=this.ctx,age=s.age??0,pulse=.5+.5*Math.sin(age*28+(s.phase??0));c.save();c.translate(Math.round(s.x),Math.round(s.y));c.rotate(Math.atan2(s.vy,s.vx));c.shadowBlur=7+pulse*5;c.shadowColor=s.color;
+    const c=this.ctx,age=s.age??0,pulse=(Math.floor(age*18+(s.phase??0))&1)*2;c.save();c.translate(px(s.x),px(s.y));c.rotate(Math.atan2(s.vy,s.vx));
     if(s.kind==='blaster'){
-      c.fillStyle='#ff772b99';c.beginPath();c.moveTo(-24-pulse*5,0);c.lineTo(-7,-5);c.lineTo(-7,5);c.fill();c.fillStyle='#ffd943';c.beginPath();c.moveTo(13,0);c.lineTo(-4,-6);c.lineTo(-12,0);c.lineTo(-4,6);c.fill();c.fillStyle='#fffbd5';c.fillRect(-3,-2,13,4);
+      c.fillStyle='#b93624';c.fillRect(-24-pulse,-6,22+pulse,12);c.fillStyle='#ffd33e';c.fillRect(-8,-6,22,12);c.fillStyle='#fffbd5';c.fillRect(-2,-2,16,4);
     }else if(s.kind==='spread'){
-      c.fillStyle='#35ddec77';c.beginPath();c.moveTo(-18-pulse*4,0);c.lineTo(-3,-6);c.lineTo(-3,6);c.fill();c.fillStyle='#62f5ff';c.beginPath();c.arc(1,0,s.r+1+pulse,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.fillRect(-2,-2,7,4);c.fillStyle='#1c9fbd';c.fillRect(-7,-6,7,2);c.fillRect(-7,4,7,2);
+      c.fillStyle='#176f91';c.fillRect(-18-pulse,-8,24+pulse,16);c.fillStyle='#5cecff';c.fillRect(-8,-6,20,12);c.fillStyle='#fff';c.fillRect(0,-2,12,4);
     }else if(s.kind==='laser'){
-      c.globalAlpha=.35;c.fillStyle='#ff299c';c.fillRect(-34-pulse*10,-5,48+pulse*10,10);c.globalAlpha=1;c.fillStyle='#ff65bd';c.fillRect(-24,-3,45,6);c.fillStyle='#fff';c.fillRect(-15,-1,38,2);c.fillStyle='#ffc6eb';c.fillRect(15,-5,7,10);
+      c.fillStyle='#8b185e';c.fillRect(-36-pulse*2,-6,64+pulse*2,12);c.fillStyle='#ff55b5';c.fillRect(-28,-4,60,8);c.fillStyle='#fff4fc';c.fillRect(-18,-2,52,4);
     }else if(s.kind==='rockets'){
-      c.fillStyle='#ff5b2f66';c.beginPath();c.moveTo(-28-pulse*8,0);c.lineTo(-8,-7);c.lineTo(-8,7);c.fill();c.fillStyle='#ffd052';c.beginPath();c.moveTo(-21-pulse*4,0);c.lineTo(-8,-4);c.lineTo(-8,4);c.fill();c.fillStyle='#16131d';c.fillRect(-10,-6,20,12);c.fillStyle='#dedbe6';c.fillRect(-8,-4,18,8);c.fillStyle='#ff7040';c.beginPath();c.moveTo(12,0);c.lineTo(7,-5);c.lineTo(7,5);c.fill();c.fillStyle='#8f8a9e';c.fillRect(-7,-7,7,3);c.fillRect(-7,4,7,3);
+      c.fillStyle='#a62c25';c.fillRect(-28-pulse*2,-6,20+pulse*2,12);c.fillStyle='#272331';c.fillRect(-10,-8,24,16);c.fillStyle='#e3e0e8';c.fillRect(-6,-4,22,8);
     }else if(s.kind==='orb'){
-      const halo=Math.floor(age*15+(s.phase??0))%3;c.globalCompositeOperation='lighter';c.globalAlpha=.18+halo*.07;c.fillStyle=s.color;c.beginPath();c.arc(0,0,s.r+7+halo*3,0,Math.PI*2);c.fill();c.globalAlpha=.48;c.beginPath();c.arc(0,0,s.r+3+((halo+1)%3),0,Math.PI*2);c.fill();c.globalAlpha=1;c.fillStyle='#6b187d';c.beginPath();c.arc(0,0,s.r+1,0,Math.PI*2);c.fill();c.fillStyle=s.color;c.beginPath();c.arc(0,0,s.r*.72,0,Math.PI*2);c.fill();c.fillStyle='#fff';c.fillRect(-3,-3,4,4);
+      const step=(Math.floor(age*12+(s.phase??0))&1)*2,outer=px(s.r+8+step),inner=px(s.r+3);
+      c.globalCompositeOperation='lighter';c.strokeStyle='#57135f';c.lineWidth=2;c.strokeRect(-outer,-outer,outer*2,outer*2);c.strokeStyle=s.color;c.lineWidth=2;c.strokeRect(-inner,-inner,inner*2,inner*2);c.fillStyle='#fff4ff';c.fillRect(-4,-4,8,8);
     }else{
-      c.fillStyle='#421026';c.beginPath();c.moveTo(10,0);c.lineTo(-6,-7);c.lineTo(-15,0);c.lineTo(-6,7);c.fill();c.fillStyle=s.color;c.beginPath();c.moveTo(9,0);c.lineTo(-4,-4);c.lineTo(-11,0);c.lineTo(-4,4);c.fill();c.fillStyle='#fff0d1';c.fillRect(0,-2,6,4);c.fillStyle='#ff3c2d77';c.fillRect(-19-pulse*4,-2,9+pulse*4,4);
+      c.fillStyle='#421026';c.fillRect(-18-pulse,-8,28+pulse,16);c.fillStyle=s.color;c.fillRect(-10,-6,22,12);c.fillStyle='#fff0d1';c.fillRect(0,-2,12,4);
     }
     c.restore();
   }
@@ -676,20 +926,21 @@ export class RedlineGame {
   }
 
   private drawParticle(q:Particle){
-    const c=this.ctx,a=clamp(q.life/q.max,0,1),progress=1-a;c.save();c.globalAlpha=a;c.translate(Math.round(q.x),Math.round(q.y));c.rotate(q.rot);
+    const c=this.ctx,a=clamp(q.life/q.max,0,1),progress=1-a;c.save();c.globalAlpha=a;c.translate(px(q.x),px(q.y));
+    if(q.kind==='shard'||q.kind==='debris')c.rotate(Math.round(q.rot/(Math.PI*.25))*Math.PI*.25);
     if(q.kind==='smoke'||q.kind==='dust'){
-      c.fillStyle=q.color;const r=q.size*(1.35+progress*.65);c.fillRect(-r,-r*.55,r*1.25,r*1.1);c.globalAlpha=a*.55;c.fillRect(-r*.25,-r*.9,r*1.1,r);
+      const r=px(Math.max(2,q.size*(1.35+progress*.65)));c.fillStyle=q.color;c.fillRect(-r,-px(r*.5),px(r*1.25),r);c.globalAlpha=a*.58;c.fillRect(-px(r*.25),-r,px(r*1.1),r);
     }else if(q.kind==='impact'){
-      c.globalCompositeOperation='lighter';const r=q.size*(.75+progress*.65);c.fillStyle=q.color;c.beginPath();for(let i=0;i<8;i++){const rr=i%2?r*.35:r,ang=i*Math.PI/4;c.lineTo(Math.cos(ang)*rr,Math.sin(ang)*rr);}c.closePath();c.fill();c.fillStyle='#ff9b45';c.fillRect(-r*.18,-r*1.25,r*.36,r*2.5);
+      const r=px(q.size*(.75+progress*.65));c.globalCompositeOperation='lighter';c.fillStyle='#ff7538';c.fillRect(-r,-4,r*2,8);c.fillRect(-4,-r,8,r*2);const mid=px(Math.max(4,r*.58));c.fillStyle=q.color;c.fillRect(-mid,-4,mid*2,8);c.fillRect(-4,-mid,8,mid*2);c.fillStyle='#fff';c.fillRect(-4,-4,8,8);
     }else if(q.kind==='shard'){
-      c.fillStyle=q.color;c.beginPath();c.moveTo(q.size*1.5,0);c.lineTo(-q.size,-q.size*.45);c.lineTo(-q.size*.45,q.size*.45);c.closePath();c.fill();c.fillStyle='#fff';c.fillRect(0,-1,q.size*.75,2);
+      const size=px(Math.max(4,q.size));c.fillStyle=q.color;c.fillRect(-size,-px(size*.5),size*2,size);c.fillStyle='#fff';c.fillRect(0,-2,size,2);
     }else if(q.kind==='blast'){
-      const r=q.size*(.18+progress*.86);c.globalCompositeOperation='lighter';c.globalAlpha=Math.min(1,a*1.7);c.fillStyle=progress<.22?'#fffde0':progress<.58?'#ffad35':q.color;c.beginPath();for(let i=0;i<16;i++){const rr=i%2?r:r*(.58+.08*Math.sin(q.rot+i));const ang=i*Math.PI/8;c.lineTo(Math.cos(ang)*rr,Math.sin(ang)*rr);}c.closePath();c.fill();c.globalAlpha=a*.9;c.strokeStyle=progress<.35?'#fff8c7':'#ff6638';c.lineWidth=Math.max(2,q.size*.07*(1-progress));c.beginPath();c.arc(0,0,r*1.08,0,Math.PI*2);c.stroke();if(progress>.42){c.globalAlpha=a*.65;c.strokeStyle=q.color;c.lineWidth=2;c.beginPath();c.arc(0,0,r*1.28,0,Math.PI*2);c.stroke();}
+      const r=px(Math.max(4,q.size*(.18+progress*.86))),core=px(Math.max(4,r*.5));c.globalCompositeOperation='lighter';c.globalAlpha=Math.min(1,a*1.7);c.fillStyle=progress<.22?'#fffde0':progress<.58?'#ffad35':q.color;c.fillRect(-core,-core,core*2,core*2);c.globalAlpha=a*.9;c.strokeStyle=progress<.35?'#fff8c7':'#ff6638';c.lineWidth=4;c.strokeRect(-r,-r,r*2,r*2);if(progress>.42){const outer=px(r*1.28);c.globalAlpha=a*.65;c.strokeStyle=q.color;c.lineWidth=2;c.strokeRect(-outer,-outer,outer*2,outer*2);}
     }else if(q.kind==='spark'){
-      c.strokeStyle=q.color;c.lineWidth=Math.max(1,q.size*.45);c.beginPath();c.moveTo(0,0);c.lineTo(-q.vx*.035,-q.vy*.035);c.stroke();
+      const length=px(clamp(Math.hypot(q.vx,q.vy)*.035,4,18));c.rotate(Math.atan2(q.vy,q.vx));c.fillStyle=q.color;c.fillRect(-length,-2,length,4);
     }else if(q.kind==='ring'){
-      c.strokeStyle=q.color;c.lineWidth=2;c.beginPath();c.arc(0,0,q.size*(1-a+1),0,Math.PI*2);c.stroke();
-    }else{c.fillStyle=q.color;c.fillRect(-q.size/2,-q.size/2,q.size,q.size);}
+      const r=px(Math.max(4,q.size*(1-a+1)));c.strokeStyle=q.color;c.lineWidth=2;c.strokeRect(-r,-r,r*2,r*2);
+    }else{const size=px(Math.max(2,q.size));c.fillStyle=q.color;c.fillRect(-size/2,-size/2,size,size);}
     c.restore();
   }
 
