@@ -1,0 +1,67 @@
+# Art-directed asset prompts
+
+Все изображения в этом документе созданы встроенным инструментом `imagegen` в ходе Gauntlet-волн 5–7. CLI и внешние облачные API не использовались. Итоговые PNG после генерации локально нормализованы на фиксированные ячейки с nearest-neighbor scaling; chroma-key `#ff00ff` удалён локальным `System.Drawing`-скриптом.
+
+## Throttle — 8 кадров
+
+Итог: `public/assets/sprites/throttle-sheet.png`, сетка 4×2, ячейка 256×192.
+
+> Create one original art-directed 16-bit pixel-art sprite sheet for a fast side-scrolling motorcycle shoot-em-up. Exactly 8 clearly different full-body frames in a perfectly regular 4 columns × 2 rows grid. Character: an original tan mouse biker captain inspired by 1990s space-biker cartoons, green goggles, long red scarf, athletic silhouette, riding a red-and-gold futuristic motorcycle. All frames face right, show the entire bike, rider, wheels, ears and scarf, and share one bottom baseline and one consistent scale. Top row: neutral ride; jump anticipation; firing with strong torso recoil; deep front-fork compression. Bottom row: maximum frame pitch and tire squash; counter-torso pose; rebound; recovery. Each neighbouring silhouette must remain recognisably different with effects removed. Authentic high-end Sega Mega Drive pixel art, clustered pixels, dark navy outlines, 3-tone metal ramps, no antialiasing, no text, no UI, no shadows outside the sprite, no projectile, no explosion, no glow. Flat exact #ff00ff chroma-key background with no grid lines and no magenta inside the sprite.
+
+## Enemy rider — 6 кадров
+
+Итог: `public/assets/sprites/rider-sheet.png`, сетка 3×2, ячейка 256×192.
+
+> Create one original 16-bit pixel-art enemy motorcycle sprite sheet, exactly 6 frames in a regular 3 columns × 2 rows grid. An orange-tan ratlike alien highway mercenary in cobalt armour on a compact cobalt combat bike, every frame facing left, full vehicle visible, consistent scale and bottom baseline. Frames: pre-hit attack pose; violent contact squash with shortened wheelbase and compressed forks; recoil/back-bend with gun and torso thrown rearward; armour plate breaking away with exactly visible mechanical fragments; recovery wobble in the opposite direction; damaged restored combat stance. Make contact, recoil and recovery readable in black silhouette without particles. High-end Mega Drive clustered-pixel rendering, dark outlines, 3-tone ramps, hard highlights, no antialiasing, no text/UI, no projectile or explosion. Flat exact #ff00ff background, no grid lines, no magenta inside the sprite.
+
+## Boss weak core — 6 кадров
+
+Итог: `public/assets/sprites/boss-core-sheet.png`, сетка 3×2, ячейка 256×192.
+
+> Create one original 16-bit pixel-art mechanical boss weak-point sprite sheet, exactly 6 frames in a 3 columns × 2 rows grid. A gunmetal-and-violet alien reactor/cannon core with cyan conduits and an amber energy chamber, viewed from the side for a left-facing tracked war machine. States: calm sealed core; attack telegraph; hard projectile contact; recoil with separated armour shutters; exposed cracked reactor; recovery with damaged metal and small opaque smoke clusters. Consistent size and pivot. Premium Mega Drive clustered pixels, dark outline, angular 3-tone material ramps, hard rectangular highlights, no gradients, no bloom, no UI/text. Flat exact #ff00ff chroma background, no grid lines.
+
+## Modo — 8 кадров
+
+Итог: `public/assets/sprites/modo-sheet.png`, сетка 4×2, ячейка 256×192.
+
+> Create one original art-directed 16-bit pixel-art sprite sheet, exactly 8 full-body frames in a regular 4×2 grid. Character: a very large grey mouse biker with eyepatch and powerful mechanical arm, riding a heavy cobalt steel motorcycle with broad tyres and a triple-barrel gun. All frames face right, use one scale and bottom baseline. Top row: heavy neutral ride; jump anticipation; triple-barrel firing with massive recoil; deep suspension load. Bottom row: maximum chassis pitch and tyre squash; mechanical-arm counterbalance; heavy rebound; recovery. Preserve his uniquely heavy mass, broad frame and slower suspension compared with a normal rider. Premium Sega Mega Drive clustered-pixel art, hard navy outlines, 3-tone steel ramps, no antialiasing, no text/UI, no muzzle flash/projectile/explosion. Flat exact #ff00ff background without grid lines.
+
+## Vinnie — 8 кадров + исправление
+
+Итог: `public/assets/sprites/vinnie-sheet.png`, сетка 4×2, ячейка 256×192.
+
+> Create one original art-directed 16-bit pixel-art sprite sheet, exactly 8 full-body frames in a regular 4×2 grid. Character: a lean white mouse daredevil with red goggles and expressive ears, riding a narrow cream, red and yellow futuristic racing motorcycle with a laser mount. All frames face right, use one consistent scale and baseline. Top row: fast neutral ride; jump anticipation; laser firing with sharp rider recoil; fork compression. Bottom row: maximum high-speed chassis pitch and tyre squash; counter-torso pose; springy rebound; stylish recovery. Silhouettes must communicate agility and remain distinct without effects. Premium Sega Mega Drive clustered pixels, dark outline, 3-tone painted metal, hard highlights, no antialiasing, no text/UI, no projectile/explosion/glow. Flat exact #ff00ff chroma background without grid lines.
+
+Targeted edit applied to the generated sheet:
+
+> Edit only the third cell in the top row. Remove the orange/yellow muzzle flash and any detached energy pixels in front of the bike's laser. Reconstruct the unchanged laser barrel and flat exact #ff00ff background behind it. Keep every character, pose, pixel style, palette, grid position and all other seven cells exactly unchanged. Do not add text, glow, projectile or effects.
+
+## Full boss body — 6 кадров
+
+Итог: `public/assets/sprites/boss-body-sheet.png`, сетка 3×2, ячейка 256×192. `boss-core-sheet.png` использовался как визуальный и компонентный референс.
+
+> Using the supplied weak-core sheet as a style and component reference, create one original full-body 16-bit pixel-art final boss sprite sheet, exactly 6 frames in a regular 3×2 grid. A gigantic left-facing violet-and-gunmetal tracked Martian skull war machine: six road wheels, heavy tread, rear reactor, armoured cab, skull prow, two recoil cannons, and the referenced core visibly integrated into its torso. Full machine visible and consistently bottom-aligned. States: calm advance; weapon telegraph; hard contact; whole-body cannon recoil; damaged with broken armour and exposed core; critical smoking state. Premium high-end Mega Drive clustered pixels, bold dark silhouette, 3-tone material ramps, hard highlights, no antialiasing, no text/UI, no soft glow. Flat exact #ff00ff chroma background, no grid lines.
+
+## Mars highway panorama
+
+Итог: `public/assets/world/mars-highway-panorama.png`, исходный размер 1968×799.
+
+> Create a wide original 16-bit pixel-art background panorama for a fast side-scrolling shoot-em-up on Mars. Indigo starry night sky with two small moons, layered rust-red mesas, deep violet canyon shapes, and an alien refinery city on the horizon with restrained cyan and amber hard lights. Strong horizontal composition and multiple distance bands suitable for parallax. The lower edge should meet a separately rendered highway, but do not draw the road itself. No characters, vehicles, enemies, UI, text, logo, fog overlay or foreground objects. Authentic premium Sega Mega Drive palette discipline: clustered pixels, hard stepped edges, 3-tone material ramps, no antialiasing, no photorealism, no soft bloom. Full-bleed landscape, no chroma key.
+
+## Road Ripper miniboss — 6 кадров
+
+Итог: `public/assets/sprites/road-ripper-sheet.png`, сетка 3×2, ячейка 256×192.
+
+> Create one original 16-bit pixel-art miniboss sprite sheet, exactly 6 frames in a regular 3×2 grid. A large left-facing violet six-wheel Martian combat hot rod with armoured engine, ram prow, alien cockpit, exhaust stacks and roof cannon. Full vehicle visible, consistent scale and bottom baseline. States: aggressive idle; cannon fire windup/recoil; hard-hit reaction; first damage level with cracked plates; second damage level with exposed machinery; critical wreck with broken armour and opaque smoke clusters. Strong readable silhouette and staged material damage. Premium Mega Drive clustered pixels, dark outline, 3-tone metal ramps, hard highlights, no antialiasing, no text/UI/projectiles/explosions. Flat exact #ff00ff background, no grid lines.
+
+## Aerial enemy roster — 8 кадров
+
+Итог: `public/assets/sprites/aerials-sheet.png`, нормализованная сетка 4×2, ячейка 256×192.
+
+> Create one original 16-bit pixel-art aerial enemy sprite sheet, exactly 8 frames in a regular 4×2 grid. Every craft faces left, stays fully visible, and shares a consistent scale within its row. Top row: compact cobalt gun drone — movement pose, firing recoil, hard-hit reaction, damaged smoking pose. Bottom row: larger violet manta-shaped alien skimmer — movement pose, firing recoil, hard-hit reaction, damaged smoking pose. The two classes must have clearly different silhouettes and materials. Premium Sega Mega Drive clustered pixels, bold dark outlines, 3-tone ramps, hard rectangular highlights, no antialiasing, no text/UI, no detached projectile or explosion, no soft glow. Flat exact #ff00ff background with no grid lines and no magenta inside the sprites.
+
+## Rider material impact chain — 12 кадров
+
+Итог: `public/assets/sprites/rider-impact-sheet.png`, сетка 4×3, ячейка 256×192. `rider-sheet.png` использовался как точный character/style reference.
+
+> Using the supplied blue armoured alien motorcycle rider sprite sheet as the exact character, palette, proportions, left-facing orientation, and premium Sega Mega Drive pixel-art reference, create ONE new original impact-animation sprite sheet with EXACTLY 12 full-body frames arranged in a perfectly regular 4 columns × 3 rows grid. Every cell must show the same orange-tan ratlike mercenary in cobalt armour on the same cobalt combat bike, fully visible, same scale, one bottom baseline, facing LEFT. No duplicate poses. Semantic order left-to-right, top-to-bottom: 1 pre-hit aggressive ride; 2 braced anticipation with gun forward; 3 approaching-impact tension; 4 last instant before contact; 5 violent contact squash with wheelbase shortened, front fork deeply compressed, torso thrown toward the hit, and a visible missing/cracking front blue armour panel; 6 held hitstop extreme pose, bike tilted at least 8 degrees and rider counter-rotated; 7 recoil phase one displaced strongly backward/upward, bent fork and rider backbend; 8 recoil phase two overshoot in opposite body motion with exposed gunmetal machinery; 9 debris-break pose with a large blue armour panel separated from the front cowling; 10 second debris pose with another blue plate separated and bike still visibly damaged; 11 damage-hold pose with permanently missing 12×12-pixel-or-larger blue panel, cracked fairing, exposed gunmetal and small opaque smoke clusters; 12 recover pose that still retains the missing panel and damaged contour, with opposite suspension wobble. The silhouettes for frames 5–12 must be dramatically different from frame 1 and readable without effects; distinguish sprung bike mass, wheels/fork, rider torso/head/gun and separated plates. High-end authentic 16-bit clustered-pixel art, bold dark navy outline, hard 3-tone metal ramps, 2-pixel-like clusters, no antialiasing, no modern vector look. IMPORTANT: sprite poses and attached/separated armour pieces only—NO projectile, NO muzzle flash, NO impact flash, NO explosion, NO spark shower, NO glow, NO text, NO UI, NO labels, NO cell borders, NO shadows outside sprites. Flat exact solid #ff00ff magenta chroma-key background filling every empty pixel; no magenta within any sprite.

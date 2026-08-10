@@ -1,0 +1,1213 @@
+{
+  "ok": true,
+  "checkpoints": {
+    "atlas": {
+      "throttle": {
+        "id": "throttle",
+        "path": "/assets/sprites/throttle-sheet.png",
+        "columns": 4,
+        "rows": 2,
+        "frames": 8,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "modo": {
+        "id": "modo",
+        "path": "/assets/sprites/modo-sheet.png",
+        "columns": 4,
+        "rows": 2,
+        "frames": 8,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "vinnie": {
+        "id": "vinnie",
+        "path": "/assets/sprites/vinnie-sheet.png",
+        "columns": 4,
+        "rows": 2,
+        "frames": 8,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "rider": {
+        "id": "rider",
+        "path": "/assets/sprites/rider-sheet.png",
+        "columns": 3,
+        "rows": 2,
+        "frames": 6,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "bossCore": {
+        "id": "bossCore",
+        "path": "/assets/sprites/boss-core-sheet.png",
+        "columns": 3,
+        "rows": 2,
+        "frames": 6,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "bossBody": {
+        "id": "bossBody",
+        "path": "/assets/sprites/boss-body-sheet.png",
+        "columns": 3,
+        "rows": 2,
+        "frames": 6,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      }
+    },
+    "menu": {
+      "state": "title",
+      "hero": "throttle",
+      "score": 0,
+      "health": null,
+      "armor": null,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0,
+      "combo": 1,
+      "weapon": null,
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "select": {
+      "state": "select",
+      "hero": "throttle",
+      "score": 0,
+      "health": null,
+      "armor": null,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0,
+      "combo": 1,
+      "weapon": null,
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "start": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 0,
+      "health": 150,
+      "armor": 40,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0.37,
+      "combo": 1,
+      "weapon": "spread",
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "ride": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 4,
+      "health": 150,
+      "armor": 40,
+      "enemies": 3,
+      "boss": null,
+      "elapsed": 2.37,
+      "combo": 1.1,
+      "weapon": "spread",
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "beatStart": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 0,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 92.13,
+      "combo": 1,
+      "weapon": "blaster",
+      "beat": {
+        "riderReaction": 0,
+        "shots": 0
+      },
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "beatContact": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 4,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 92.97,
+      "combo": 1.1,
+      "weapon": "blaster",
+      "beat": {
+        "riderReaction": 1.75,
+        "shots": 1
+      },
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "beatAftermath": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 4,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 94.43,
+      "combo": 1,
+      "weapon": "blaster",
+      "beat": {
+        "riderReaction": 0.28,
+        "shots": 0
+      },
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "beatFrames": [
+      {
+        "index": 0,
+        "label": "muzzle",
+        "offsetMs": 40,
+        "score": 0,
+        "riderReaction": 0,
+        "shots": 1
+      },
+      {
+        "index": 1,
+        "label": "early travel",
+        "offsetMs": 200,
+        "score": 0,
+        "riderReaction": 0,
+        "shots": 1
+      },
+      {
+        "index": 2,
+        "label": "late travel",
+        "offsetMs": 540,
+        "score": 0,
+        "riderReaction": 0,
+        "shots": 1
+      },
+      {
+        "index": 3,
+        "label": "contact core",
+        "offsetMs": 840,
+        "score": 4,
+        "riderReaction": 1.75,
+        "shots": 1
+      },
+      {
+        "index": 4,
+        "label": "target squash",
+        "offsetMs": 950,
+        "score": 4,
+        "riderReaction": 1.63,
+        "shots": 0
+      },
+      {
+        "index": 5,
+        "label": "recoil/backbend",
+        "offsetMs": 1120,
+        "score": 4,
+        "riderReaction": 1.47,
+        "shots": 0
+      },
+      {
+        "index": 6,
+        "label": "debris break",
+        "offsetMs": 1520,
+        "score": 4,
+        "riderReaction": 1.07,
+        "shots": 0
+      },
+      {
+        "index": 7,
+        "label": "recovery wobble",
+        "offsetMs": 2140,
+        "score": 4,
+        "riderReaction": 0.45,
+        "shots": 0
+      }
+    ],
+    "beatTiming": {
+      "durationMs": 2140,
+      "contactMs": 840
+    },
+    "combat": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 8,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": {
+        "kind": "miniboss",
+        "health": 886,
+        "maxHealth": 900
+      },
+      "elapsed": 145.93,
+      "combo": 1.1,
+      "weapon": "blaster",
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "pause": {
+      "state": "paused",
+      "hero": "throttle",
+      "score": 12,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": {
+        "kind": "miniboss",
+        "health": 872,
+        "maxHealth": 900
+      },
+      "elapsed": 146.07,
+      "combo": 1.1,
+      "weapon": "blaster",
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "boss": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 48,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": {
+        "kind": "boss",
+        "health": 3348,
+        "maxHealth": 3500
+      },
+      "elapsed": 465,
+      "combo": 1.5,
+      "weapon": "rockets",
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "afterBossExchange": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 258,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": {
+        "kind": "boss",
+        "health": 2396,
+        "maxHealth": 3500
+      },
+      "elapsed": 465,
+      "combo": 3.1,
+      "weapon": "rockets",
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "victory": {
+      "state": "win",
+      "hero": "throttle",
+      "score": 30294,
+      "health": 105.52,
+      "armor": 33.480000000000004,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 465,
+      "combo": 1,
+      "weapon": "rockets",
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "restart": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 0,
+      "health": 110,
+      "armor": 22.5,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0.2,
+      "combo": 1,
+      "weapon": "blaster",
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "vinnieRide": {
+      "state": "playing",
+      "hero": "vinnie",
+      "score": 24,
+      "health": 90,
+      "armor": 15,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 1.42,
+      "combo": 1.3,
+      "weapon": "laser",
+      "beat": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    }
+  },
+  "runtimeErrors": []
+}

@@ -112,6 +112,77 @@
       </div>
       <div class="finding"><strong>Финальный verdict:</strong> сильный, стильный и технически законченный fan prototype, но не premium/AAA-16-bit. Muzzle и полёт снаряда читаются; contact слаб, recoil-деформация не проходит строгий DoD, debris/recovery проходит частично. После четырёх волн это потолок code-generated polygon art; следующий качественный скачок требует art-directed sprite sheets с вручную заданными contact/recoil/recovery frames.</div>
     </section>
+
+    <section class="iteration">
+      <h2>Iteration 5 — PNG atlas pipeline</h2>
+      <div class="meta"><span class="tag">Throttle atlas</span><span class="tag">Enemy reactions</span><span class="tag">Boss core</span><span class="tag">8-frame beat</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-5/ride.png" alt="Throttle atlas in gameplay"><figcaption>First authored hero atlas</figcaption></figure>
+        <figure><img src="captures/iteration-5/combat-beat-3.png" alt="Real projectile contact"><figcaption>Real collision / contact</figcaption></figure>
+        <figure><img src="captures/iteration-5/combat-beat-5.png" alt="Enemy recoil pose"><figcaption>Authored recoil pose</figcaption></figure>
+        <figure><img src="captures/iteration-5/boss-exchange.png" alt="Atlas boss core"><figcaption>Boss weak-core atlas</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Pipeline shift завершён:</strong> runtime-полигоны перестали быть главным источником acting: Throttle, rider и boss core рисуются из локальных PNG sheets с безопасным procedural fallback. Свежий critic принял причинную цепочку лучше, но увидел «острова» raster-art внутри процедурного мира.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 6 — authored cast &amp; full boss</h2>
+      <div class="meta"><span class="tag">3 hero atlases</span><span class="tag">Full boss body</span><span class="tag">6/6 ready</span><span class="tag">Victory + restart</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-6/ride.png" alt="Modo gameplay"><figcaption>Modo · heavy silhouette</figcaption></figure>
+        <figure><img src="captures/iteration-6/vinnie-ride.png" alt="Vinnie gameplay"><figcaption>Vinnie · agile silhouette</figcaption></figure>
+        <figure><img src="captures/iteration-6/combat-beat-6.png" alt="Throttle debris beat"><figcaption>Throttle / rider reaction</figcaption></figure>
+        <figure><img src="captures/iteration-6/boss.png" alt="Full authored boss"><figcaption>Full boss-body atlas</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Сделано:</strong> три героя получили отдельные массу, размер и восемь semantic frames; финальный boss теперь цельный authored body, а не procedural shell вокруг raster core. Главный разрыв переместился с персонажей на окружение и оставшийся roster.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 7 — world &amp; roster</h2>
+      <div class="meta"><span class="tag">Mars panorama</span><span class="tag">Road Ripper</span><span class="tag">Aerial roster</span><span class="tag">8/8 ready</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-7/ride.png" alt="Authored Mars panorama"><figcaption>Mars highway panorama</figcaption></figure>
+        <figure><img src="captures/iteration-7/combat.png" alt="Road Ripper miniboss"><figcaption>Road Ripper miniboss</figcaption></figure>
+        <figure><img src="captures/iteration-7/aerial-combat.png" alt="Authored aerial roster"><figcaption>Drone + manta skimmer</figcaption></figure>
+        <figure><img src="captures/iteration-7/boss-exchange.png" alt="Iteration 7 boss"><figcaption>Integrated boss exchange</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Critic 7: 7.4/10.</strong> Panorama и authored roster приняты, однако поверх сильного дальнего плана оставались процедурные midground-слои и мягкие FX с другим material/pixel contract. Следующая волна замораживает контент и занимается только цельностью composite.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 8 — unified material contract</h2>
+      <div class="meta"><span class="tag">Sole panorama</span><span class="tag">Hard 2px FX</span><span class="tag">7 debris pieces</span><span class="tag">Full smoke PASS</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-8/ride.png" alt="Unified world composite"><figcaption>Single authored horizon</figcaption></figure>
+        <figure><img src="captures/iteration-8/aerial-combat.png" alt="Unified aerial combat"><figcaption>World + aerial roster</figcaption></figure>
+        <figure><img src="captures/iteration-8/combat-beat-3.png" alt="Hard contact core"><figcaption>Hard-edged contact</figcaption></figure>
+        <figure><img src="captures/iteration-8/combat-beat-6.png" alt="Seven debris fragments"><figcaption>Seven separated fragments</figcaption></figure>
+        <figure><img src="captures/iteration-8/wobble-a.png" alt="Recovery wobble positive"><figcaption>Recovery wobble +8</figcaption></figure>
+        <figure><img src="captures/iteration-8/wobble-b.png" alt="Recovery wobble negative"><figcaption>Recovery wobble −6</figcaption></figure>
+        <figure><img src="captures/iteration-8/boss.png" alt="Final boss"><figcaption>Boss scale / hierarchy</figcaption></figure>
+        <figure><img src="captures/iteration-8/victory.png" alt="Verified real victory"><figcaption>Real boss kill / victory</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Production verification:</strong> `ok=true`, 8/8 atlases ready, `runtimeErrors=[]`; 2100 ms combat beat, real contact at 830 ms, full menu-to-victory-to-restart route. Здесь фиксируется результат integration pass; независимый verdict хранится рядом с iteration-8 captures в `.gauntlet`.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 9 — material impact chain</h2>
+      <div class="meta"><span class="tag">12 authored poses</span><span class="tag">84×56 contact</span><span class="tag">12 debris pieces</span><span class="tag">9/9 ready</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-9/impact-00-pre.png" alt="Impact pre-hit"><figcaption>00 · pre-hit staging</figcaption></figure>
+        <figure><img src="captures/iteration-9/impact-01-muzzle.png" alt="Impact muzzle"><figcaption>01 · muzzle / shooter recoil</figcaption></figure>
+        <figure><img src="captures/iteration-9/impact-03-travel-75.png" alt="Late projectile travel"><figcaption>03 · late travel</figcaption></figure>
+        <figure><img src="captures/iteration-9/impact-04-contact.png" alt="Large contact core"><figcaption>04 · 84×56 contact</figcaption></figure>
+        <figure><img src="captures/iteration-9/impact-06-recoil-1.png" alt="Target recoil one"><figcaption>06 · recoil / 10° pitch</figcaption></figure>
+        <figure><img src="captures/iteration-9/impact-07-recoil-2.png" alt="Target recoil two"><figcaption>07 · recoil overshoot</figcaption></figure>
+        <figure><img src="captures/iteration-9/impact-08-debris-1.png" alt="Material debris"><figcaption>08 · 3-material debris</figcaption></figure>
+        <figure><img src="captures/iteration-9/impact-10-damage-hold.png" alt="Persistent damage"><figcaption>10 · 550ms damage hold</figcaption></figure>
+        <figure><img src="captures/iteration-9/impact-11-recover.png" alt="Damaged recovery"><figcaption>11 · damaged recovery</figcaption></figure>
+        <figure><img src="captures/iteration-9/boss.png" alt="Wave 9 boss"><figcaption>Full-route boss regression</figcaption></figure>
+        <figure><img src="captures/iteration-9/victory.png" alt="Wave 9 victory"><figcaption>Real kill → victory</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Строгий verdict wave 9: NO, но большой pass.</strong> Новый authored sheet однозначно выигрывает wave 8 по contact scale, target acting и recoil silhouette; полный smoke сообщает `ok=true`, 9/9 atlases и ноль runtime errors. Оставшийся единый blocker — spatial/material registration: contact-star ещё отделён от вилки, shooter recoil временно сбрасывается, а debris и persistent scar недостаточно ясно происходят из одной конкретной панели.</div>
+    </section>
   </main>
   <footer>Redline Rampage · local noncommercial fan prototype · captures produced by automated browser runs</footer>
 </body>

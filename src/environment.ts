@@ -61,6 +61,38 @@ const SECTIONS: readonly EnvironmentSection[] = [
   'fortress-approach',
 ];
 
+/**
+ * The authored panorama is an enhancement, never a boot dependency.  Keeping
+ * the loader here (rather than in game state) means a slow/missing local asset
+ * simply reveals the procedural world that is already drawn underneath it.
+ */
+const PANORAMA_URL = '/assets/world/mars-highway-panorama.png';
+let panorama: HTMLImageElement | null = null;
+let panoramaState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
+
+function getPanorama(): HTMLImageElement | null {
+  if (panoramaState === 'ready') return panorama;
+  if (panoramaState !== 'idle' || typeof Image === 'undefined') return null;
+  panoramaState = 'loading';
+  try {
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => {
+      panorama = image;
+      panoramaState = 'ready';
+    };
+    // A missing optional layer is intentionally silent: procedural art is the fallback.
+    image.onerror = () => {
+      panorama = null;
+      panoramaState = 'failed';
+    };
+    image.src = PANORAMA_URL;
+  } catch {
+    panoramaState = 'failed';
+  }
+  return null;
+}
+
 const PALETTES: Record<EnvironmentSection, Palette> = {
   'mars-outskirts': {
     sky0: '#070a25', sky1: '#31204d', sky2: '#913e58', horizon: '#f58a5b', glow: '#ffc16c',
@@ -90,6 +122,7 @@ const smooth = (value: number) => {
   return t * t * (3 - 2 * t);
 };
 const wrap = (value: number, size: number) => ((value % size) + size) % size;
+const pixel2 = (value: number) => Math.round(value / 2) * 2;
 const hash = (value: number) => {
   const n = Math.sin(value * 127.1 + 311.7) * 43758.5453123;
   return n - Math.floor(n);
@@ -244,6 +277,41 @@ function drawCloudBands(ctx: CanvasRenderingContext2D, palette: Palette, scroll:
     ctx.fillRect(Math.floor(item.x + width * .42), Math.floor(y + 5), Math.floor(width * .34), 2);
   }
   ctx.globalAlpha = 1;
+}
+
+function drawAuthoredPanorama(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number, time: number): boolean {
+  const image = getPanorama();
+  if (!image || image.naturalWidth < 2 || image.naturalHeight < 2) return false;
+
+  // Use a wide crop so motion stays a restrained far-parallax drift. A cosine
+  // phase eases fully into both turnarounds: no seam and no velocity snap.
+  const cropWidth = Math.min(image.naturalWidth, Math.max(2, Math.round(image.naturalWidth * .82)));
+  const cropHeight = Math.min(image.naturalHeight, Math.max(2, Math.round(cropWidth * ENVIRONMENT_ROAD_TOP / ENVIRONMENT_WIDTH)));
+  const travel = Math.max(0, image.naturalWidth - cropWidth);
+  const drift = scroll * .014 + time * 1.5;
+  const phase = travel > 0 ? drift / travel * Math.PI : 0;
+  const sourceX = pixel2(travel * (.5 - .5 * Math.cos(phase)));
+  const sourceY = Math.max(0, Math.min(image.naturalHeight - cropHeight, Math.round(image.naturalHeight * .04)));
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, ENVIRONMENT_WIDTH, ENVIRONMENT_ROAD_TOP);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = .78;
+  ctx.drawImage(image, sourceX, sourceY, cropWidth, cropHeight, 0, 0, ENVIRONMENT_WIDTH, ENVIRONMENT_ROAD_TOP);
+
+  // Hard color bands bind one neutral panorama into all four existing region palettes.
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.globalAlpha = .18;
+  ctx.fillStyle = palette.sky0;
+  ctx.fillRect(0, 0, ENVIRONMENT_WIDTH, 116);
+  ctx.fillStyle = palette.sky1;
+  ctx.fillRect(0, 116, ENVIRONMENT_WIDTH, 96);
+  ctx.fillStyle = palette.sky2;
+  ctx.fillRect(0, 212, ENVIRONMENT_WIDTH, ENVIRONMENT_ROAD_TOP - 212);
+  ctx.restore();
+  return true;
 }
 
 function drawRidge(ctx: CanvasRenderingContext2D, scroll: number, factor: number, baseY: number, step: number, height: number, color: string, salt: number) {
@@ -499,23 +567,73 @@ function drawAsphaltTexture(ctx: CanvasRenderingContext2D, palette: Palette, scr
   }
   ctx.globalAlpha = 1;
 
-  // Tar repairs and twin tire marks: broad, curved and low contrast.
+  // Tar repairs and twin tyre marks are stepped 2px clusters. They read as
+  // hand-placed cartridge pixels and avoid smooth vector curves on the road.
   for (let track = 0; track < 3; track++) {
-    const y = 338 + track * 61;
-    const offset = wrap(scroll * (1.06 + track * .12) + track * 311, 740) - 160;
-    ctx.strokeStyle = '#05070b';
+    const y = pixel2(338 + track * 61);
+    const offset = pixel2(wrap(scroll * (1.06 + track * .12) + track * 311, 740) - 160);
     ctx.globalAlpha = .24 + track * .05;
-    ctx.lineWidth = 3 + track;
-    ctx.beginPath();
-    ctx.moveTo(offset, y);
-    ctx.bezierCurveTo(offset + 100, y - 9, offset + 225, y + 12, offset + 360, y - 3);
-    ctx.stroke();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = palette.road2;
-    ctx.beginPath();
-    ctx.moveTo(offset, y - 3);
-    ctx.bezierCurveTo(offset + 100, y - 12, offset + 225, y + 9, offset + 360, y - 6);
-    ctx.stroke();
+    for (let step = 0; step < 18; step++) {
+      const sx = offset + step * 20;
+      const sy = y + pixel2(Math.sin((step + track * 2) * .72) * 6);
+      ctx.fillStyle = '#05070b';
+      ctx.fillRect(sx, sy, 18, track === 2 ? 4 : 2);
+      ctx.fillStyle = palette.road2;
+      ctx.fillRect(sx, sy - 2, 12, 2);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Three repeating, low-contrast material beats keep the road authored but the lane readable. */
+function drawRoadMaterialEvents(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number, time: number) {
+  for (const item of repeatedPositions(scroll, 1.08, 286, 2)) {
+    const event = ((item.index % 3) + 3) % 3;
+    const x = pixel2(item.x + 18);
+    if (event === 0) {
+      // A patched slab rides the upper edge of the lane.
+      ctx.globalAlpha = .26;
+      ctx.fillStyle = palette.road2;
+      polygon(ctx, [[x, 316], [x + 94, 312], [x + 126, 326], [x + 20, 330]]);
+      ctx.fillStyle = palette.road0;
+      for (let px = 0; px < 5; px++) ctx.fillRect(x + 12 + px * 22, 318 + (px % 2) * 4, 8, 2);
+    } else if (event === 1) {
+      // Twin stepped tyre marks sit below the main projectile corridor.
+      ctx.globalAlpha = .28;
+      ctx.fillStyle = '#05070b';
+      for (let step = 0; step < 7; step++) {
+        const sx = x + step * 18;
+        const sy = 470 + ((step + item.index) % 3) * 2;
+        ctx.fillRect(sx, sy, 14, 2);
+        ctx.fillRect(sx + 2, sy + 8, 14, 2);
+      }
+    } else {
+      // A small repair seam, broken into chunky top-left-lit pixels.
+      ctx.globalAlpha = .34;
+      ctx.fillStyle = '#05070a';
+      const points = [[x, 404], [x + 18, 408], [x + 34, 402], [x + 50, 410], [x + 68, 406]] as const;
+      for (let i = 0; i < points.length - 1; i++) {
+        const ax = pixel2(points[i][0]);
+        const ay = pixel2(points[i][1]);
+        const bx = pixel2(points[i + 1][0]);
+        const by = pixel2(points[i + 1][1]);
+        line(ctx, '#05070a', 2, [[ax, ay], [bx, by]]);
+      }
+      ctx.fillStyle = palette.road2;
+      ctx.fillRect(x + 16, 404, 12, 2);
+    }
+  }
+
+  // Restrained light pools are clusters rather than gradients; gaps preserve silhouettes.
+  for (const item of repeatedPositions(scroll, .74, 334, 2)) {
+    const x = pixel2(item.x - 28);
+    const pulse = .055 + (Math.sin(time * 2.6 + item.index) + 1) * .015;
+    ctx.globalAlpha = pulse;
+    ctx.fillStyle = palette.accent;
+    polygon(ctx, [[x, 338], [x + 148, 338], [x + 104, 358], [x + 30, 358]]);
+    ctx.globalAlpha = pulse * .7;
+    ctx.fillRect(x + 28, 360, 70, 2);
+    ctx.fillRect(x + 42, 364, 42, 2);
   }
   ctx.globalAlpha = 1;
 }
@@ -552,51 +670,106 @@ function drawLaneReflectors(ctx: CanvasRenderingContext2D, palette: Palette, scr
 }
 
 function drawGuardrail(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number) {
+  // Three-tone metal contract: 2px top-left highlight, mid face, dark base.
   ctx.fillStyle = '#090b12';
-  ctx.fillRect(0, 294, ENVIRONMENT_WIDTH, 5);
+  ctx.fillRect(0, 294, ENVIRONMENT_WIDTH, 8);
   ctx.fillStyle = palette.metal;
-  ctx.fillRect(0, 298, ENVIRONMENT_WIDTH, 5);
+  ctx.fillRect(0, 296, ENVIRONMENT_WIDTH, 6);
   ctx.fillStyle = mixColor(palette.metal, '#f0d8b0', .2);
-  ctx.fillRect(0, 298, ENVIRONMENT_WIDTH, 2);
+  ctx.fillRect(0, 296, ENVIRONMENT_WIDTH, 2);
   for (const item of repeatedPositions(scroll, .72, 78, 2)) {
-    const x = Math.floor(item.x);
+    const x = pixel2(item.x);
     ctx.fillStyle = '#090b12';
-    ctx.fillRect(x + 3, 300, 7, 23);
+    ctx.fillRect(x + 4, 300, 8, 26);
     ctx.fillStyle = palette.metal;
-    ctx.fillRect(x, 302, 7, 18);
+    ctx.fillRect(x, 302, 8, 20);
+    ctx.fillStyle = mixColor(palette.metal, '#f0d8b0', .28);
+    ctx.fillRect(x, 302, 2, 16);
+    ctx.fillRect(x, 302, 6, 2);
     ctx.fillStyle = palette.hot;
-    ctx.fillRect(x - 1, 301, 8, 3);
+    ctx.fillRect(x, 300, 6, 2);
   }
+}
+
+function drawRoadSign(ctx: CanvasRenderingContext2D, palette: Palette, x: number) {
+  const dark = '#070a11';
+  const mid = mixColor(palette.metal, palette.road0, .25);
+  const light = mixColor(palette.metal, '#f4dfbd', .34);
+
+  ctx.fillStyle = dark;
+  ctx.fillRect(x, 234, 8, 62);
+  ctx.fillStyle = mid;
+  ctx.fillRect(x + 2, 234, 4, 60);
+  ctx.fillStyle = light;
+  ctx.fillRect(x + 2, 234, 2, 54);
+
+  // The 72x30 face is assembled from aligned blocks; no long antialiased
+  // polygon silhouette floats over the authored horizon.
+  ctx.fillStyle = dark;
+  ctx.fillRect(x - 34, 232, 68, 30);
+  ctx.fillRect(x - 38, 238, 76, 18);
+  ctx.fillStyle = mid;
+  ctx.fillRect(x - 32, 234, 64, 26);
+  ctx.fillRect(x - 36, 240, 72, 14);
+  ctx.fillStyle = light;
+  ctx.fillRect(x - 30, 236, 58, 2);
+  ctx.fillRect(x - 34, 240, 2, 12);
+  ctx.fillStyle = palette.accent;
+  ctx.fillRect(x - 28, 240, 56, 2);
+  ctx.fillStyle = palette.hot;
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(x - 24 + i * 14, 246, 8, 4);
+    ctx.fillRect(x - 22 + i * 14, 244, 4, 2);
+  }
+}
+
+function drawRoadLamp(ctx: CanvasRenderingContext2D, palette: Palette, x: number, time: number, seed: number) {
+  const dark = '#070910';
+  const mid = mixColor(palette.metal, palette.road0, .2);
+  const light = mixColor(palette.metal, '#f4dfbd', .32);
+  ctx.fillStyle = dark;
+  ctx.fillRect(x, 222, 8, 74);
+  ctx.fillStyle = mid;
+  ctx.fillRect(x + 2, 222, 6, 72);
+  ctx.fillStyle = light;
+  ctx.fillRect(x + 2, 222, 2, 64);
+
+  ctx.fillStyle = dark;
+  ctx.fillRect(x - 4, 216, 40, 12);
+  ctx.fillRect(x, 212, 30, 16);
+  ctx.fillStyle = mid;
+  ctx.fillRect(x, 216, 32, 8);
+  ctx.fillRect(x + 4, 214, 24, 10);
+  ctx.fillStyle = light;
+  ctx.fillRect(x + 4, 214, 20, 2);
+  ctx.fillRect(x, 216, 2, 6);
+
+  const pulse = .58 + Math.sin(time * 4 + seed) * .2;
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = palette.glow;
+  ctx.fillRect(x + 4, 218, 24, 4);
+  ctx.fillRect(x + 8, 222, 16, 2);
+
+  // Small screen-blended 2px bars imply spill without darkening the action
+  // lane or laying a large translucent polygon across the panorama.
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = .055;
+  ctx.fillStyle = palette.accent;
+  ctx.fillRect(x - 12, 230, 58, 2);
+  ctx.fillRect(x - 6, 236, 46, 2);
+  ctx.fillRect(x, 242, 34, 2);
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }
 
 function drawRoadsideProps(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number, time: number, section: EnvironmentSection) {
   for (const item of repeatedPositions(scroll, .48, 312, 2)) {
-    const x = Math.floor(item.x + 84);
+    const x = pixel2(item.x + 84);
     if (item.index % 3 === 0) {
-      // Angular highway marker; the face color changes with the region.
-      ctx.fillStyle = '#070a11';
-      ctx.fillRect(x - 3, 233, 9, 63);
-      ctx.fillStyle = palette.metal;
-      ctx.fillRect(x, 236, 5, 60);
-      ctx.fillStyle = '#090c18';
-      polygon(ctx, [[x - 32, 231], [x + 44, 231], [x + 55, 242], [x + 44, 264], [x - 32, 264], [x - 42, 252]]);
-      ctx.fillStyle = palette.accent;
-      ctx.fillRect(x - 28, 235, 67, 3);
-      ctx.fillRect(x - 28, 257, 67, 3);
-      ctx.fillStyle = palette.hot;
-      for (let i = 0; i < 4; i++) ctx.fillRect(x - 22 + i * 15, 244, 9, 5);
+      drawRoadSign(ctx, palette, x);
     } else {
-      ctx.fillStyle = '#070910';
-      ctx.fillRect(x + 1, 223, 7, 72);
-      ctx.fillStyle = palette.metal;
-      ctx.fillRect(x + 4, 223, 4, 72);
-      polygon(ctx, [[x - 3, 228], [x + 5, 213], [x + 30, 213], [x + 38, 228]]);
-      ctx.fillStyle = palette.glow;
-      ctx.globalAlpha = .58 + Math.sin(time * 4 + item.index) * .2;
-      ctx.fillRect(x + 5, 217, 25, 5);
-      ctx.globalAlpha = .07;
-      polygon(ctx, [[x + 4, 222], [x + 31, 222], [x + 72, 292], [x - 37, 292]]);
-      ctx.globalAlpha = 1;
+      drawRoadLamp(ctx, palette, x, time, item.index);
     }
   }
 
@@ -693,13 +866,19 @@ export function drawEnvironment(ctx: CanvasRenderingContext2D, options: Environm
 
   withLogicalCanvas(ctx, options, () => {
     drawBandSky(ctx, palette, options.time, options.scroll);
-    drawMoons(ctx, palette, options.scroll, phase.mix < .5 ? phase.current : phase.next);
-    drawCloudBands(ctx, palette, options.scroll, options.time, phase.mix < .5 ? phase.current : phase.next);
-    drawSectionFeatures(ctx, phase.current, basePalette, options.scroll, options.time, phase.current === phase.next ? 1 : 1 - phase.mix);
-    if (phase.current !== phase.next) drawSectionFeatures(ctx, phase.next, nextPalette, options.scroll, options.time, phase.mix);
+    const panoramaReady = drawAuthoredPanorama(ctx, palette, options.scroll, options.time);
+    if (!panoramaReady) {
+      // Preserve the complete former world while the optional asset loads or
+      // if it fails. Once ready, the authored panorama is the sole far horizon.
+      drawMoons(ctx, palette, options.scroll, phase.mix < .5 ? phase.current : phase.next);
+      drawCloudBands(ctx, palette, options.scroll, options.time, phase.mix < .5 ? phase.current : phase.next);
+      drawSectionFeatures(ctx, phase.current, basePalette, options.scroll, options.time, phase.current === phase.next ? 1 : 1 - phase.mix);
+      if (phase.current !== phase.next) drawSectionFeatures(ctx, phase.next, nextPalette, options.scroll, options.time, phase.mix);
+    }
     drawHorizonEnergy(ctx, palette, options.time, intensity + shakeEnergy * .3);
     drawRoadBase(ctx, palette, options.scroll, phase.mix < .5 ? phase.current : phase.next);
     drawAsphaltTexture(ctx, palette, options.scroll);
+    drawRoadMaterialEvents(ctx, palette, options.scroll, options.time);
     drawCracks(ctx, palette, options.scroll);
     drawLaneReflectors(ctx, palette, options.scroll, options.time);
     drawGuardrail(ctx, palette, options.scroll);
@@ -755,4 +934,3 @@ export function drawEnvironmentFrame(
 ): void {
   drawEnvironment(ctx, { scroll, elapsed, speed, time, shake, intensity });
 }
-
