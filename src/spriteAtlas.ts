@@ -12,6 +12,7 @@ export type SpriteSheetId =
   | "vinnie"
   | "rider"
   | "riderImpact"
+  | "impactMaterial"
   | "bossCore"
   | "bossBody"
   | "roadRipper"
@@ -49,6 +50,7 @@ const SHEET_ORDER = [
   "vinnie",
   "rider",
   "riderImpact",
+  "impactMaterial",
   "bossCore",
   "bossBody",
   "roadRipper",
@@ -91,6 +93,12 @@ const SHEET_DEFINITIONS: Readonly<Record<SpriteSheetId, {
     rows: 3,
     frames: 12,
   }),
+  impactMaterial: Object.freeze({
+    path: "/assets/sprites/impact-material-sheet.png",
+    columns: 4,
+    rows: 2,
+    frames: 8,
+  }),
   bossCore: Object.freeze({
     path: "/assets/sprites/boss-core-sheet.png",
     columns: 3,
@@ -131,6 +139,7 @@ const runtime: Record<SpriteSheetId, RuntimeSheet> = {
   vinnie: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   rider: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   riderImpact: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
+  impactMaterial: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   bossCore: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   bossBody: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   roadRipper: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },

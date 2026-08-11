@@ -1,0 +1,3763 @@
+{
+  "ok": true,
+  "checkpoints": {
+    "atlas": {
+      "throttle": {
+        "id": "throttle",
+        "path": "/assets/sprites/throttle-sheet.png",
+        "columns": 4,
+        "rows": 2,
+        "frames": 8,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "modo": {
+        "id": "modo",
+        "path": "/assets/sprites/modo-sheet.png",
+        "columns": 4,
+        "rows": 2,
+        "frames": 8,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "vinnie": {
+        "id": "vinnie",
+        "path": "/assets/sprites/vinnie-sheet.png",
+        "columns": 4,
+        "rows": 2,
+        "frames": 8,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "rider": {
+        "id": "rider",
+        "path": "/assets/sprites/rider-sheet.png",
+        "columns": 3,
+        "rows": 2,
+        "frames": 6,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "riderImpact": {
+        "id": "riderImpact",
+        "path": "/assets/sprites/rider-impact-sheet.png",
+        "columns": 4,
+        "rows": 3,
+        "frames": 12,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "impactMaterial": {
+        "id": "impactMaterial",
+        "path": "/assets/sprites/impact-material-sheet.png",
+        "columns": 4,
+        "rows": 2,
+        "frames": 8,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "bossCore": {
+        "id": "bossCore",
+        "path": "/assets/sprites/boss-core-sheet.png",
+        "columns": 3,
+        "rows": 2,
+        "frames": 6,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "bossBody": {
+        "id": "bossBody",
+        "path": "/assets/sprites/boss-body-sheet.png",
+        "columns": 3,
+        "rows": 2,
+        "frames": 6,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "roadRipper": {
+        "id": "roadRipper",
+        "path": "/assets/sprites/road-ripper-sheet.png",
+        "columns": 3,
+        "rows": 2,
+        "frames": 6,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      },
+      "aerials": {
+        "id": "aerials",
+        "path": "/assets/sprites/aerials-sheet.png",
+        "columns": 4,
+        "rows": 2,
+        "frames": 8,
+        "state": "ready",
+        "frameWidth": 256,
+        "frameHeight": 192
+      }
+    },
+    "menu": {
+      "state": "title",
+      "hero": "throttle",
+      "score": 0,
+      "health": null,
+      "armor": null,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0,
+      "combo": 1,
+      "weapon": null,
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "select": {
+      "state": "select",
+      "hero": "throttle",
+      "score": 0,
+      "health": null,
+      "armor": null,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0,
+      "combo": 1,
+      "weapon": null,
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "start": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 0,
+      "health": 150,
+      "armor": 40,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0.35,
+      "combo": 1,
+      "weapon": "spread",
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "ride": {
+      "state": "playing",
+      "hero": "modo",
+      "score": 12,
+      "health": 150,
+      "armor": 40,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 1.55,
+      "combo": 1.2,
+      "weapon": "spread",
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "beatStart": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 0,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 92.12,
+      "combo": 1,
+      "weapon": "blaster",
+      "beat": {
+        "riderReaction": 0,
+        "shots": 0,
+        "wobbleX": 0,
+        "wobbleAngle": 0,
+        "forkOffset": 0,
+        "counterphase": 0,
+        "shadowOffset": 0,
+        "shadowWidth": 74
+      },
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "beatContact": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 4,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 92.97,
+      "combo": 1.1,
+      "weapon": "blaster",
+      "beat": {
+        "riderReaction": 1.75,
+        "shots": 1,
+        "wobbleX": 0,
+        "wobbleAngle": 0,
+        "forkOffset": 0,
+        "counterphase": 0,
+        "shadowOffset": 0,
+        "shadowWidth": 74
+      },
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "beatAftermath": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 4,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": null,
+      "elapsed": 94.29,
+      "combo": 1,
+      "weapon": "blaster",
+      "beat": {
+        "riderReaction": 0.43,
+        "shots": 0,
+        "wobbleX": 3,
+        "wobbleAngle": 0,
+        "forkOffset": 0,
+        "counterphase": 0,
+        "shadowOffset": 0,
+        "shadowWidth": 74
+      },
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "beatFrames": [
+      {
+        "index": 0,
+        "label": "muzzle",
+        "offsetMs": 50,
+        "score": 0,
+        "riderReaction": 0,
+        "shots": 1
+      },
+      {
+        "index": 1,
+        "label": "early travel",
+        "offsetMs": 210,
+        "score": 0,
+        "riderReaction": 0,
+        "shots": 1
+      },
+      {
+        "index": 2,
+        "label": "late travel",
+        "offsetMs": 550,
+        "score": 0,
+        "riderReaction": 0,
+        "shots": 1
+      },
+      {
+        "index": 3,
+        "label": "contact core",
+        "offsetMs": 880,
+        "score": 4,
+        "riderReaction": 1.72,
+        "shots": 0
+      },
+      {
+        "index": 4,
+        "label": "target squash",
+        "offsetMs": 930,
+        "score": 4,
+        "riderReaction": 1.67,
+        "shots": 0
+      },
+      {
+        "index": 5,
+        "label": "recoil/backbend",
+        "offsetMs": 1150,
+        "score": 4,
+        "riderReaction": 1.45,
+        "shots": 0
+      },
+      {
+        "index": 6,
+        "label": "debris break",
+        "offsetMs": 1520,
+        "score": 4,
+        "riderReaction": 1.08,
+        "shots": 0
+      },
+      {
+        "index": 7,
+        "label": "recovery wobble",
+        "offsetMs": 2120,
+        "score": 4,
+        "riderReaction": 0.48,
+        "shots": 0
+      }
+    ],
+    "beatTiming": {
+      "durationMs": 2120,
+      "contactMs": 880
+    },
+    "impactChain": {
+      "captureContract": {
+        "width": 960,
+        "height": 540,
+        "names": [
+          "pre",
+          "muzzle",
+          "travel-25",
+          "travel-75",
+          "contact",
+          "hitstop",
+          "recoil-1",
+          "recoil-2",
+          "debris-1",
+          "debris-2",
+          "damage-hold",
+          "recover"
+        ]
+      },
+      "frames": [
+        {
+          "score": 0,
+          "stage": 0,
+          "label": "pre",
+          "timelineMs": 0,
+          "hitstopMs": 80,
+          "shots": 0,
+          "firedProjectiles": 0,
+          "scoreAwards": 0,
+          "targetPose": {
+            "x": 0,
+            "y": 0,
+            "angle": 0,
+            "bodyRotation": 0,
+            "headCounterphase": 0,
+            "forkOffset": 0,
+            "wheelLift": 0,
+            "shadowOffset": 0,
+            "shadowWidth": 74
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 0,
+            "consumed": 0,
+            "tipX": 670,
+            "tipY": 376,
+            "active": false
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": false,
+              "hotRing": false,
+              "core": false,
+              "reflectedRim": false,
+              "foregroundSparks": false
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 0,
+            "gunRecoil": 0,
+            "firingPose": false
+          },
+          "material": {
+            "panels": 0,
+            "sparks": 0,
+            "smokeDust": 0,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 0
+          },
+          "particleContract": null,
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 0,
+            "particleCount": 0
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 0,
+          "stage": 1,
+          "label": "muzzle",
+          "timelineMs": 40,
+          "hitstopMs": 80,
+          "shots": 1,
+          "firedProjectiles": 1,
+          "scoreAwards": 0,
+          "targetPose": {
+            "x": 0,
+            "y": 0,
+            "angle": 0,
+            "bodyRotation": 0,
+            "headCounterphase": 0,
+            "forkOffset": 0,
+            "wheelLift": 0,
+            "shadowOffset": 0,
+            "shadowWidth": 74
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 0,
+            "tipX": 238,
+            "tipY": 375,
+            "active": true
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": false,
+              "hotRing": false,
+              "core": false,
+              "reflectedRim": false,
+              "foregroundSparks": false
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 8,
+            "gunRecoil": 10,
+            "firingPose": true
+          },
+          "material": {
+            "panels": 0,
+            "sparks": 0,
+            "smokeDust": 0,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 0
+          },
+          "particleContract": null,
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 0,
+            "particleCount": 0
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 0,
+          "stage": 2,
+          "label": "travel-25",
+          "timelineMs": 200,
+          "hitstopMs": 80,
+          "shots": 1,
+          "firedProjectiles": 1,
+          "scoreAwards": 0,
+          "targetPose": {
+            "x": 0,
+            "y": 0,
+            "angle": 0,
+            "bodyRotation": 0,
+            "headCounterphase": 0,
+            "forkOffset": 0,
+            "wheelLift": 0,
+            "shadowOffset": 0,
+            "shadowWidth": 74
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 0,
+            "tipX": 364,
+            "tipY": 375,
+            "active": true
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": false,
+              "hotRing": false,
+              "core": false,
+              "reflectedRim": false,
+              "foregroundSparks": false
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 6,
+            "gunRecoil": 8,
+            "firingPose": true
+          },
+          "material": {
+            "panels": 0,
+            "sparks": 0,
+            "smokeDust": 0,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 0
+          },
+          "particleContract": null,
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 0,
+            "particleCount": 0
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 0,
+          "stage": 3,
+          "label": "travel-75",
+          "timelineMs": 520,
+          "hitstopMs": 80,
+          "shots": 1,
+          "firedProjectiles": 1,
+          "scoreAwards": 0,
+          "targetPose": {
+            "x": 0,
+            "y": 0,
+            "angle": 0,
+            "bodyRotation": 0,
+            "headCounterphase": 0,
+            "forkOffset": 0,
+            "wheelLift": 0,
+            "shadowOffset": 0,
+            "shadowWidth": 74
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 0,
+            "tipX": 670,
+            "tipY": 375,
+            "active": true
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": false,
+              "hotRing": false,
+              "core": false,
+              "reflectedRim": false,
+              "foregroundSparks": false
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 2,
+            "gunRecoil": 3,
+            "firingPose": false
+          },
+          "material": {
+            "panels": 0,
+            "sparks": 0,
+            "smokeDust": 0,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 0
+          },
+          "particleContract": null,
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 0,
+            "particleCount": 0
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 4,
+          "stage": 4,
+          "label": "contact",
+          "timelineMs": 830,
+          "hitstopMs": 80,
+          "shots": 0,
+          "firedProjectiles": 1,
+          "scoreAwards": 1,
+          "targetPose": {
+            "x": -4,
+            "y": 2,
+            "angle": -2,
+            "bodyRotation": -2,
+            "headCounterphase": 0,
+            "forkOffset": 0,
+            "wheelLift": 0,
+            "shadowOffset": 0,
+            "shadowWidth": 74
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 1,
+            "tipX": 670,
+            "tipY": 376,
+            "active": false
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": true,
+              "hotRing": true,
+              "core": true,
+              "reflectedRim": true,
+              "foregroundSparks": true
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 0,
+            "gunRecoil": 0,
+            "firingPose": false
+          },
+          "material": {
+            "panels": 0,
+            "sparks": 0,
+            "smokeDust": 0,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 0
+          },
+          "particleContract": null,
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 0,
+            "particleCount": 0
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 4,
+          "stage": 5,
+          "label": "hitstop",
+          "timelineMs": 910,
+          "hitstopMs": 80,
+          "shots": 0,
+          "firedProjectiles": 1,
+          "scoreAwards": 1,
+          "targetPose": {
+            "x": -8,
+            "y": 4,
+            "angle": -4,
+            "bodyRotation": -4,
+            "headCounterphase": 2,
+            "forkOffset": -2,
+            "wheelLift": 4,
+            "shadowOffset": -4,
+            "shadowWidth": 70
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 1,
+            "tipX": 670,
+            "tipY": 376,
+            "active": false
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": true,
+              "hotRing": true,
+              "core": true,
+              "reflectedRim": true,
+              "foregroundSparks": true
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 0,
+            "gunRecoil": 0,
+            "firingPose": false
+          },
+          "material": {
+            "panels": 0,
+            "sparks": 0,
+            "smokeDust": 0,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 0
+          },
+          "particleContract": null,
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 0,
+            "particleCount": 0
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 4,
+          "stage": 6,
+          "label": "recoil-1",
+          "timelineMs": 1020,
+          "hitstopMs": 80,
+          "shots": 0,
+          "firedProjectiles": 1,
+          "scoreAwards": 1,
+          "targetPose": {
+            "x": -26,
+            "y": -12,
+            "angle": -10,
+            "bodyRotation": -10,
+            "headCounterphase": 6,
+            "forkOffset": -8,
+            "wheelLift": 14,
+            "shadowOffset": -18,
+            "shadowWidth": 58
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 1,
+            "tipX": 670,
+            "tipY": 376,
+            "active": false
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": false,
+              "hotRing": false,
+              "core": false,
+              "reflectedRim": false,
+              "foregroundSparks": false
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 0,
+            "gunRecoil": 0,
+            "firingPose": false
+          },
+          "material": {
+            "panels": 0,
+            "sparks": 0,
+            "smokeDust": 0,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 0
+          },
+          "particleContract": null,
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 0,
+            "particleCount": 0
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 4,
+          "stage": 7,
+          "label": "recoil-2",
+          "timelineMs": 1150,
+          "hitstopMs": 80,
+          "shots": 0,
+          "firedProjectiles": 1,
+          "scoreAwards": 1,
+          "targetPose": {
+            "x": -34,
+            "y": -16,
+            "angle": -14,
+            "bodyRotation": -14,
+            "headCounterphase": 8,
+            "forkOffset": -12,
+            "wheelLift": 18,
+            "shadowOffset": -24,
+            "shadowWidth": 50
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 1,
+            "tipX": 670,
+            "tipY": 376,
+            "active": false
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": false,
+              "hotRing": false,
+              "core": false,
+              "reflectedRim": false,
+              "foregroundSparks": false
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 0,
+            "gunRecoil": 0,
+            "firingPose": false
+          },
+          "material": {
+            "panels": 0,
+            "sparks": 0,
+            "smokeDust": 0,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 0
+          },
+          "particleContract": null,
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 0,
+            "particleCount": 0
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 4,
+          "stage": 8,
+          "label": "debris-1",
+          "timelineMs": 1290,
+          "hitstopMs": 80,
+          "shots": 0,
+          "firedProjectiles": 1,
+          "scoreAwards": 1,
+          "targetPose": {
+            "x": -30,
+            "y": -12,
+            "angle": -11,
+            "bodyRotation": -11,
+            "headCounterphase": 6,
+            "forkOffset": -9,
+            "wheelLift": 16,
+            "shadowOffset": -20,
+            "shadowWidth": 54
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 1,
+            "tipX": 670,
+            "tipY": 376,
+            "active": false
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": false,
+              "hotRing": false,
+              "core": false,
+              "reflectedRim": false,
+              "foregroundSparks": false
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 0,
+            "gunRecoil": 0,
+            "firingPose": false
+          },
+          "material": {
+            "panels": 3,
+            "sparks": 5,
+            "smokeDust": 4,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 12
+          },
+          "particleContract": {
+            "total": 12,
+            "panels": 3,
+            "sparks": 5,
+            "smokeDust": 4,
+            "longArcPanels": 2
+          },
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 7,
+            "particleCount": 12
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 4,
+          "stage": 9,
+          "label": "debris-2",
+          "timelineMs": 1450,
+          "hitstopMs": 80,
+          "shots": 0,
+          "firedProjectiles": 1,
+          "scoreAwards": 1,
+          "targetPose": {
+            "x": -24,
+            "y": -9,
+            "angle": -8,
+            "bodyRotation": -8,
+            "headCounterphase": 4,
+            "forkOffset": -6,
+            "wheelLift": 14,
+            "shadowOffset": -14,
+            "shadowWidth": 58
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 1,
+            "tipX": 670,
+            "tipY": 376,
+            "active": false
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": false,
+              "hotRing": false,
+              "core": false,
+              "reflectedRim": false,
+              "foregroundSparks": false
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 0,
+            "gunRecoil": 0,
+            "firingPose": false
+          },
+          "material": {
+            "panels": 3,
+            "sparks": 5,
+            "smokeDust": 4,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 612,
+                "y": 334
+              },
+              {
+                "x": 616,
+                "y": 358
+              },
+              {
+                "x": 636,
+                "y": 400
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 12
+          },
+          "particleContract": {
+            "total": 12,
+            "panels": 3,
+            "sparks": 5,
+            "smokeDust": 4,
+            "longArcPanels": 2
+          },
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 7,
+            "particleCount": 12
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 4,
+          "stage": 10,
+          "label": "damage-hold",
+          "timelineMs": 1640,
+          "hitstopMs": 80,
+          "shots": 0,
+          "firedProjectiles": 1,
+          "scoreAwards": 1,
+          "targetPose": {
+            "x": -18,
+            "y": -7,
+            "angle": -6,
+            "bodyRotation": -6,
+            "headCounterphase": 3,
+            "forkOffset": -4,
+            "wheelLift": 12,
+            "shadowOffset": -10,
+            "shadowWidth": 62
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 1,
+            "tipX": 670,
+            "tipY": 376,
+            "active": false
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": false,
+              "hotRing": false,
+              "core": false,
+              "reflectedRim": false,
+              "foregroundSparks": false
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 0,
+            "gunRecoil": 0,
+            "firingPose": false
+          },
+          "material": {
+            "panels": 3,
+            "sparks": 0,
+            "smokeDust": 4,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 4
+          },
+          "particleContract": {
+            "total": 4,
+            "panels": 3,
+            "sparks": 0,
+            "smokeDust": 4,
+            "longArcPanels": 2
+          },
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 7,
+            "particleCount": 4
+          },
+          "damageHoldMs": 550
+        },
+        {
+          "score": 4,
+          "stage": 11,
+          "label": "recover",
+          "timelineMs": 2190,
+          "hitstopMs": 80,
+          "shots": 0,
+          "firedProjectiles": 1,
+          "scoreAwards": 1,
+          "targetPose": {
+            "x": -6,
+            "y": -2,
+            "angle": 3,
+            "bodyRotation": 3,
+            "headCounterphase": -4,
+            "forkOffset": 6,
+            "wheelLift": 6,
+            "shadowOffset": 8,
+            "shadowWidth": 66
+          },
+          "fixedHit": {
+            "x": 670,
+            "y": 376
+          },
+          "projectile": {
+            "created": 1,
+            "consumed": 1,
+            "tipX": 670,
+            "tipY": 376,
+            "active": false
+          },
+          "contact": {
+            "coreCenterX": 670,
+            "coreCenterY": 376,
+            "leadingEdgeX": 670,
+            "leadingEdgeY": 376,
+            "overlapW": 20,
+            "overlapH": 18,
+            "bboxW": 96,
+            "bboxH": 72,
+            "layers": {
+              "rearHalo": false,
+              "hotRing": false,
+              "core": false,
+              "reflectedRim": false,
+              "foregroundSparks": false
+            },
+            "damageOrigin": {
+              "x": 670,
+              "y": 376
+            },
+            "emitterOrigin": {
+              "x": 670,
+              "y": 376
+            }
+          },
+          "shooterPose": {
+            "shoulderRecoil": 0,
+            "gunRecoil": 0,
+            "firingPose": false
+          },
+          "material": {
+            "panels": 0,
+            "sparks": 0,
+            "smokeDust": 2,
+            "panelSizes": [
+              {
+                "w": 18,
+                "h": 12
+              },
+              {
+                "w": 20,
+                "h": 12
+              },
+              {
+                "w": 16,
+                "h": 11
+              }
+            ],
+            "sparkLengths": [
+              22,
+              18,
+              16,
+              14,
+              12
+            ],
+            "smokeDiameters": [
+              18,
+              16,
+              14,
+              12
+            ],
+            "largeOrigins": [
+              {
+                "x": 676,
+                "y": 370
+              },
+              {
+                "x": 665,
+                "y": 380
+              },
+              {
+                "x": 678,
+                "y": 382
+              }
+            ],
+            "panelArcs": [
+              76,
+              52,
+              48
+            ],
+            "panelRotations": [
+              63,
+              58,
+              46
+            ],
+            "particleCount": 2
+          },
+          "particleContract": {
+            "total": 2,
+            "panels": 0,
+            "sparks": 0,
+            "smokeDust": 2,
+            "longArcPanels": 2
+          },
+          "damage": {
+            "holdMs": 550,
+            "missingPanelW": 18,
+            "missingPanelH": 16,
+            "smokeBaseDistance": 4,
+            "contourChangedPct": 7,
+            "particleCount": 2
+          },
+          "damageHoldMs": 550
+        }
+      ],
+      "scoreTransitions": 1,
+      "projectileLifecycle": {
+        "creates": 1,
+        "consumes": 1,
+        "createTransitions": 1,
+        "consumeTransitions": 1
+      },
+      "silhouetteDelta": {
+        "x": 26,
+        "y": 12,
+        "angle": 10
+      },
+      "contactFreezeDelta": {
+        "x": 4,
+        "y": 2,
+        "angle": 2
+      },
+      "contactRegistration": {
+        "hit": {
+          "x": 670,
+          "y": 376
+        },
+        "projectileTip": {
+          "x": 670,
+          "y": 375
+        },
+        "core": {
+          "x": 670,
+          "y": 376
+        },
+        "leadingEdge": {
+          "x": 670,
+          "y": 376
+        },
+        "overlap": {
+          "width": 20,
+          "height": 18
+        },
+        "bbox": {
+          "width": 96,
+          "height": 72
+        },
+        "layers": {
+          "rearHalo": true,
+          "hotRing": true,
+          "core": true,
+          "reflectedRim": true,
+          "foregroundSparks": true
+        }
+      },
+      "materialContract": {
+        "debris1": {
+          "panels": 3,
+          "sparks": 5,
+          "smokeDust": 4,
+          "panelSizes": [
+            {
+              "w": 18,
+              "h": 12
+            },
+            {
+              "w": 20,
+              "h": 12
+            },
+            {
+              "w": 16,
+              "h": 11
+            }
+          ],
+          "sparkLengths": [
+            22,
+            18,
+            16,
+            14,
+            12
+          ],
+          "smokeDiameters": [
+            18,
+            16,
+            14,
+            12
+          ],
+          "largeOrigins": [
+            {
+              "x": 676,
+              "y": 370
+            },
+            {
+              "x": 665,
+              "y": 380
+            },
+            {
+              "x": 678,
+              "y": 382
+            }
+          ],
+          "panelArcs": [
+            76,
+            52,
+            48
+          ],
+          "panelRotations": [
+            63,
+            58,
+            46
+          ],
+          "particleCount": 12
+        },
+        "debris2": {
+          "panels": 3,
+          "sparks": 5,
+          "smokeDust": 4,
+          "panelSizes": [
+            {
+              "w": 18,
+              "h": 12
+            },
+            {
+              "w": 20,
+              "h": 12
+            },
+            {
+              "w": 16,
+              "h": 11
+            }
+          ],
+          "sparkLengths": [
+            22,
+            18,
+            16,
+            14,
+            12
+          ],
+          "smokeDiameters": [
+            18,
+            16,
+            14,
+            12
+          ],
+          "largeOrigins": [
+            {
+              "x": 612,
+              "y": 334
+            },
+            {
+              "x": 616,
+              "y": 358
+            },
+            {
+              "x": 636,
+              "y": 400
+            }
+          ],
+          "panelArcs": [
+            76,
+            52,
+            48
+          ],
+          "panelRotations": [
+            63,
+            58,
+            46
+          ],
+          "particleCount": 12
+        },
+        "damageHold": {
+          "holdMs": 550,
+          "missingPanelW": 18,
+          "missingPanelH": 16,
+          "smokeBaseDistance": 4,
+          "contourChangedPct": 7,
+          "particleCount": 4
+        },
+        "recovered": {
+          "holdMs": 550,
+          "missingPanelW": 18,
+          "missingPanelH": 16,
+          "smokeBaseDistance": 4,
+          "contourChangedPct": 7,
+          "particleCount": 2
+        }
+      }
+    },
+    "wobbleRegression": [
+      {
+        "stage": "a",
+        "wobbleX": 8,
+        "angle": 4,
+        "forkOffset": 7,
+        "counterphase": -5,
+        "shadowOffset": 7,
+        "shadowWidth": 62
+      },
+      {
+        "stage": "b",
+        "wobbleX": -6,
+        "angle": -3,
+        "forkOffset": -3,
+        "counterphase": 4,
+        "shadowOffset": -5,
+        "shadowWidth": 78
+      },
+      {
+        "stage": "c",
+        "wobbleX": 4,
+        "angle": 2,
+        "forkOffset": 4,
+        "counterphase": -4,
+        "shadowOffset": 3,
+        "shadowWidth": 68
+      }
+    ],
+    "combat": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 29,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": {
+        "kind": "miniboss",
+        "health": 802,
+        "maxHealth": 900
+      },
+      "elapsed": 146.83,
+      "combo": 1.4,
+      "weapon": "blaster",
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "pause": {
+      "state": "paused",
+      "hero": "throttle",
+      "score": 44,
+      "health": 110,
+      "armor": 45,
+      "enemies": 1,
+      "boss": {
+        "kind": "miniboss",
+        "health": 760,
+        "maxHealth": 900
+      },
+      "elapsed": 147.25,
+      "combo": 1.5,
+      "weapon": "blaster",
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "boss": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 142,
+      "health": 107.48,
+      "armor": 38.52,
+      "enemies": 1,
+      "boss": {
+        "kind": "boss",
+        "health": 3022,
+        "maxHealth": 3500
+      },
+      "elapsed": 465,
+      "combo": 1.3,
+      "weapon": "rockets",
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "afterBossExchange": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 32090,
+      "health": 89,
+      "armor": 0,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 465,
+      "combo": 1.5,
+      "weapon": "rockets",
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "victorySetup": "real-kill-during-exchange",
+    "victory": {
+      "state": "win",
+      "hero": "throttle",
+      "score": 32090,
+      "health": 89,
+      "armor": 0,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 465,
+      "combo": 1,
+      "weapon": "rockets",
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "restart": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 0,
+      "health": 110,
+      "armor": 22.5,
+      "enemies": 0,
+      "boss": null,
+      "elapsed": 0.18,
+      "combo": 1,
+      "weapon": "blaster",
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "vinnieRide": {
+      "state": "playing",
+      "hero": "vinnie",
+      "score": 0,
+      "health": 90,
+      "armor": 15,
+      "enemies": 4,
+      "boss": null,
+      "elapsed": 1.59,
+      "combo": 1,
+      "weapon": "laser",
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    },
+    "aerialCombat": {
+      "state": "playing",
+      "hero": "throttle",
+      "score": 0,
+      "health": 110,
+      "armor": 45,
+      "enemies": 4,
+      "boss": null,
+      "elapsed": 248.93,
+      "combo": 1,
+      "weapon": "blaster",
+      "beat": null,
+      "impact": null,
+      "atlas": {
+        "throttle": {
+          "id": "throttle",
+          "path": "/assets/sprites/throttle-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "modo": {
+          "id": "modo",
+          "path": "/assets/sprites/modo-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "vinnie": {
+          "id": "vinnie",
+          "path": "/assets/sprites/vinnie-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "rider": {
+          "id": "rider",
+          "path": "/assets/sprites/rider-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "riderImpact": {
+          "id": "riderImpact",
+          "path": "/assets/sprites/rider-impact-sheet.png",
+          "columns": 4,
+          "rows": 3,
+          "frames": 12,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "impactMaterial": {
+          "id": "impactMaterial",
+          "path": "/assets/sprites/impact-material-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossCore": {
+          "id": "bossCore",
+          "path": "/assets/sprites/boss-core-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "bossBody": {
+          "id": "bossBody",
+          "path": "/assets/sprites/boss-body-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "roadRipper": {
+          "id": "roadRipper",
+          "path": "/assets/sprites/road-ripper-sheet.png",
+          "columns": 3,
+          "rows": 2,
+          "frames": 6,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        },
+        "aerials": {
+          "id": "aerials",
+          "path": "/assets/sprites/aerials-sheet.png",
+          "columns": 4,
+          "rows": 2,
+          "frames": 8,
+          "state": "ready",
+          "frameWidth": 256,
+          "frameHeight": 192
+        }
+      }
+    }
+  },
+  "runtimeErrors": []
+}
