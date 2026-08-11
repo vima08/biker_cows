@@ -1,22 +1,21 @@
-# NEXT STEPS — Gauntlet handoff after wave 9
+# NEXT STEPS — Gauntlet handoff after wave 12
 
-Проект оставлен в полностью запускаемом состоянии. После исходных четырёх волн завершены ещё пять Gauntlet-волн: pipeline действительно переведён с code-generated actors на art-directed PNG sprite sheets, затем последовательно выровнены весь cast, boss, world/roster, material contract и 12-кадровая impact-chain.
+Проект оставлен в полностью запускаемом состоянии. После перехода на art-directed PNG sheets завершены waves 5–12; последние три волны были посвящены только повторяющемуся normal-hit gesture и не расширяли контент.
 
 ## Что уже работает
 
-- полный маршрут `title → menu → hero select → 7:45 stage → miniboss → final boss → victory/defeat → restart`;
-- Throttle, Modo и Vinnie с разными HP/armor/speed/fire rate, стартовым оружием и special;
-- blaster, spread, laser, rockets, четыре уровня усиления, rapid fire;
-- ground/air waves, obstacles, pickups, combo, score и `localStorage` highscores;
-- девять локальных art-directed атласов: три героя, обычный rider, 12-frame rider impact, boss core/body, Road Ripper и aerial roster;
-- authored Mars panorama, многослойный параллакс, 2px road/material grid и ощущение скорости;
-- authored jump/recoil/damage poses, hitstop, screen shake, вспышки, дым, пыль, искры, обломки и взрывы;
-- процедурный Web Audio rock soundtrack, boss mode и полный набор SFX;
-- keyboard + Gamepad API, подсказки, пауза, победа, поражение и рестарт;
-- безопасный atlas fallback, debug scenes, Playwright Gauntlet automation и progress workbench;
-- production build проходит;
-- последний полный smoke: `ok=true`, `runtimeErrors=[]`, 9/9 atlas `ready`, menu-to-victory-to-restart и Vinnie/aerial regression проходят;
-- wave-9 impact contract подтверждён runtime: один projectile, одно score award, contact `84×56`, hitstop `80 ms`, target delta `26×12 px / 10°`, damage hold `550 ms`, `12 = 3+5+4` debris.
+- полный маршрут `title → select → 7:45 stage → miniboss → final boss → victory/defeat → restart`;
+- Throttle, Modo и Vinnie с разными характеристиками, оружием и special;
+- четыре оружия, четыре уровня усиления, rapid fire, pickups, combo, score и локальные рекорды;
+- ground/air roster, obstacles, Road Ripper и большой Dreadnaught;
+- 10 локальных art-directed атласов: герои, rider, 12-frame rider impact, authored material FX, aerial roster и боссы;
+- authored Mars panorama, параллакс, 2px material grid, screen shake и hard-edged FX;
+- procedural Web Audio rock soundtrack и SFX без внешних API;
+- keyboard/Gamepad, пауза, победа, поражение и рестарт;
+- Playwright Gauntlet harness, 12-frame production impact capture, blind A/B workbench;
+- последний canonical smoke: `ok=true`, 10/10 atlas `ready`, `runtimeErrors=[]`, один projectile create/consume и одно score award;
+- проверены real boss kill, victory, restart, Vinnie и aerial regression;
+- wave-12 contract: contact/hitstop `5.69 px / 2°`, peak `40×18 px / 14°`, reverse anchors `0`, material steps `8.44–15.48 px`, smoke `12→44 px`, hold→recover `22.98 px / 6°`, grounded recover с scar `18×16`.
 
 ## Как запустить
 
@@ -32,54 +31,54 @@ npm run build
 npm run preview
 ```
 
-Автоматизированная проверка:
+Smoke:
 
 ```bash
 npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
 npm run test:smoke
 ```
 
-Игра не требует внешних API или сети после установки зависимостей.
+После установки зависимостей игре не нужны сеть или внешние API.
 
 ## Последние реальные кадры
 
-- [Menu](public/workbench/captures/iteration-9/menu.png)
-- [Ride](public/workbench/captures/iteration-9/ride.png)
-- [Aerial combat](public/workbench/captures/iteration-9/aerial-combat.png)
-- [Boss](public/workbench/captures/iteration-9/boss.png)
-- [Victory](public/workbench/captures/iteration-9/victory.png)
-- [Impact pre](public/workbench/captures/iteration-9/impact-00-pre.png)
-- [Impact contact](public/workbench/captures/iteration-9/impact-04-contact.png)
-- [Impact recoil](public/workbench/captures/iteration-9/impact-07-recoil-2.png)
-- [Impact debris](public/workbench/captures/iteration-9/impact-08-debris-1.png)
-- [Impact damage hold](public/workbench/captures/iteration-9/impact-10-damage-hold.png)
-- [Impact recover](public/workbench/captures/iteration-9/impact-11-recover.png)
+- [Menu](public/workbench/captures/iteration-12/menu.png)
+- [Ride](public/workbench/captures/iteration-12/ride.png)
+- [Aerial combat](public/workbench/captures/iteration-12/aerial-combat.png)
+- [Boss](public/workbench/captures/iteration-12/boss.png)
+- [Victory](public/workbench/captures/iteration-12/victory.png)
+- [Contact](public/workbench/captures/iteration-12/impact-04-contact.png)
+- [Hitstop](public/workbench/captures/iteration-12/impact-05-hitstop.png)
+- [Recoil peak](public/workbench/captures/iteration-12/impact-07-recoil-2.png)
+- [Debris](public/workbench/captures/iteration-12/impact-08-debris-1.png)
+- [Damage hold](public/workbench/captures/iteration-12/impact-10-damage-hold.png)
+- [Recover](public/workbench/captures/iteration-12/impact-11-recover.png)
 
-Полная локальная история iterations 0–9: `http://localhost:5173/workbench/index.html` после `npm run dev`.
+Workbench iterations 0–12: `http://localhost:5173/workbench/index.html`.
 
 ## Последнее заключение независимого критика
 
-Полный текст: [.gauntlet/iteration-9/CRITIQUE.md](.gauntlet/iteration-9/CRITIQUE.md).
+Полный текст: [.gauntlet/iteration-12/CRITIQUE.md](.gauntlet/iteration-12/CRITIQUE.md).
 
-Вердикт: **NO — premium/high-end 16-bit AAA-of-its-era bar ещё не достигнут.** При этом critic прямо признаёт большой наблюдаемый pass относительно wave 8: target acting, contact scale, hitstop и recoil silhouette стали убедительными; wave 9 уже выглядит как сильная коммерческая vertical slice. Runtime-метрики добросовестно закрыты, но visual acceptance не заменена счётчиками.
+Вердикт: **NO — AAA-of-its-era bar ещё не достигнут.** Полный продукт признан сильной коммерческой vertical slice; menu, roster, world, HUD и boss spectacle не выглядят учебным прототипом. Integration полностью проходит, material triad впервые названа `3/3`, но свежий blind viewer восстановил только `5/11` directed adjacent relations и не восстановил macro-order.
+
+Wave 12 является честной регрессией perceptual sequencing относительно wave 11 (`5/11` против `7/11`), хотя её численная физика строже. Peak, удерживаемый одинаковым transform через recoil/debris, сделал соседние фазы менее различимыми; production smoke оказался слабее прежнего treatment.
 
 ## Один крупнейший оставшийся недостаток
 
-**Impact chain ещё не является одной непрерывной, пространственно зарегистрированной и материально читаемой передачей силы от ствола в конкретную часть цели.** Contact-star немного отделён от вилки, shooter recoil временно возвращается после neutral travel, три material-класса debris выглядят слишком прямоугольными, а scar/smoke недостаточно жёстко привязаны к вырванной панели. Это один корневой gap, повторяющийся в основном игровом цикле.
+**Normal-hit gesture всё ещё не является самодостаточной причинно-материальной хореографией: silhouette progression и material evolution не кодируют однозначное направление времени от contact через recoil/debris к recover.**
 
-## Точная следующая итерация Gauntlet Loop — wave 10
+Registered contact, shooter continuity, material origins, scar и runtime lifecycle уже приняты. Больше не нужно добавлять FX или численные assertions; требуется новый authored visual storyboard поздних фаз.
 
-Контент, UI и окружение снова заморожены. Следующий проход меняет только spatial/material registration того же одиночного выстрела:
+## Точная следующая итерация — wave 13
 
-1. Сохранить те же 12 production captures, фиксированные камеру, seed и координаты.
-2. Поместить центр white impact core внутрь leading-edge bbox цели или не дальше 6 px; перекрыть вилку/обтекатель минимум на 16×16 px, rear halo рисовать за целью, sparks — перед ней.
-3. Сделать shooter recoil непрерывным: смещение плеч/оружия ≥6 px от muzzle до travel-25 и монотонный возврат к travel-75; не возвращать firing pose в contact/hitstop.
-4. Сохранить contact `≥84×56`, hitstop `≥66 ms` и достигнутый target delta `≥24×10 px / 8°`, но держать одну точку удара между travel/contact/hitstop с отклонением Y ≤4 px.
-5. Заменить прямоугольные fragments на три узнаваемых материала: 3+ контурные синие панели ≥10×7 px, 5+ tapered metal sparks 12–24 px и 4+ трёхтоновые smoke/dust puffs 8–18 px. Две панели проходят дугу ≥48 px и меняют ориентацию ≥45°.
-6. Привязать origin крупных фрагментов к impact/missing-panel edge в пределах 12 px; emitter/contact/damage origin должны расходиться не более чем на 6 px.
-7. Удерживать missing/bent panel ≥14×14 px и attached smoke с основанием ≤8 px от scar не менее 550 ms. В recover контур всё ещё изменён ≥5%, но остаточных частиц минимум вдвое меньше, чем в debris-2.
-8. Recovery wobble должен менять не только X: rotation корпуса `+4° / −3° / +2°`, fork compression/rebound ≥6 px, head/gun counterphase ≥4 px и согласованную contact shadow.
-9. Сохранить runtime guardrails: ноль ошибок, один projectile create/consume, одно score award, никаких showcase-only кадров.
-10. Новый свежий critic проводит blind shuffled-sequence test. Acceptance: 4/5 наблюдателей правильно восстанавливают причинный порядок и называют три материала; 4/5 выбирают wave 10 по contact accuracy, mass и aftermath.
+1. Заморозить `pre/muzzle/travel`, зарегистрированную точку удара, projectile lifecycle, score, world, UI и все encounter paths.
+2. Создать отдельный `rider-impact-tail-sheet.png` с шестью не взаимозаменяемыми силуэтами: `contact`, `hitstop`, `recoil`, `debris peak`, `damage hold`, `recover`. До composite проверить их как чёрные силуэты без HUD/FX.
+3. `contact`: в основном целый target; `hitstop`: явно более сжатый fork/head/gun и только начало panel/sparks/soot; `recoil`: максимальная направленная масса; `debris peak`: тот же общий импульс, но silhouette ломают явно отделившиеся authored панели; `hold`: самый дальний и наклонённый повреждённый остаток; `recover`: колёса на дороге, меньший угол, scar сохраняется, дым распадается по ветру.
+4. Не удерживать одинаковый whole-bike transform на `recoil/debris1/debris2`. Каждый соседний кадр должен иметь уникальный чёрный contour и направленный marker времени.
+5. Сохранить `blue armor` и `hot sparks`; вернуть более видимый attached smoke из wave 11, но перерисовать его как расширяющийся/рассеивающийся tail, а не декоративный blob.
+6. Сначала провести blind silhouette test только по шести поздним фазам. Acceptance: 5/5 ставят их в правильный порядок; лишь затем интегрировать в 12 production captures.
+7. Финальный 12-frame gate без HUD/labels/filenames: минимум 4/5 свежих viewers получают ≥10/11 directed adjacency, все 5 дают `contact < recoil < debris < recover`, минимум 4/5 называют `blue painted armor`, `hot metal sparks`, `smoke/soot`.
+8. Сохранить runtime guardrails: `runtimeErrors=[]`, 10/10 atlases, один projectile create/consume, одно score award, полный boss→victory→restart route.
 
-После этой волны select portraits, victory tableau и финальная калибровка boss-exchange останутся polish-задачами; сейчас они не являются причиной отклонения premium verdict.
+Это следующий pipeline shift: не ещё одна настройка transforms, а authored silhouette storyboard. Select portraits, victory tableau и boss-exchange clutter остаются polish-задачами после прохождения этого gate.

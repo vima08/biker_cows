@@ -60,14 +60,46 @@ interface Projectile {
 interface Pickup { x: number; y: number; kind: PickupKind; t: number; }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; color: string; kind: 'spark'|'smoke'|'fire'|'dust'|'debris'|'ring'|'star'|'impact'|'shard'|'blast'; rot: number; }
 interface Floater { x: number; y: number; text: string; color: string; life: number; }
+interface RiderImpactEvent { enemyId:number; age:number; localX:number; localY:number; }
 
 const IMPACT_LABELS = ['pre','muzzle','travel-25','travel-75','contact','hitstop','recoil-1','recoil-2','debris-1','debris-2','damage-hold','recover'] as const;
 const IMPACT_TIMELINE_MS = [0,40,200,520,830,910,1020,1150,1290,1450,1640,2190] as const;
 const IMPACT_POSE = [
   {x:0,y:0,angle:0},{x:0,y:0,angle:0},{x:0,y:0,angle:0},{x:0,y:0,angle:0},
-  {x:-4,y:2,angle:-2},{x:-8,y:4,angle:-4},{x:-26,y:-12,angle:-10},{x:-34,y:-16,angle:-14},
-  {x:-30,y:-12,angle:-11},{x:-24,y:-9,angle:-8},{x:-18,y:-7,angle:-6},{x:-6,y:-2,angle:3},
+  // A left-side projectile pushes the target away from the shooter: right and
+  // upward. Contact and hitstop stay in one compression family before every
+  // major node advances monotonically into the two recoil poses.
+  {x:0,y:0,angle:0},{x:2,y:-1,angle:2},{x:24,y:-12,angle:9},{x:40,y:-18,angle:14},
+  // Debris samples deliberately hold the chassis at recoil peak.  Damage-hold
+  // remains displaced/tilted; only recover places the wheels back on the road.
+  {x:40,y:-18,angle:14},{x:40,y:-18,angle:14},{x:42,y:-16,angle:13},{x:24,y:0,angle:7},
 ] as const;
+const IMPACT_SPRITE_FRAME = [0,1,2,3,4,4,5,7,8,9,10,11] as const;
+const IMPACT_HIT_OFFSET = Object.freeze({x:-70,y:-15});
+const CONTACT_SIZE = Object.freeze({width:96,height:72,coreOverlapW:20,coreOverlapH:18});
+const RECOIL_VECTOR = Object.freeze({x:40/Math.hypot(40,18),y:-18/Math.hypot(40,18)});
+const IMPACT_PANEL_PATH = Object.freeze([
+  {x:-8,y:-4},{x:-17,y:-8},{x:-27,y:-13},{x:-38,y:-19},{x:-50,y:-25},
+]);
+const IMPACT_SPARK_A_PATH = Object.freeze([
+  {x:-4,y:-10},{x:-11,y:-18},{x:-20,y:-26},{x:-31,y:-35},{x:-42,y:-45},
+]);
+const IMPACT_SPARK_B_PATH = Object.freeze([
+  {x:-6,y:7},{x:-15,y:12},{x:-25,y:18},{x:-37,y:25},{x:-49,y:32},
+]);
+const IMPACT_BODY_SCALE = Object.freeze([
+  {x:1,y:1},{x:1,y:1},{x:1,y:1},{x:1,y:1},{x:1,y:1},
+  {x:.985,y:1.015},{x:.99,y:1.02},{x:1.02,y:.99},{x:1.02,y:.99},{x:1.02,y:.99},{x:1.01,y:1},{x:.99,y:1.01},
+]);
+const IMPACT_SMOKE = Object.freeze([
+  {diameter:0,value:0},{diameter:0,value:0},{diameter:0,value:0},{diameter:0,value:0},{diameter:0,value:0},
+  {diameter:12,value:54},{diameter:16,value:49},{diameter:20,value:44},{diameter:26,value:38},{diameter:32,value:33},{diameter:38,value:28},{diameter:44,value:24},
+]);
+const WOBBLE_POSES = Object.freeze([
+  {x:8,y:2,angle:4,forkOffset:7,headCounterphase:-5,shadowOffset:7,shadowWidth:62},
+  {x:-6,y:-2,angle:-3,forkOffset:-3,headCounterphase:4,shadowOffset:-5,shadowWidth:78},
+  {x:4,y:1,angle:2,forkOffset:4,headCounterphase:-4,shadowOffset:3,shadowWidth:68},
+]);
 
 class Input {
   held = new Set<string>();
@@ -135,6 +167,7 @@ export class RedlineGame {
   private shots: Projectile[] = [];
   private pickups: Pickup[] = [];
   private particles: Particle[] = [];
+  private riderImpacts: RiderImpactEvent[] = [];
   private floaters: Floater[] = [];
   private enemyId = 0;
   private elapsed = 0;
@@ -229,7 +262,7 @@ export class RedlineGame {
     this.player = { x: 168, y: 406, jump: 0, jumpV: 0, hp: hero.maxHp, armor: hero.maxArmor * .5, invuln: 0, cooldown: 0, weapon: hero.weapon, weaponRank: 1, rapid: 0, special: 45, specialTime: 0, lean: 0, wheel: 0, recoil: 0 };
     this.enemies = []; this.shots = []; this.pickups = []; this.particles = []; this.floaters = [];
     this.elapsed = 0; this.distance = 0; this.worldSpeed = hero.speed; this.score = 0; this.combo = 1; this.comboClock = 0; this.kills = 0;
-    this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = false; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.finishClock = 0;
+    this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = false; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.riderImpacts=[]; this.finishClock = 0;
     this.mode = 'playing';
     emitAudio('engine_start'); emitMusic('stage', .86);
   }
@@ -444,6 +477,8 @@ export class RedlineGame {
   private updateParticles(dt:number,worldSpeed:number){
     for(const q of this.particles){q.life-=dt;q.x+=(q.vx-worldSpeed*(q.kind==='dust'? .32:0))*dt;q.y+=q.vy*dt;q.vy+=(q.kind==='spark'||q.kind==='shard'||q.kind==='debris'?290:q.kind==='smoke'?-15:0)*dt;q.vx*=Math.pow(q.kind==='blast'?.02:.2,dt);q.rot+=dt*(q.kind==='blast'?1.4:5);}
     this.particles=this.particles.filter(q=>q.life>0);
+    for(const event of this.riderImpacts)event.age+=dt;
+    this.riderImpacts=this.riderImpacts.filter(event=>event.age<1.35&&this.enemies.some(enemy=>enemy.id===event.enemyId));
     for(const f of this.floaters){f.life-=dt;f.y-=28*dt;}
     this.floaters=this.floaters.filter(f=>f.life>0);
   }
@@ -531,7 +566,7 @@ export class RedlineGame {
 
   debugCombatBeat(){
     this.debugStart('throttle');this.debugBeat=true;this.elapsed=92;this.spawnClock=999;this.obstacleClock=999;
-    this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.floaters=[];
+    this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.riderImpacts=[];this.floaters=[];
     this.player.x=168;this.player.y=406;this.player.weapon='blaster';this.player.weaponRank=1;
     this.player.hp=HEROES[this.selected].maxHp;this.player.armor=HEROES[this.selected].maxArmor;this.player.cooldown=0;this.player.recoil=0;
     // The raider occupies the upper road lane so the hero's horizontal blaster
@@ -543,16 +578,17 @@ export class RedlineGame {
     const frame=clamp(Math.floor(stage),0,IMPACT_LABELS.length-1);
     this.debugStart('throttle');this.debugBeat=false;this.debugImpactStage=frame;
     this.elapsed=92;this.distance=18440;this.worldSpeed=330;this.spawnClock=999;this.obstacleClock=999;
-    this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.floaters=[];
+    this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.riderImpacts=[];this.floaters=[];
     this.player.x=168;this.player.y=406;this.player.weapon='blaster';this.player.weaponRank=1;
     this.player.hp=HEROES[this.selected].maxHp;this.player.armor=HEROES[this.selected].maxArmor;
-    this.player.cooldown=frame===1||frame===4||frame===5?.12:0;
-    this.player.recoil=frame===1||frame===4||frame===5?.072:0;
+    this.player.cooldown=frame===1?.12:0;
+    this.player.recoil=[0,.072,.058,.018,0,0,0,0,0,0,0,0][frame];
     this.spawnEnemy('rider',740,390);const rider=this.enemies[0];rider.hp=146;rider.maxHp=160;rider.fire=999;rider.flash=0;
     // One authored projectile exists only between muzzle and contact.  Award
     // state flips once at contact and remains stable through recovery.
     if(frame>=1&&frame<=3){
-      const shotX=[0,224,350,590][frame];
+      const hit=this.getRiderHitPoint(rider);
+      const shotX=[0,224,350,hit.x-14][frame];
       this.shots.push({x:shotX,y:375,vx:690,vy:0,r:4,life:2,damage:14,friendly:true,color:'#ffe45d',kind:'blaster',pierce:0,age:IMPACT_TIMELINE_MS[frame]/1000,phase:0});
     }
     this.score=frame>=4?4:0;this.combo=frame>=4?1.1:1;this.comboClock=frame>=4?1.15:0;
@@ -564,32 +600,142 @@ export class RedlineGame {
     // Frozen regression poses share the exact recovery renderer used by gameplay.
     // Their alternating signs and shrinking magnitude make the damping contract
     // inspectable without screenshot encoding stretching the real 2.14s hit beat.
-    this.debugWobblePose=stage==='a'?8:stage==='b'?-6:4;
+    this.debugWobblePose=stage==='a'?0:stage==='b'?1:2;
     const rider=this.enemies[0];rider.hitReact=.42;rider.flash=0;
   }
 
   debugAerialWave(){
     this.debugStart('throttle');this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.elapsed=248;this.spawnClock=999;this.obstacleClock=999;
     this.minibossSpawned=true;this.bossSpawned=false;this.bossDefeated=false;
-    this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.floaters=[];
+    this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.riderImpacts=[];this.floaters=[];
     this.player.x=168;this.player.y=414;this.player.hp=HEROES[this.selected].maxHp;this.player.armor=HEROES[this.selected].maxArmor;
     this.spawnEnemy('drone',760,164);this.spawnEnemy('skimmer',875,252);this.spawnEnemy('drone',990,205);this.spawnEnemy('skimmer',1110,126);
     this.enemies.forEach((enemy,index)=>{enemy.fire=.2+index*.16;enemy.phase=index*.72;});
   }
 
+  private impactShooterPose(stage:number){
+    const shoulderRecoil=[0,8,6,2,0,0,0,0,0,0,0,0][stage]??0;
+    const gunRecoil=[0,10,8,3,0,0,0,0,0,0,0,0][stage]??0;
+    return {shoulderRecoil,gunRecoil,firingPose:stage===1||stage===2};
+  }
+
+  private impactTargetPose(stage:number){
+    const base=IMPACT_POSE[stage]??IMPACT_POSE[0];
+    const scale=IMPACT_BODY_SCALE[stage]??IMPACT_BODY_SCALE[0];
+    const headCounterphase=[0,0,0,0,0,-2,-5,-8,-8,-7,-4,2][stage]??0;
+    const forkOffset=[0,0,0,0,0,4,9,14,14,14,9,2][stage]??0;
+    const wheelLift=[0,0,0,0,0,4,12,18,18,18,13,0][stage]??0;
+    const shadowOffset=[0,0,0,0,0,5,17,27,27,27,24,8][stage]??0;
+    const shadowWidth=[74,74,74,74,74,68,57,48,48,48,56,68][stage]??74;
+    return {...base,scaleX:scale.x,scaleY:scale.y,spriteFrame:IMPACT_SPRITE_FRAME[stage]??0,bodyRotation:base.angle,headCounterphase,forkOffset,wheelLift,shadowOffset,shadowWidth};
+  }
+
+  private impactAnchors(stage:number,e:Enemy){
+    const pose=this.impactTargetPose(stage),angle=pose.angle*Math.PI/180,pivot={x:e.x,y:e.y+16};
+    const local={hardpoint:{x:-70,y:-31},frontWheel:{x:-66,y:18},head:{x:-20,y:-62},gun:{x:-50,y:-48}};
+    const transform=(point:{x:number;y:number},atStage:number)=>{
+      const at=this.impactTargetPose(atStage),a=at.angle*Math.PI/180;
+      const scaledX=point.x*at.scaleX,scaledY=point.y*at.scaleY;
+      return {x:px(pivot.x+at.x+scaledX*Math.cos(a)-scaledY*Math.sin(a)),y:px(pivot.y+at.y+scaledX*Math.sin(a)+scaledY*Math.cos(a))};
+    };
+    const baseStage=4;
+    const anchor=(point:{x:number;y:number})=>{
+      const current=transform(point,stage),origin=transform(point,baseStage);
+      const previous=transform(point,Math.max(baseStage,stage-1));
+      const projection=(current.x-origin.x)*RECOIL_VECTOR.x+(current.y-origin.y)*RECOIL_VECTOR.y;
+      const previousProjection=(previous.x-origin.x)*RECOIL_VECTOR.x+(previous.y-origin.y)*RECOIL_VECTOR.y;
+      return {...current,projection:Number(projection.toFixed(2)),adjacentDelta:Number((projection-previousProjection).toFixed(2)),reversePx:Number(Math.max(0,previousProjection-projection).toFixed(2))};
+    };
+    const hardpoint=anchor(local.hardpoint),frontWheel=anchor(local.frontWheel),head=anchor(local.head),gun=anchor(local.gun);
+    return {recoilVector:RECOIL_VECTOR,bodyAngle:pose.angle,adjacentReversePx:Math.max(hardpoint.reversePx,frontWheel.reversePx,head.reversePx,gun.reversePx),hardpoint,frontWheel,head,gun};
+  }
+
+  private impactTrajectories(stage:number,hit:{x:number;y:number},scar=hit){
+    if(stage<5||stage>9)return null;
+    const index=stage-5;
+    const sample=(id:string,path:ReadonlyArray<{x:number;y:number}>)=>{
+      const at=path[index],previous=path[Math.max(0,index-1)];
+      const distance=Math.hypot(at.x,at.y),previousDistance=Math.hypot(previous.x,previous.y);
+      return {id,x:px(scar.x+at.x),y:px(scar.y+at.y),dx:at.x,dy:at.y,distanceFromScar:Number(distance.toFixed(2)),distanceStep:Number((distance-previousDistance).toFixed(2)),sampleDelta:Number(Math.hypot(at.x-previous.x,at.y-previous.y).toFixed(2))};
+    };
+    return {origin:{node:'frontHardpoint',x:scar.x,y:scar.y},earlyPanel:sample('blue-panel-0',IMPACT_PANEL_PATH),sparkA:sample('hot-spark-a',IMPACT_SPARK_A_PATH),sparkB:sample('hot-spark-b',IMPACT_SPARK_B_PATH)};
+  }
+
+  private impactMaterialMetrics(stage:number,hit:{x:number;y:number},scar=hit){
+    const trajectories=this.impactTrajectories(stage,hit,scar);
+    const debrisOne=[trajectories?.earlyPanel??{x:hit.x,y:hit.y},{x:hit.x-25,y:hit.y+8},{x:hit.x-15,y:hit.y+18}];
+    const debrisTwo=[trajectories?.earlyPanel??{x:hit.x,y:hit.y},{x:hit.x-37,y:hit.y+15},{x:hit.x-27,y:hit.y+29}];
+    const debrisStage=stage===8||stage===9,earlyStage=stage>=5&&stage<=7;
+    const particleCount=debrisStage?12:earlyStage?3:stage>=10?1:0;
+    const smoke=this.impactSmokeMetrics(stage);
+    const smokeDiameters=[
+      Math.max(4,px(smoke.diameter*.34)),
+      ...(stage>=6?[Math.max(4,px(smoke.diameter*.42))]:[]),
+      ...(stage>=7?[Math.max(4,px(smoke.diameter*.38))]:[]),
+      ...(stage>=8?[Math.max(4,px(smoke.diameter*.46))]:[]),
+      ...(stage>=10?[Math.max(4,px(smoke.diameter*.34))]:[]),
+    ];
+    return {
+      panels:debrisStage?3:earlyStage?1:0,sparks:debrisStage?5:earlyStage?2:0,smokeDust:debrisStage?4:stage>=6?1:0,
+      panelSizes:[{w:18,h:12},{w:20,h:12},{w:16,h:11}],sparkLengths:[24,22,20,18,16],smokeDiameters,smokeDiameter:smoke.diameter,smokeValue:smoke.value,
+      largeOrigins:stage===8?debrisOne:stage===9?debrisTwo:trajectories?[trajectories.earlyPanel]:[],panelArcs:stage===9?[76,52,48]:[],panelRotations:stage===9?[63,58,46]:[],particleCount,trajectories,
+    };
+  }
+
+  private impactSmokeMetrics(stage:number){
+    const smoke=IMPACT_SMOKE[stage]??IMPACT_SMOKE[0];
+    return {active:stage>=5,node:'frontHardpoint',baseDx:2,baseDy:-4,baseDistance:Number(Math.hypot(2,4).toFixed(2)),diameter:smoke.diameter,value:smoke.value,tone:stage<7?'warm soot seed':stage<10?'neutral soot':'charcoal smoke'};
+  }
+
+  private impactPhaseMetrics(e:Enemy){
+    const contact=this.impactTargetPose(4),hitstop=this.impactTargetPose(5),peak=this.impactTargetPose(7),hold=this.impactTargetPose(10),recover=this.impactTargetPose(11);
+    const hitstopAnchors=this.impactAnchors(5,e),recoilOneAnchors=this.impactAnchors(6,e),peakAnchors=this.impactAnchors(7,e);
+    const hardpointDelta=Math.hypot(hitstopAnchors.hardpoint.x-this.impactAnchors(4,e).hardpoint.x,hitstopAnchors.hardpoint.y-this.impactAnchors(4,e).hardpoint.y);
+    const holdRecoverProjection=(hold.x-recover.x)*RECOIL_VECTOR.x+(hold.y-recover.y)*RECOIL_VECTOR.y;
+    return {
+      contactToHitstop:{hardpointDeltaPx:Number(hardpointDelta.toFixed(2)),bodyDeltaDeg:hitstop.angle-contact.angle,compressed:hitstop.scaleX<contact.scaleX&&hitstop.scaleY>contact.scaleY},
+      contactToPeak:{horizontalPx:peak.x-contact.x,verticalPx:Math.abs(peak.y-contact.y),angleDeg:peak.angle-contact.angle},
+      recoilMonotonic:{maxReversePx:Number(Math.max(hitstopAnchors.adjacentReversePx,recoilOneAnchors.adjacentReversePx,peakAnchors.adjacentReversePx).toFixed(2)),stages:[hitstopAnchors,recoilOneAnchors,peakAnchors]},
+      debrisPeakHold:{recoil2:IMPACT_POSE[7],debris1:IMPACT_POSE[8],debris2:IMPACT_POSE[9]},
+      holdRecover:{projectionGapPx:Number(holdRecoverProjection.toFixed(2)),angleGapDeg:hold.angle-recover.angle,hold,recover,recoverWheelLift:recover.wheelLift},
+      silhouettes:{contactFrame:contact.spriteFrame,hitstopFrame:hitstop.spriteFrame,recoilOneFrame:this.impactTargetPose(6).spriteFrame,recoilTwoFrame:peak.spriteFrame,hitstopScaleX:hitstop.scaleX,hitstopScaleY:hitstop.scaleY},
+    };
+  }
+
   snapshot() {
     const boss = this.enemies.find(e => e.kind === 'boss' || e.kind === 'miniboss');
+    const debugRider=this.enemies.find(e=>e.kind==='rider');
+    const wobble=this.debugWobblePose===null?null:WOBBLE_POSES[this.debugWobblePose];
+    const impactStage=this.debugImpactStage;
+    const hit=debugRider?this.getRiderHitPoint(debugRider):{x:0,y:0};
+    const shot=this.shots.find(s=>s.friendly);
+    const targetPose=impactStage===null?null:this.impactTargetPose(impactStage);
+    const anchors=impactStage===null||!debugRider?null:this.impactAnchors(impactStage,debugRider);
+    const scarAnchor=anchors?.hardpoint??{x:hit.x,y:hit.y};
+    const material=impactStage===null?null:this.impactMaterialMetrics(impactStage,hit,scarAnchor);
+    const pathSamples=impactStage===null?null:this.impactTrajectories(impactStage,hit,scarAnchor);
+    const scarActive=impactStage!==null&&impactStage>=6;
+    const smokeMetrics=impactStage===null?null:this.impactSmokeMetrics(impactStage);
+    const scar=impactStage===null?null:{active:scarActive,node:'frontHardpoint',x:scarAnchor.x,y:scarAnchor.y,w:18,h:16,smokeBaseX:scarAnchor.x+2,smokeBaseY:scarAnchor.y-4,distance:Number(Math.hypot(2,4).toFixed(2)),smokeBaseDistance:Number(Math.hypot(2,4).toFixed(2)),smokeDiameter:smokeMetrics?.diameter??0,smokeValue:smokeMetrics?.value??0};
+    const trajectory=impactStage===null?null:{earlyPanel:pathSamples?.earlyPanel??null,sparkA:pathSamples?.sparkA??null,sparkB:pathSamples?.sparkB??null,scar};
+    const phaseAnchors=impactStage===null||!debugRider?null:{contact:this.impactAnchors(4,debugRider),hitstop:this.impactAnchors(5,debugRider),recoil1:this.impactAnchors(6,debugRider),recoil2:this.impactAnchors(7,debugRider),debris1:this.impactAnchors(8,debugRider),debris2:this.impactAnchors(9,debugRider),damageHold:this.impactAnchors(10,debugRider),recover:this.impactAnchors(11,debugRider)};
     return {
       state: this.mode, hero: HEROES[this.selected].id, score: Math.floor(this.score),
       health: this.player?.hp ?? null, armor: this.player?.armor ?? null,
       enemies: this.enemies.length, boss: boss ? { kind: boss.kind, health: boss.hp, maxHealth: boss.maxHp } : null,
       elapsed: Number(this.elapsed.toFixed(2)), combo: Number(this.combo.toFixed(1)), weapon: this.player?.weapon ?? null,
-      beat: this.debugBeat ? { riderReaction: Number((this.enemies[0]?.hitReact ?? 0).toFixed(2)), shots: this.shots.filter(s=>s.friendly).length, wobbleX: this.enemies[0] ? this.riderReactionPose(this.enemies[0]).wobbleX : 0 } : null,
+      beat: this.debugBeat ? { riderReaction: Number((this.enemies[0]?.hitReact ?? 0).toFixed(2)), shots: this.shots.filter(s=>s.friendly).length, wobbleX:wobble?.x??(this.enemies[0]?this.riderReactionPose(this.enemies[0]).wobbleX:0),wobbleAngle:wobble?.angle??0,forkOffset:wobble?.forkOffset??0,counterphase:wobble?.headCounterphase??0,shadowOffset:wobble?.shadowOffset??0,shadowWidth:wobble?.shadowWidth??74 } : null,
       impact: this.debugImpactStage===null?null:{
         stage:this.debugImpactStage,label:IMPACT_LABELS[this.debugImpactStage],timelineMs:IMPACT_TIMELINE_MS[this.debugImpactStage],
         hitstopMs:80,shots:this.shots.filter(s=>s.friendly).length,firedProjectiles:this.debugImpactStage>=1?1:0,
-        scoreAwards:this.debugImpactStage>=4?1:0,targetPose:IMPACT_POSE[this.debugImpactStage],
-        particleContract:this.debugImpactStage>=8?{total:12,panels:3,sparks:5,smokeDust:4,longArcPanels:2}:null,
+        scoreAwards:this.debugImpactStage>=4?1:0,targetPose,anchors,phaseAnchors,trajectory,scar,phaseMetrics:debugRider?this.impactPhaseMetrics(debugRider):null,smoke:smokeMetrics,
+        fixedHit:hit,
+        projectile:{created:this.debugImpactStage>=1?1:0,consumed:this.debugImpactStage>=4?1:0,tipX:shot?shot.x+14:hit.x,tipY:shot?shot.y:hit.y,active:Boolean(shot)},
+        contact:{coreCenterX:hit.x,coreCenterY:hit.y,leadingEdgeX:hit.x,leadingEdgeY:hit.y,overlapW:CONTACT_SIZE.coreOverlapW,overlapH:CONTACT_SIZE.coreOverlapH,bboxW:CONTACT_SIZE.width,bboxH:CONTACT_SIZE.height,intactSilhouette:this.debugImpactStage===4,layers:{rearHalo:this.debugImpactStage===4||this.debugImpactStage===5,hotRing:this.debugImpactStage===4||this.debugImpactStage===5,core:this.debugImpactStage===4||this.debugImpactStage===5,reflectedRim:this.debugImpactStage===4||this.debugImpactStage===5,foregroundSparks:this.debugImpactStage===4||this.debugImpactStage===5},damageOrigin:hit,emitterOrigin:hit},
+        hitstop:{active:this.debugImpactStage===5,panelVisible:this.debugImpactStage===5,sparksVisible:this.debugImpactStage===5?2:0,sootVisible:this.debugImpactStage===5,posture:{hardpointDeltaPx:debugRider?this.impactPhaseMetrics(debugRider).contactToHitstop.hardpointDeltaPx:0,bodyDeltaDeg:this.impactTargetPose(5).angle-this.impactTargetPose(4).angle,compressed:true,noStraightening:true}},
+        shooterPose:this.impactShooterPose(this.debugImpactStage),material,
+        particleContract:this.debugImpactStage>=5?{total:material?.particleCount??0,panels:material?.panels??0,sparks:material?.sparks??0,smokeDust:material?.smokeDust??0,longArcPanels:this.debugImpactStage>=8?2:0}:null,
+        damage:{holdMs:550,missingPanelW:18,missingPanelH:16,smokeBaseDistance:Number(Math.hypot(2,4).toFixed(2)),contourChangedPct:this.debugImpactStage>=6?7:0,particleCount:material?.particleCount??0,node:'frontHardpoint',recoverGrounded:this.impactTargetPose(11).wheelLift===0,holdRecoverProjectionPx:debugRider?this.impactPhaseMetrics(debugRider).holdRecover.projectionGapPx:0,holdRecoverAngleDeg:this.impactTargetPose(10).angle-this.impactTargetPose(11).angle},
         damageHoldMs:550,
       },
       atlas: getSpriteSheetStatus()
@@ -620,22 +766,15 @@ export class RedlineGame {
     }
     this.particles.push({x:x-3,y:y+1,vx:rnd(-34,-12),vy:rnd(-28,-12),life:.34,max:.34,size:4.5,color:'#393044',kind:'smoke',rot:0});
   }
+  private getRiderHitPoint(e:Enemy,y?:number){
+    // This local hardpoint is shared by projectile consumption, the rear halo,
+    // foreground core, debris emitter and the persistent torn-panel overlay.
+    return {x:px(e.x+IMPACT_HIT_OFFSET.x),y:px(y===undefined?e.y+IMPACT_HIT_OFFSET.y:clamp(y,e.y-20,e.y-10))};
+  }
   private riderHitFx(e:Enemy,s:Projectile){
-    // The gameplay hitbox remains unchanged.  We stage the visible contact on the
-    // atlas silhouette's leading edge so the shot, flash and body read as one event.
-    const leadingEdge=e.x-e.w*.5;
-    const x=clamp(s.x,leadingEdge-4,leadingEdge+7),y=clamp(s.y,e.y-e.h*.48,e.y+e.h*.28);
-    // 66x56 hard contact cross at birth: orange outer, cyan middle, white core.
-    this.particles.push({x,y,vx:0,vy:0,life:.18,max:.18,size:44,color:'#58eaff',kind:'impact',rot:0});
-    const fragments:Array<[number,number,number,string,'spark'|'debris'|'smoke']>=[
-      [-300,-230,12,'#245c9b','debris'],[-250,-174,10,'#3b91c8','debris'],[-190,-118,9,'#22517e','debris'],
-      [-330,-235,5,'#fffbe0','spark'],[-282,-192,4,'#ffd84a','spark'],[-238,-148,5,'#fff','spark'],[-176,-216,4,'#ffd84a','spark'],[-126,-108,4,'#fffbe0','spark'],
-      [-72,-66,10,'#342c42','smoke'],[-50,-92,9,'#574153','smoke'],[-96,-40,8,'#9a604a','smoke'],[-38,-48,7,'#b17855','smoke'],
-    ];
-    fragments.forEach(([vx,vy,size,color,kind],i)=>{
-      const life=kind==='debris'?.9+i*.04:kind==='smoke'?.72+i*.025:.42+i*.018;
-      this.particles.push({x:x+(i%3)*2,y:y-(i%4)*2,vx,vy,life,max:life,size,color,kind,rot:i*.63});
-    });
+    const hit=this.getRiderHitPoint(e,s.y);
+    this.riderImpacts=this.riderImpacts.filter(event=>event.enemyId!==e.id);
+    this.riderImpacts.push({enemyId:e.id,age:0,localX:hit.x-e.x,localY:hit.y-e.y});
   }
   private ring(x:number,y:number,color:string,count:number){for(let i=0;i<count;i++){const a=i/count*Math.PI*2;this.particles.push({x,y,vx:Math.cos(a)*rnd(110,250),vy:Math.sin(a)*rnd(110,250),life:.52,max:.52,size:rnd(4,9),color,kind:'ring',rot:a});}}
   private blast(x:number,y:number,size:number,color:string,count=Math.round(size*.42),shakeCap?:number){
@@ -669,11 +808,14 @@ export class RedlineGame {
     const environment={scroll:this.distance,elapsed:this.elapsed,speed:this.worldSpeed,time:this.debugImpactStage===null?this.time:21,shake:this.shake,intensity};
     drawEnvironment(c,environment);
     for(const q of this.pickups)this.drawPickup(q);
+    if(this.debugImpactStage!==null){const rider=this.enemies.find(e=>e.kind==='rider');if(rider)this.drawImpactRear(this.debugImpactStage,rider,this.getRiderHitPoint(rider));}
+    for(const event of this.riderImpacts){const rider=this.enemies.find(e=>e.id===event.enemyId);if(rider)this.drawImpactRear(this.impactStageFromAge(event.age),rider,{x:rider.x+event.localX,y:rider.y+event.localY});}
     const ordered=[...this.enemies].sort((a,b)=>a.y-b.y);for(const e of ordered)this.drawEnemy(e);
     if(this.player)this.drawPlayer();
     for(const s of this.shots)this.drawShot(s);
     for(const q of this.particles)this.drawParticle(q);
     if(this.debugImpactStage!==null)this.drawImpactChoreography(this.debugImpactStage);
+    for(const event of this.riderImpacts){const rider=this.enemies.find(e=>e.id===event.enemyId);if(rider)this.drawImpactForeground(this.impactStageFromAge(event.age),rider,{x:rider.x+event.localX,y:rider.y+event.localY});}
     drawEnvironmentForeground(c,environment);
     for(const f of this.floaters){c.globalAlpha=clamp(f.life*2,0,1);this.text(f.text,f.x,f.y,17,f.color,'center',true);c.globalAlpha=1;}
   }
@@ -701,16 +843,14 @@ export class RedlineGame {
     }else{
       authoredFrame=[0,0,3,3,6,6,7,7][((Math.floor(p.wheel)%8)+8)%8];
     }
-    if(this.debugImpactStage!==null){
-      authoredFrame=[0,2,5,7,2,5,7,7,0,0,0,7][this.debugImpactStage];
-    }
+    if(this.debugImpactStage!==null)authoredFrame=[0,2,2,7,7,7,7,7,0,0,0,7][this.debugImpactStage];
     const authoredSize:Record<HeroId,{width:number;height:number;anchorX:number;anchorY:number}>={
       throttle:{width:208,height:156,anchorX:.48,anchorY:.74},
       modo:{width:220,height:164,anchorX:.5,anchorY:.75},
       vinnie:{width:202,height:152,anchorX:.48,anchorY:.73},
     };
     const size=authoredSize[h.id];
-    const playerKick=this.debugImpactStage===1?8:this.debugImpactStage===4?6:this.debugImpactStage===5?4:0;
+    const playerKick=this.debugImpactStage===null?0:this.impactShooterPose(this.debugImpactStage).shoulderRecoil;
     const usedAtlas=drawSpriteFrame(c,h.id,authoredFrame,x-playerKick,y+38+(playerKick>0?2:0),{
       ...size,
       alpha:hitFlash>0?.62:1,
@@ -720,36 +860,94 @@ export class RedlineGame {
       drawPixelHero(c,h.id,x/2,y/2,{frame:rideFrame,angle:p.lean*.055-p.jumpV*.00008,power:p.specialTime>0?1:clamp(.76+this.worldSpeed/h.speed*.18,.76,.96),firing,airborne:p.jump>1,flash:hitFlash,recoil});
     }
     c.restore();
-    if(firing)this.drawMuzzle(x+55-playerKick,y-35,p.weapon,recoil>.72?0:1);
+    if(this.debugImpactStage===1||this.debugImpactStage===null&&firing)this.drawMuzzle(x+55-playerKick,y-35,p.weapon,recoil>.72?0:1);
+  }
+
+  private impactStageFromAge(age:number){return age<.08?4:age<.16?5:age<.29?6:age<.42?7:age<.55?8:age<.68?9:age<1.18?10:11;}
+
+  private drawImpactRear(stage:number,_enemy:Enemy,hit:{x:number;y:number}){
+    if(stage!==4&&stage!==5)return;
+    const width=stage===5?98:112,height=stage===5?72:84;
+    if(drawSpriteFrame(this.ctx,'impactMaterial',0,hit.x,hit.y,{width,height,anchorX:.5,anchorY:.5,alpha:stage===5?.8:1}))return;
+    const c=this.ctx;c.save();c.translate(hit.x,hit.y);c.globalCompositeOperation='lighter';c.globalAlpha=stage===5?.72:.9;c.fillStyle='#176f91';c.fillRect(-48,-8,96,16);c.fillRect(-8,-36,16,72);c.fillStyle='#ff7138';c.fillRect(-36,-5,72,10);c.fillRect(-5,-28,10,56);c.restore();
   }
 
   private drawImpactChoreography(stage:number){
-    const c=this.ctx,enemy=this.enemies.find(e=>e.kind==='rider');if(!enemy)return;
-    const x=enemy.x-82,y=enemy.y-15;
+    const enemy=this.enemies.find(e=>e.kind==='rider');if(enemy)this.drawImpactForeground(stage,enemy,this.getRiderHitPoint(enemy));
+  }
+
+  private drawImpactForeground(stage:number,enemy:Enemy,hit:{x:number;y:number}){
+    const c=this.ctx;
     if(stage===4||stage===5){
-      c.save();c.translate(px(x),px(y));c.globalCompositeOperation='lighter';
-      // Pixel-stepped three-layer star: 88x60 outer silhouette, cyan energy
-      // shell and a white-hot asymmetric core, with no blur or gradient.
-      const burst=(points:number[],color:string)=>{c.fillStyle=color;c.beginPath();c.moveTo(points[0],points[1]);for(let i=2;i<points.length;i+=2)c.lineTo(points[i],points[i+1]);c.closePath();c.fill();};
-      burst([-44,-6,-28,-14,-32,-26,-12,-20,0,-30,12,-20,32,-26,28,-12,44,-6,34,2,40,16,18,14,12,28,0,18,-12,28,-18,14,-40,16,-32,2],'#ff5a2c');
-      burst([-34,-4,-20,-10,-22,-18,-8,-14,0,-22,8,-14,22,-18,20,-8,34,-4,24,2,28,10,12,8,8,18,0,12,-8,18,-12,8,-28,10,-24,2],'#56eaff');
-      burst([-20,-4,-10,-8,-6,-14,2,-10,10,-12,8,-6,20,-2,12,4,16,8,6,8,0,14,-6,8,-16,10,-12,2],'#fffde3');
-      c.fillStyle='#fff';c.fillRect(-10,-4,24,8);c.fillRect(-2,-10,8,20);
-      if(stage===5){c.fillStyle='#fff';c.fillRect(-16,-2,32,4);c.fillRect(-2,-14,4,28);}
+      const used=drawSpriteFrame(c,'impactMaterial',1,hit.x,hit.y,{width:stage===5?98:112,height:stage===5?72:84,anchorX:.5,anchorY:.5,alpha:stage===5?.8:1});
+      if(!used){
+        c.save();c.translate(hit.x,hit.y);c.globalCompositeOperation='lighter';
+        const burst=(points:number[],color:string)=>{c.fillStyle=color;c.beginPath();c.moveTo(points[0],points[1]);for(let i=2;i<points.length;i+=2)c.lineTo(points[i],points[i+1]);c.closePath();c.fill();};
+        burst([-48,-6,-30,-16,-34,-28,-12,-20,0,-36,12,-20,36,-26,30,-10,48,-6,36,4,42,18,18,14,12,32,0,20,-14,30,-20,14,-44,18,-34,2],'#ff7138');
+        burst([-36,-4,-22,-12,-24,-20,-8,-14,0,-26,10,-14,24,-18,20,-8,36,-4,26,4,30,12,12,10,8,20,0,14,-10,20,-14,8,-30,12,-26,2],'#58eaff');
+        burst([-22,-4,-10,-8,-6,-16,2,-10,12,-12,8,-6,22,-2,14,4,18,8,6,8,0,16,-8,8,-18,10,-12,2],'#fffde3');
+        c.fillStyle='#fff';c.fillRect(-10,-5,28,10);c.fillRect(-3,-12,10,24);c.restore();
+      }
+      if(stage===4)return;
+    }
+    if(stage<5)return;
+    const scar=this.impactAnchors(stage,enemy).hardpoint;
+    const trajectories=this.impactTrajectories(stage,hit,scar);
+    if(trajectories){
+      const panel=trajectories.earlyPanel;
+      c.save();c.translate(panel.x,panel.y);c.rotate((stage-5)*-.16);
+      if(!drawSpriteFrame(c,'impactMaterial',4,0,0,{width:58,height:42,anchorX:.5,anchorY:.5}))this.drawPanelFallback(0);
       c.restore();
+      this.drawTrackedImpactSpark(trajectories.sparkA.x,trajectories.sparkA.y,.58,0);
+      this.drawTrackedImpactSpark(trajectories.sparkB.x,trajectories.sparkB.y,-.5,1);
+    }
+    if(stage===8||stage===9){
+      const lead=trajectories!.earlyPanel;
+      const positions=stage===8?[[lead.x+8,lead.y+14,.44],[lead.x+18,lead.y+2,-.28]]:[[lead.x+10,lead.y+16,.72],[lead.x+20,lead.y+4,-.5]];
+      positions.forEach(([x,y,rotation],index)=>{c.save();c.translate(px(x),px(y));c.rotate(rotation);const used=drawSpriteFrame(c,'impactMaterial',2+index,0,0,{width:54+index*4,height:40+index*3,anchorX:.5,anchorY:.5});if(!used)this.drawPanelFallback(index+1);c.restore();});
+      this.drawTrackedImpactSpark(lead.x+6,lead.y-16,.82,2);
+      this.drawTrackedImpactSpark(lead.x+17,lead.y+13,-.72,3);
+      this.drawTrackedImpactSpark(lead.x-5,lead.y+20,-.18,4);
     }
     if(stage>=6){
-      const travel=stage===6?.08:stage===7?.2:stage===8?.55:stage===9?1:stage===10?1.22:1.38;
-      const panelVectors=[[-92,-72,12,8,-.7],[-74,-108,10,10,.9],[-58,-54,9,7,-1.1]] as const;
-      c.save();
-      panelVectors.forEach(([vx,vy,w,h,spin],i)=>{c.save();c.translate(px(x+vx*travel),px(y+vy*travel+70*travel*travel));c.rotate(spin*travel+i*.35);c.fillStyle='#101729';c.beginPath();c.moveTo(-w-3,-h);c.lineTo(w,-h-2);c.lineTo(w+3,h-2);c.lineTo(-w+2,h+3);c.closePath();c.fill();c.fillStyle=i===1?'#3b91c8':'#245c9b';c.beginPath();c.moveTo(-w,-h+1);c.lineTo(w-2,-h);c.lineTo(w,h-2);c.lineTo(-w+3,h);c.closePath();c.fill();c.fillStyle='#7bdcff';c.fillRect(-w+2,-h+2,w*1.35,3);c.fillStyle='#d5a34c';c.fillRect(w-4,h-4,4,4);c.restore();});
-      const sparkVectors=[[-125,-94],[-106,-52],[-84,-126],[-64,-78],[-44,-114]] as const;
-      sparkVectors.forEach(([vx,vy],i)=>{const sx=px(x+vx*travel),sy=px(y+vy*travel+62*travel*travel);c.save();c.translate(sx,sy);c.rotate(Math.atan2(vy,vx));c.fillStyle=i%2?'#ffd84a':'#fffde1';c.fillRect(-12,-2,18,4);c.restore();});
-      const smokeVectors=[[-34,-42],[-12,-66],[-52,-18],[-8,-28]] as const;
-      smokeVectors.forEach(([vx,vy],i)=>{const sx=px(x+vx*travel),sy=px(y+vy*travel+26*travel*travel),s=8+i*2;c.fillStyle=i<2?'#393044':'#9a604a';c.fillRect(sx-s,sy-s/2,s*2,s);c.globalAlpha=.62;c.fillRect(sx-s/2,sy-s,s*1.5,s);c.globalAlpha=1;});
-      c.restore();
+      const alpha=stage===11?.86:1;
+      c.save();c.beginPath();c.rect(scar.x-38,scar.y-13,76,43);c.clip();
+      const used=drawSpriteFrame(c,'impactMaterial',7,scar.x,scar.y,{width:82,height:62,anchorX:.5,anchorY:.54,alpha});c.restore();
+      if(!used){
+        c.save();c.translate(scar.x,scar.y);c.globalAlpha=alpha;c.fillStyle='#111827';c.beginPath();c.moveTo(-14,-10);c.lineTo(10,-9);c.lineTo(14,8);c.lineTo(-10,11);c.closePath();c.fill();c.fillStyle='#2d73a7';c.fillRect(-9,-7,18,14);c.fillStyle='#8adfff';c.fillRect(-7,-6,14,3);c.fillStyle='#171b22';c.fillRect(-4,-13,17,8);c.restore();
+      }
     }
+    this.drawAttachedImpactSmoke(stage,scar.x,scar.y);
   }
+
+  private drawTrackedImpactSpark(x:number,y:number,rotation:number,index:number){
+    const c=this.ctx,length=24-index*2;c.save();c.translate(px(x),px(y));c.rotate(rotation);c.globalCompositeOperation='lighter';
+    c.fillStyle='#ff562e';c.beginPath();c.moveTo(5,-4);c.lineTo(-length,0);c.lineTo(5,4);c.closePath();c.fill();
+    c.fillStyle=index%2?'#ffd84a':'#fffde3';c.beginPath();c.moveTo(6,-2);c.lineTo(-length*.76,0);c.lineTo(6,2);c.closePath();c.fill();c.fillStyle='#fff';c.fillRect(1,-1,7,2);c.restore();
+  }
+
+  private drawAttachedImpactSmoke(stage:number,x:number,y:number){
+    if(stage<5)return;
+    const c=this.ctx,metrics=this.impactSmokeMetrics(stage),d=metrics.diameter;
+    const colors=['#59483d','#50423d','#463b3b','#3c3538','#333035','#2b2b30','#24262b'];
+    const color=colors[Math.min(colors.length-1,stage-5)];
+    c.save();c.translate(px(x+2),px(y-4));c.globalAlpha=.98;
+    const puff=(dx:number,dy:number,size:number,highlight=false)=>{
+      const s=Math.max(4,px(size));c.fillStyle='#171a20';c.fillRect(px(dx-s*.5-2),px(dy-s*.5),s+4,s);
+      c.fillStyle=color;c.fillRect(px(dx-s*.5),px(dy-s*.5-2),s,Math.max(4,s-2));
+      if(highlight){c.fillStyle=stage<7?'#8b6952':'#5b4d49';c.fillRect(px(dx-s*.28),px(dy-s*.38),Math.max(3,px(s*.34)),Math.max(3,px(s*.2)));}
+    };
+    puff(0,0,d*.34,true);
+    if(stage>=6)puff(-d*.2,-d*.25,d*.42,true);
+    if(stage>=7)puff(d*.18,-d*.42,d*.38,false);
+    if(stage>=8)puff(-d*.08,-d*.67,d*.46,false);
+    if(stage>=10)puff(d*.2,-d*.85,d*.34,false);
+    c.restore();
+  }
+
+  private drawPanelFallback(index:number){const c=this.ctx,w=10+index,h=7+index;c.fillStyle='#111827';c.beginPath();c.moveTo(-w-3,-h);c.quadraticCurveTo(0,-h-5,w+3,-h+1);c.lineTo(w,h);c.quadraticCurveTo(0,h+5,-w,h-1);c.closePath();c.fill();c.fillStyle=index===1?'#3b91c8':'#245c9b';c.beginPath();c.moveTo(-w,-h+2);c.quadraticCurveTo(0,-h-2,w,-h+2);c.lineTo(w-2,h-2);c.quadraticCurveTo(0,h+2,-w+2,h-2);c.closePath();c.fill();c.strokeStyle='#7bdcff';c.lineWidth=2;c.beginPath();c.moveTo(-w+2,-h+3);c.quadraticCurveTo(0,-h,w-2,-h+3);c.stroke();}
+  private drawSparkClusterFallback(x:number,y:number){const c=this.ctx;c.save();c.translate(x,y);[-1.08,-.64,-.2,.34,.78].forEach((angle,index)=>{c.save();c.rotate(angle);const length=22-index*2;c.fillStyle='#ff7138';c.beginPath();c.moveTo(0,-3);c.lineTo(-length,0);c.lineTo(0,3);c.closePath();c.fill();c.fillStyle=index%2?'#ffd84a':'#fffde3';c.beginPath();c.moveTo(2,-2);c.lineTo(-length*.72,0);c.lineTo(2,2);c.closePath();c.fill();c.restore();});c.restore();}
+  private drawSmokeClusterFallback(x:number,y:number){const c=this.ctx;c.save();c.translate(x,y);[[-10,-4,9],[5,-10,8],[12,4,7],[-2,8,6]].forEach(([dx,dy,r])=>{c.fillStyle='#342c42';c.fillRect(dx-r,dy-r,r*2,r*2);c.fillStyle='#73515a';c.fillRect(dx-r+3,dy-r+2,r*2-4,r*2-4);c.fillStyle='#b4866e';c.fillRect(dx-r+5,dy-r+4,r-1,r-2);});c.restore();}
 
   private drawMuzzle(x:number,y:number,weapon:Weapon,phase:number){
     const c=this.ctx;c.save();c.translate(Math.round(x),Math.round(y));c.globalCompositeOperation='lighter';
@@ -771,9 +969,9 @@ export class RedlineGame {
   private wheel(x:number,y:number,r:number,spin:number,accent:string){const c=this.ctx;c.fillStyle='#05060a';c.beginPath();c.arc(x,y,r+4,0,Math.PI*2);c.fill();c.strokeStyle='#4f5361';c.lineWidth=4;c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.stroke();c.strokeStyle=accent;c.lineWidth=2;for(let i=0;i<6;i++){const a=spin+i*Math.PI/3;c.beginPath();c.moveTo(x,y);c.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);c.stroke();}c.fillStyle='#d0d5dc';c.beginPath();c.arc(x,y,4,0,Math.PI*2);c.fill();}
 
   private riderReactionPose(e:Enemy){
-    let authoredReaction=0,reactionAge=0,recoveryStart=0,squash=0,wobbleX=0,wobbleY=0;
+    let authoredReaction=0,reactionAge=0,recoveryStart=0,squash=0,wobbleX=0,wobbleY=0,rotation=0,forkOffset=0,headCounterphase=0,shadowOffset=0,shadowWidth=74;
     if(this.debugWobblePose!==null){
-      authoredReaction=4;wobbleX=this.debugWobblePose;wobbleY=Math.sign(wobbleX)*Math.max(1,Math.round(Math.abs(wobbleX)*.25));
+      const pose=WOBBLE_POSES[this.debugWobblePose];authoredReaction=4;wobbleX=pose.x;wobbleY=pose.y;rotation=pose.angle;forkOffset=pose.forkOffset;headCounterphase=pose.headCounterphase;shadowOffset=pose.shadowOffset;shadowWidth=pose.shadowWidth;
     }else if(e.hitReact>0){
       reactionAge=(this.debugBeat?1.75:.72)-e.hitReact;
       const contactEnd=this.debugBeat?.12:.07;
@@ -790,14 +988,16 @@ export class RedlineGame {
         const amplitude=9*clamp(1-wobbleAge/wobbleDuration,0,1);
         wobbleX=Math.round(Math.sin(wobbleAge*55)*amplitude);
         wobbleY=Math.round(Math.sin(wobbleAge*33)*amplitude*.28);
+        rotation=clamp(wobbleX*.5,-3,4);forkOffset=Math.round(wobbleY*2.4);headCounterphase=-Math.sign(wobbleX)*Math.max(4,Math.round(Math.abs(wobbleX)*.55));shadowOffset=Math.round(wobbleX*.75);shadowWidth=74-Math.round(Math.abs(rotation)*3);
       }
     }
-    return {authoredReaction,squash,wobbleX,wobbleY};
+    return {authoredReaction,squash,wobbleX,wobbleY,rotation,forkOffset,headCounterphase,shadowOffset,shadowWidth};
   }
 
   private riderImpactFrame(e:Enemy){
-    if(this.debugImpactStage!==null)return this.debugImpactStage;
-    if(this.debugWobblePose!==null||e.hitReact<=0)return null;
+    if(this.debugImpactStage!==null)return this.debugImpactStage<4?null:this.debugImpactStage;
+    if(this.debugWobblePose!==null)return 11;
+    if(e.hitReact<=0)return null;
     const duration=this.debugBeat?1.75:1.35,age=duration-e.hitReact;
     if(age<.08)return 4;
     if(age<.16)return 5; // 80 ms / >2 render frames of held contact composition
@@ -813,6 +1013,12 @@ export class RedlineGame {
     const c=this.ctx;
     if(e.kind==='rider'||e.kind==='tank'||e.kind==='drone'||e.kind==='skimmer'||e.kind==='miniboss'||e.kind==='boss'){
       c.save();
+      const riderDynamics=e.kind==='rider'?this.riderReactionPose(e):null;
+      if(e.kind==='rider'&&riderDynamics){
+        const impactFrame=this.riderImpactFrame(e),impactPose=impactFrame===null?null:this.impactTargetPose(impactFrame);
+        const shadowX=e.x+(impactPose?.shadowOffset??riderDynamics.shadowOffset),shadowWidth=impactPose?.shadowWidth??riderDynamics.shadowWidth;
+        c.save();c.globalAlpha=.3;c.fillStyle='#080811';c.beginPath();c.ellipse(px(shadowX),px(e.y+22),px(shadowWidth*.5),9,0,0,Math.PI*2);c.fill();c.restore();
+      }
       if(e.kind==='miniboss'||e.kind==='boss'){c.globalAlpha=.28;c.fillStyle=e.kind==='boss'?'#c339ff':'#000';c.beginPath();c.ellipse(e.x,e.y+(e.kind==='boss'?70:48),e.kind==='boss'?150:105,e.kind==='boss'?34:18,0,0,Math.PI*2);c.fill();c.globalAlpha=1;}
       c.scale(2,2);
       const reaction=e.kind==='rider'?(e.hitReact>.48?1:e.hitReact>0?2:0):0;
@@ -848,15 +1054,22 @@ export class RedlineGame {
       else {
         let usedAtlas=false;
         if(e.kind==='rider'){
-          const {authoredReaction,squash,wobbleX,wobbleY}=this.riderReactionPose(e);
+          const {authoredReaction,squash,wobbleX,wobbleY,rotation,forkOffset,headCounterphase}=riderDynamics!;
           c.scale(.5,.5);
           const impactFrame=this.riderImpactFrame(e);
           if(impactFrame!==null){
-            const authoredPose=this.debugImpactStage!==null?IMPACT_POSE[impactFrame]:IMPACT_POSE[Math.min(11,impactFrame)];
+            const authoredPose=this.debugWobblePose!==null?{x:wobbleX,y:wobbleY,angle:rotation}:this.impactTargetPose(Math.min(11,impactFrame));
             c.save();c.translate(e.x+authoredPose.x,e.y+16+authoredPose.y);c.rotate(authoredPose.angle*Math.PI/180);
-            usedAtlas=drawSpriteFrame(c,'riderImpact',impactFrame,0,0,{
+            if(this.debugWobblePose===null){const phasePose=this.impactTargetPose(Math.min(11,impactFrame));c.scale(phasePose.scaleX,phasePose.scaleY);}
+            usedAtlas=drawSpriteFrame(c,'riderImpact',this.impactTargetPose(impactFrame).spriteFrame,0,0,{
               width:184,height:138,anchorX:.5,anchorY:.74,alpha:e.flash>0?.8:1,
             });
+            if(usedAtlas&&this.debugWobblePose!==null){
+              // Re-render two clipped mechanical zones in counterphase. This keeps
+              // the body mass rotating while the fork and rider/gun visibly lag.
+              c.save();c.beginPath();c.rect(-92,-50,54,86);c.clip();drawSpriteFrame(c,'riderImpact',impactFrame,0,forkOffset,{width:184,height:138,anchorX:.5,anchorY:.74});c.restore();
+              c.save();c.beginPath();c.rect(-48,-104,112,58);c.clip();drawSpriteFrame(c,'riderImpact',impactFrame,headCounterphase,0,{width:184,height:138,anchorX:.5,anchorY:.74});c.restore();
+            }
             c.restore();
           }
           if(!usedAtlas)usedAtlas=drawSpriteFrame(c,'rider',authoredReaction,e.x+wobbleX,e.y+14+wobbleY,{

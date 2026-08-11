@@ -114,6 +114,7 @@ $definitions = @(
   @{ Name = 'vinnie'; Source = 'vinnie-chroma.png'; Output = 'vinnie-sheet.png'; Columns = 4; Rows = 2; SingleComponent = $true },
   @{ Name = 'rider'; Source = 'rider-chroma.png'; Output = 'rider-sheet.png'; Columns = 3; Rows = 2 },
   @{ Name = 'riderImpact'; Source = 'rider-impact-chroma.png'; Output = 'rider-impact-sheet.png'; Columns = 4; Rows = 3 },
+  @{ Name = 'impactMaterial'; Source = 'impact-material-chroma.png'; Output = 'impact-material-sheet.png'; Columns = 4; Rows = 2; Centered = $true },
   @{ Name = 'bossCore'; Source = 'boss-core-chroma.png'; Output = 'boss-core-sheet.png'; Columns = 3; Rows = 2 },
   @{ Name = 'bossBody'; Source = 'boss-body-chroma.png'; Output = 'boss-body-sheet.png'; Columns = 3; Rows = 2 },
   @{ Name = 'roadRipper'; Source = 'road-ripper-chroma.png'; Output = 'road-ripper-sheet.png'; Columns = 3; Rows = 2 },
@@ -167,7 +168,11 @@ foreach ($definition in $definitions) {
           $column = $index % $definition.Columns
           $row = [int][Math]::Floor($index / $definition.Columns)
           $drawX = $column * $frameWidth + [int][Math]::Round(($frameWidth - $drawWidth) / 2)
-          $drawY = $row * $frameHeight + $frameHeight - 4 - $drawHeight
+          $drawY = if ($definition.Centered) {
+            $row * $frameHeight + [int][Math]::Round(($frameHeight - $drawHeight) / 2)
+          } else {
+            $row * $frameHeight + $frameHeight - 4 - $drawHeight
+          }
           $destination = [System.Drawing.Rectangle]::new($drawX, $drawY, $drawWidth, $drawHeight)
           $graphics.DrawImage($source, $destination, $sourceBounds, [System.Drawing.GraphicsUnit]::Pixel)
         }

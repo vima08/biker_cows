@@ -183,6 +183,46 @@
       </div>
       <div class="finding"><strong>Строгий verdict wave 9: NO, но большой pass.</strong> Новый authored sheet однозначно выигрывает wave 8 по contact scale, target acting и recoil silhouette; полный smoke сообщает `ok=true`, 9/9 atlases и ноль runtime errors. Оставшийся единый blocker — spatial/material registration: contact-star ещё отделён от вилки, shooter recoil временно сбрасывается, а debris и persistent scar недостаточно ясно происходят из одной конкретной панели.</div>
     </section>
+
+    <section class="iteration">
+      <h2>Iteration 10 — registered material hit</h2>
+      <div class="meta"><span class="tag">10/10 atlases</span><span class="tag">96×72 layered contact</span><span class="tag">Attached scar</span><span class="tag">Blind A/B 3:0</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-10/impact-01-muzzle.png" alt="Continuous muzzle recoil"><figcaption>01 · continuous shooter recoil</figcaption></figure>
+        <figure><img src="captures/iteration-10/impact-04-contact.png" alt="Registered contact"><figcaption>04 · fork-registered contact</figcaption></figure>
+        <figure><img src="captures/iteration-10/impact-08-debris-1.png" alt="Authored debris"><figcaption>08 · panels / sparks / smoke</figcaption></figure>
+        <figure><img src="captures/iteration-10/impact-10-damage-hold.png" alt="Attached scar"><figcaption>10 · attached scar / soot</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Wave 10:</strong> contact, mass и aftermath выиграли главный blind A/B 3:0; spatial registration, material triad и attached damage приняты. AAA verdict всё ещё NO: неподписанные поздние кадры не складывались в безошибочный temporal order.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 11 — monotonic recoil</h2>
+      <div class="meta"><span class="tag">0px reverse</span><span class="tag">Early panel + sparks</span><span class="tag">34×16 / 14° peak</span><span class="tag">Integration PASS</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-11/impact-04-contact.png" alt="Wave 11 contact"><figcaption>04 · contact family</figcaption></figure>
+        <figure><img src="captures/iteration-11/impact-06-recoil-1.png" alt="Early material recoil"><figcaption>06 · early panel / sparks</figcaption></figure>
+        <figure><img src="captures/iteration-11/impact-07-recoil-2.png" alt="Monotonic recoil peak"><figcaption>07 · monotonic peak</figcaption></figure>
+        <figure><img src="captures/iteration-11/impact-09-debris-2.png" alt="Continuous material path"><figcaption>09 · continued trajectories</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Wave 11 jury:</strong> blind adjacent score вырос до 7/11 у главного critic, но material naming и exact order остались ниже gate. Новая версия выиграла его A/B 3:0, однако пять viewers не достигли требуемого согласия.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 12 — phase readability audit</h2>
+      <div class="meta"><span class="tag">40×18 / 14° peak</span><span class="tag">Peak held through debris</span><span class="tag">Growing attached smoke</span><span class="tag">Full smoke PASS</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-12/impact-04-contact.png" alt="Intact contact"><figcaption>04 · first intact overlap</figcaption></figure>
+        <figure><img src="captures/iteration-12/impact-05-hitstop.png" alt="Compressed hitstop"><figcaption>05 · compressed material seed</figcaption></figure>
+        <figure><img src="captures/iteration-12/impact-07-recoil-2.png" alt="Held peak"><figcaption>07 · held recoil peak</figcaption></figure>
+        <figure><img src="captures/iteration-12/impact-08-debris-1.png" alt="Peak debris one"><figcaption>08 · peak / debris growth</figcaption></figure>
+        <figure><img src="captures/iteration-12/impact-10-damage-hold.png" alt="Late damage hold"><figcaption>10 · late damaged hold</figcaption></figure>
+        <figure><img src="captures/iteration-12/impact-11-recover.png" alt="Grounded recovery"><figcaption>11 · grounded scar recovery</figcaption></figure>
+        <figure><img src="captures/iteration-12/boss.png" alt="Boss regression"><figcaption>Full-route boss regression</figcaption></figure>
+        <figure><img src="captures/iteration-12/victory.png" alt="Verified victory"><figcaption>Verified victory / restart</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Последний строгий verdict: NO.</strong> Build, integration и runtime contracts проходят (`ok=true`, 10/10, `runtimeErrors=[]`), а material triad впервые названа 3/3. Но blind adjacency снизилась до 5/11: одинаковый peak transform через recoil/debris и слишком слабый production smoke сплющили направление времени. Следующий pass должен перейти от численных transforms к ещё более различимым authored late-phase silhouettes.</div>
+    </section>
   </main>
   <footer>Redline Rampage · local noncommercial fan prototype · captures produced by automated browser runs</footer>
 </body>
