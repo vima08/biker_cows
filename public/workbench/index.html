@@ -223,6 +223,45 @@
       </div>
       <div class="finding"><strong>Последний строгий verdict: NO.</strong> Build, integration и runtime contracts проходят (`ok=true`, 10/10, `runtimeErrors=[]`), а material triad впервые названа 3/3. Но blind adjacency снизилась до 5/11: одинаковый peak transform через recoil/debris и слишком слабый production smoke сплющили направление времени. Следующий pass должен перейти от численных transforms к ещё более различимым authored late-phase silhouettes.</div>
     </section>
+
+    <section class="iteration">
+      <h2>Iteration 13 — sustained-fire stability &amp; character select</h2>
+      <div class="meta"><span class="tag">11/11 atlases</span><span class="tag">3.2s held fire × 3</span><span class="tag">4.0s rapid Vinnie</span><span class="tag">Full smoke PASS</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-13/select.png" alt="Authored Throttle select portrait"><figcaption>Authored character select · Throttle</figcaption></figure>
+        <figure><img src="captures/iteration-13/select-modo-integration.png" alt="Authored Modo select portrait"><figcaption>Authored character select · Modo</figcaption></figure>
+        <figure><img src="captures/iteration-13/select-vinnie-integration.png" alt="Authored Vinnie select portrait"><figcaption>Authored character select · Vinnie</figcaption></figure>
+      </div>
+      <div class="shots" style="margin-top:14px">
+        <figure><img src="captures/iteration-13/sustain-throttle-00.png" alt="Throttle held fire start"><figcaption>Throttle · held fire start</figcaption></figure>
+        <figure><img src="captures/iteration-13/sustain-throttle-02.png" alt="Throttle held fire middle"><figcaption>Throttle · stable combat loop</figcaption></figure>
+        <figure><img src="captures/iteration-13/sustain-modo-03.png" alt="Modo sustained fire"><figcaption>Modo · heavy sustained loop</figcaption></figure>
+        <figure><img src="captures/iteration-13/sustain-vinnie-03.png" alt="Vinnie sustained fire"><figcaption>Vinnie · normal cadence</figcaption></figure>
+        <figure><img src="captures/iteration-13/sustain-vinnie-rapid-00.png" alt="Rapid Vinnie start"><figcaption>Rapid Vinnie · 0.0s</figcaption></figure>
+        <figure><img src="captures/iteration-13/sustain-vinnie-rapid-03.png" alt="Rapid Vinnie phase"><figcaption>Rapid Vinnie · loop phase</figcaption></figure>
+        <figure><img src="captures/iteration-13/sustain-vinnie-rapid-06.png" alt="Rapid Vinnie continued"><figcaption>Rapid Vinnie · continuous fire</figcaption></figure>
+        <figure><img src="captures/iteration-13/sustain-vinnie-rapid-09.png" alt="Rapid Vinnie four seconds"><figcaption>Rapid Vinnie · 4.01s</figcaption></figure>
+        <figure><img src="captures/iteration-13/sustain-vinnie-rapid-release.png" alt="Rapid Vinnie release"><figcaption>Release · smooth return</figcaption></figure>
+        <figure><img src="captures/iteration-13/boss-exchange.png" alt="Boss regression"><figcaption>Full-route boss regression</figcaption></figure>
+      </div>
+      <div class="finding"><strong>User-corrected priority:</strong> долгий зажатый огонь теперь является отдельным authored combat loop, а не повторением одноразового recoil с провалом в ride. Production capture подтверждает нулевой drift опоры, bbox и дорожной базы у всех трёх героев; release pop не превышает 1 px. Rapid Vinnie выдерживает 4.01 секунды при 13.97 выстр./с без neutral-frame snap. Select заменён тремя крупными характерными пиксельными портретами. Полный маршрут, победа и рестарт проходят с `runtimeErrors=[]`.</div>
+    </section>
+
+    <section class="iteration">
+      <h2>Iteration 14 — release bridge &amp; bike hardpoints</h2>
+      <div class="meta"><span class="tag">12/12 atlases</span><span class="tag">3-pose release bridge</span><span class="tag">Bike muzzle origins</span><span class="tag">Corrected gates PASS</span></div>
+      <div class="shots">
+        <figure><img src="captures/iteration-14/muzzle-all.png" alt="All hero muzzle hardpoints" style="object-fit:contain"><figcaption>Sustained / release / jump muzzle hardpoints</figcaption></figure>
+        <figure><img src="captures/iteration-14/release-throttle.png" alt="Throttle release sequence" style="object-fit:contain"><figcaption>Throttle · authored release bridge</figcaption></figure>
+        <figure><img src="captures/iteration-14/release-modo.png" alt="Modo release sequence" style="object-fit:contain"><figcaption>Modo · heavy damped release</figcaption></figure>
+        <figure><img src="captures/iteration-14/release-vinnie-rapid.png" alt="Rapid Vinnie release sequence" style="object-fit:contain"><figcaption>Rapid Vinnie · stable release</figcaption></figure>
+        <figure><img src="captures/iteration-14/sustain-vinnie-rapid.png" alt="Rapid Vinnie sustained sequence" style="object-fit:contain"><figcaption>4s rapid hold · no ride snap</figcaption></figure>
+        <figure><img src="captures/iteration-14/select.png" alt="Final character select"><figcaption>Character select retained</figcaption></figure>
+        <figure><img src="captures/iteration-14/boss-exchange.png" alt="Boss exchange"><figcaption>Next gap · peak boss readability</figcaption></figure>
+        <figure><img src="captures/iteration-14/victory.png" alt="Verified victory"><figcaption>Real boss kill / victory / restart</figcaption></figure>
+      </div>
+      <div class="finding"><strong>Independent critic: corrected gates PASS.</strong> Длительный grounded fire, rapid Vinnie, происхождение projectile/muzzle из пушек/носа, release bridge и новый select приняты. Canonical smoke: `ok=true`, 12/12, `runtimeErrors=[]`; hardpoint delta равен 0 px в sustained/jump и 1.720–2.291 px на release. Следующий единый gap перемещён на уровень полного боя: в peak boss exchange friendly rocket/smoke иногда перекрывает boss/core и incoming telegraphs.</div>
+    </section>
   </main>
   <footer>Redline Rampage · local noncommercial fan prototype · captures produced by automated browser runs</footer>
 </body>

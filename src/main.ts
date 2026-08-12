@@ -70,6 +70,7 @@ declare global {
       readonly state: ReturnType<RedlineGame['snapshot']>;
       snapshot: () => ReturnType<RedlineGame['snapshot']>;
       gotoScene: (scene: string, time?: number) => ReturnType<RedlineGame['snapshot']>;
+      setDebugFireHeld: (held: boolean) => ReturnType<RedlineGame['snapshot']>;
     };
   }
 }
@@ -78,4 +79,5 @@ window.__BMFM_DEBUG__ = {
   get state() { return game.snapshot(); },
   snapshot: () => game.snapshot(),
   gotoScene: (scene: string, time = 0) => game.gotoScene(scene, time),
+  setDebugFireHeld: (held: boolean) => game.setDebugFireHeld(held),
 };
