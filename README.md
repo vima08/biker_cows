@@ -49,7 +49,10 @@ npm run preview
 - 7:45 пути до финального штурма плюс бой с боссом;
 - наземные riders/tanks/mines и воздушные drones/skimmers/pods;
 - мини-босс, финальный Limburger Dreadnaught, победа и поражение;
-- десять art-directed PNG atlases: три героя, rider, 12-frame impact chain, отдельный material-FX sheet, воздушный roster, мини-босс и финальный босс;
+- двенадцать art-directed PNG atlases: три героя, отдельные sustained-fire и release-bridge sheets, rider, 12-frame impact chain, material-FX sheet, воздушный roster, мини-босс и финальный босс;
+- непрерывная наземная стрельба использует устойчивую четырёхфазную боевую стойку каждого героя без возврата в neutral ride между выстрелами; rapid-fire Vinnie проверен отдельной четырёхсекундной последовательностью;
+- отпускание огня проходит через три авторские переходные позы за 150 мс; вспышка и физический снаряд рождаются из размеченного ствола/носа каждого байка в ride, sustained, release и jump состояниях;
+- экран выбора использует три крупных авторских pixel-art портрета вместо процедурных лиц;
 - authored Mars panorama, многослойный параллакс, дорожная перспектива и 2px material grid;
 - screen shake, жёсткие pixel-art вспышки, дым, пыль, искры, раздельные обломки и взрывы;
 - полностью процедурный Web Audio rock-саундтрек и игровые SFX;
@@ -69,7 +72,7 @@ npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
 npm run test:smoke
 ```
 
-Smoke-тест использует установленный Microsoft Edge, проходит меню, выбор героя, движение, стрельбу, прыжок, исходный 8-кадровый regression beat и 12-кадровый registered material-impact beat с реальным столкновением, воздушный бой, мини-босса, паузу, финального босса, победу и рестарт. Он проверяет загрузку всех десяти локальных атласов, causal/material runtime contracts и runtime/console errors, а также сохраняет реальные кадры в `.gauntlet/latest/`. Путь к другому Chromium можно передать через `BMFM_BROWSER`, адрес сервера — через `BMFM_URL`.
+Smoke-тест использует установленный Microsoft Edge, проходит меню, выбор героя, движение, стрельбу, прыжок, исходный 8-кадровый regression beat и 12-кадровый registered material-impact beat с реальным столкновением, воздушный бой, мини-босса, паузу, финального босса, победу и рестарт. Дополнительно он удерживает огонь по 3,2 секунды у каждого героя и 4 секунды у rapid-fire Vinnie, снимает 19–20 последовательных release-кадров и проверяет происхождение снарядов из видимых стволов в sustained/release/jump. Он проверяет загрузку всех двенадцати локальных атласов, causal/material runtime contracts и runtime/console errors, а также сохраняет реальные кадры в `.gauntlet/latest/`. Путь к другому Chromium можно передать через `BMFM_BROWSER`, адрес сервера — через `BMFM_URL`.
 
 Отладочные сцены для локальной визуальной проверки:
 
@@ -79,10 +82,11 @@ Smoke-тест использует установленный Microsoft Edge, �
 - `?scene=boss&hero=modo`
 - `?scene=aerial&hero=throttle`
 - `?scene=beat&hero=throttle`
+- `?scene=sustain&hero=vinnie`
 
 ## Локальный арт-пайплайн
 
-Готовые игровые ассеты находятся в `public/assets/sprites/` и `public/assets/world/`. Их генерационные спецификации и provenance записаны в [`ASSET_PROMPTS.md`](ASSET_PROMPTS.md). Chroma-key sheets нормализуются в фиксированные 256×192 ячейки локальным PowerShell/System.Drawing-скриптом:
+Готовые игровые ассеты находятся в `public/assets/sprites/`, `public/assets/ui/` и `public/assets/world/`. Их генерационные спецификации и provenance записаны в [`ASSET_PROMPTS.md`](ASSET_PROMPTS.md). Chroma-key sheets нормализуются в фиксированные 256×192 ячейки локальным PowerShell/System.Drawing-скриптом:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -SourceDirectory .gauntlet/iteration-5
@@ -90,6 +94,8 @@ powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -Sour
 powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -SourceDirectory .gauntlet/iteration-7
 powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -SourceDirectory .gauntlet/iteration-9
 powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -SourceDirectory .gauntlet/iteration-10
+powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -SourceDirectory .gauntlet/iteration-13
+powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -SourceDirectory .gauntlet/iteration-14
 ```
 
 Для запуска игры повторная генерация или обработка не нужны: production-ready PNG уже включены в проект.

@@ -5,6 +5,7 @@ import {
   drawPickup as drawPixelPickup,
 } from './art';
 import { drawEnvironment, drawEnvironmentForeground } from './environment';
+import { drawHeroPortrait, preloadSelectPortraits } from './selectPortraits';
 import { drawSpriteFrame, getSpriteSheetStatus, preloadSpriteSheets } from './spriteAtlas';
 
 const W = 960;
@@ -38,11 +39,48 @@ const HEROES: HeroSpec[] = [
   { id: 'vinnie', name: 'VINNIE', epithet: 'THE WILD CARD', color: '#f1e6d3', accent: '#ff4b72', maxHp: 90, maxArmor: 30, speed: 375, fireRate: .105, weapon: 'laser', special: 'WHITE-KNUCKLE', stats: [3, 5, 2] },
 ];
 
+const HERO_AUTHORED_SIZE: Record<HeroId,{width:number;height:number;anchorX:number;anchorY:number}> = {
+  throttle:{width:208,height:156,anchorX:.48,anchorY:.74},
+  modo:{width:220,height:164,anchorX:.5,anchorY:.75},
+  vinnie:{width:202,height:152,anchorX:.48,anchorY:.73},
+};
+type HeroBodySheet = 'authored'|'sustained'|'release';
+type MuzzleSourcePoint = readonly [number,number];
+interface HeroMuzzleMap {
+  readonly authored: readonly MuzzleSourcePoint[];
+  readonly sustained: readonly MuzzleSourcePoint[];
+  readonly release: readonly MuzzleSourcePoint[];
+}
+
+// Barrel/nose hardpoints are measured in the 256x192 source cells.  They are
+// transformed through the same destination size and pivot as the body atlas,
+// keeping gunfire attached to the machine through ride, jump, held-fire and
+// release poses instead of drifting up to the rider's head line.
+const HERO_MUZZLE_SOURCE = {
+  throttle:{
+    authored:[[235,105],[240,105],[218,67],[201,111],[196,111],[198,109],[210,107],[198,112]],
+    sustained:[[244,107],[243,108],[243,107],[243,108]],
+    release:[[246,109],[247,110],[246,109]],
+  },
+  modo:{
+    authored:[[231,112],[239,111],[220,68],[230,110],[228,110],[232,110],[222,106],[231,108]],
+    sustained:[[244,111],[244,112],[244,111],[244,112]],
+    release:[[246,111],[246,112],[246,111]],
+  },
+  vinnie:{
+    authored:[[221,104],[222,105],[220,63],[220,106],[223,108],[220,110],[219,105],[223,111]],
+    sustained:[[219,106],[220,106],[219,107],[220,107]],
+    release:[[221,107],[221,108],[221,108]],
+  },
+} as const satisfies Readonly<Record<HeroId,HeroMuzzleMap>>;
+const FIRE_RELEASE_DURATION = .15;
+
 interface Player {
   x: number; y: number; jump: number; jumpV: number;
   hp: number; armor: number; invuln: number; cooldown: number;
   weapon: Weapon; weaponRank: number; rapid: number; special: number;
   specialTime: number; lean: number; wheel: number; recoil: number;
+  fireHeld: boolean; fireLoop: number; fireReleaseBlend: number; fireReleaseElapsed: number; shotsFired: number;
 }
 
 interface Enemy {
@@ -169,6 +207,7 @@ export class RedlineGame {
   private particles: Particle[] = [];
   private riderImpacts: RiderImpactEvent[] = [];
   private floaters: Floater[] = [];
+  private lastProjectileOrigin: {x:number;y:number;barrelX:number;barrelY:number;hero:HeroId;sheet:HeroBodySheet;frame:number} | null = null;
   private enemyId = 0;
   private elapsed = 0;
   private distance = 0;
@@ -187,6 +226,8 @@ export class RedlineGame {
   private debugBeat = false;
   private debugWobblePose: number | null = null;
   private debugImpactStage: number | null = null;
+  private debugSustainedFire = false;
+  private debugFireHeld = false;
   private finishClock = 0;
   private titleChoice = 0;
   private highScores: Array<{name:string;score:number}> = [];
@@ -204,6 +245,7 @@ export class RedlineGame {
     // Atlas loading is deliberately non-blocking. Until every individual PNG is
     // ready, its existing procedural counterpart remains the renderer of record.
     void preloadSpriteSheets();
+    void preloadSelectPortraits();
     this.titleArt.src = '/assets/title-key-art.png';
     this.loadScores();
     const query = new URLSearchParams(location.search);
@@ -211,9 +253,10 @@ export class RedlineGame {
     if (hero && HEROES.some(h => h.id === hero)) this.selected = HEROES.findIndex(h => h.id === hero);
     const scene = query.get('scene');
     if (scene === 'select') this.mode = 'select';
-    else if (scene === 'game' || scene === 'boss') {
+    else if (scene === 'game' || scene === 'boss' || scene === 'sustain') {
       this.beginRun();
       if (scene === 'boss') this.debugBoss();
+      else if (scene === 'sustain') this.debugSustain(query.get('rapid') === '1');
       else this.elapsed = clamp(Number(query.get('time')) || 0, 0, LEVEL_BOSS_TIME);
     }
   }
@@ -259,10 +302,10 @@ export class RedlineGame {
 
   private beginRun() {
     const hero = HEROES[this.selected];
-    this.player = { x: 168, y: 406, jump: 0, jumpV: 0, hp: hero.maxHp, armor: hero.maxArmor * .5, invuln: 0, cooldown: 0, weapon: hero.weapon, weaponRank: 1, rapid: 0, special: 45, specialTime: 0, lean: 0, wheel: 0, recoil: 0 };
-    this.enemies = []; this.shots = []; this.pickups = []; this.particles = []; this.floaters = [];
+    this.player = { x: 168, y: 406, jump: 0, jumpV: 0, hp: hero.maxHp, armor: hero.maxArmor * .5, invuln: 0, cooldown: 0, weapon: hero.weapon, weaponRank: 1, rapid: 0, special: 45, specialTime: 0, lean: 0, wheel: 0, recoil: 0, fireHeld: false, fireLoop: 0, fireReleaseBlend: 0, fireReleaseElapsed: -1, shotsFired: 0 };
+    this.enemies = []; this.shots = []; this.pickups = []; this.particles = []; this.floaters = []; this.lastProjectileOrigin = null;
     this.elapsed = 0; this.distance = 0; this.worldSpeed = hero.speed; this.score = 0; this.combo = 1; this.comboClock = 0; this.kills = 0;
-    this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = false; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.riderImpacts=[]; this.finishClock = 0;
+    this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = false; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.debugSustainedFire = false; this.debugFireHeld = false; this.riderImpacts=[]; this.finishClock = 0;
     this.mode = 'playing';
     emitAudio('engine_start'); emitMusic('stage', .86);
   }
@@ -301,7 +344,24 @@ export class RedlineGame {
       if (p.jump <= 0) { p.jump = 0; p.jumpV = 0; this.dust(p.x - 20, p.y + 10, 9); emitAudio('land', .55); }
     }
 
-    if (this.input.down('KeyZ','KeyJ','Space') && p.cooldown <= 0) this.firePlayer();
+    // The body follows the player's intent, not the weapon cooldown.  This is
+    // crucial for a shoot-'em-up: a held trigger must remain one coherent pose
+    // even in the gaps between rapid projectiles.
+    const wasFireHeld = p.fireHeld;
+    const fireHeld = this.debugSustainedFire ? this.debugFireHeld : this.input.down('KeyZ','KeyJ','Space');
+    p.fireHeld = fireHeld;
+    if (fireHeld) {
+      p.fireLoop += dt;
+      p.fireReleaseBlend = 1;
+      p.fireReleaseElapsed = -1;
+    } else {
+      if (wasFireHeld) p.fireReleaseElapsed = 0;
+      else if (p.fireReleaseElapsed >= 0) p.fireReleaseElapsed += dt;
+      if (p.fireReleaseElapsed >= FIRE_RELEASE_DURATION) p.fireReleaseElapsed = -1;
+      p.fireReleaseBlend = p.fireReleaseElapsed >= 0 ? 1 - p.fireReleaseElapsed / FIRE_RELEASE_DURATION : 0;
+      if (p.fireReleaseElapsed < 0) p.fireLoop = 0;
+    }
+    if (fireHeld && p.cooldown <= 0) this.firePlayer();
     if (this.input.tap('KeyC','KeyL','ControlLeft') && p.special >= 100) this.useSpecial();
 
     const bossAlive = this.enemies.some(e => e.kind === 'boss' || e.kind === 'miniboss');
@@ -311,10 +371,10 @@ export class RedlineGame {
     this.distance += worldSpeed * dt;
     if (!this.bossSpawned) this.elapsed += dt;
     this.spawnClock -= dt; this.obstacleClock -= dt;
-    if (!this.debugBeat && !bossAlive && !this.bossSpawned && this.spawnClock <= 0) this.spawnWave();
-    if (!this.debugBeat && !bossAlive && this.obstacleClock <= 0) this.spawnObstacle();
-    if (!this.debugBeat && !this.minibossSpawned && this.elapsed >= 145) { this.minibossSpawned = true; this.spawnEnemy('miniboss', 1010, 393); emitMusic('miniboss'); }
-    if (!this.debugBeat && !this.bossSpawned && this.elapsed >= LEVEL_BOSS_TIME) { this.bossSpawned = true; this.enemies = this.enemies.filter(e => e.x > 0); this.spawnEnemy('boss', 1110, 295); emitMusic('boss'); emitAudio('warning'); }
+    if (!this.debugBeat && !this.debugSustainedFire && !bossAlive && !this.bossSpawned && this.spawnClock <= 0) this.spawnWave();
+    if (!this.debugBeat && !this.debugSustainedFire && !bossAlive && this.obstacleClock <= 0) this.spawnObstacle();
+    if (!this.debugBeat && !this.debugSustainedFire && !this.minibossSpawned && this.elapsed >= 145) { this.minibossSpawned = true; this.spawnEnemy('miniboss', 1010, 393); emitMusic('miniboss'); }
+    if (!this.debugBeat && !this.debugSustainedFire && !this.bossSpawned && this.elapsed >= LEVEL_BOSS_TIME) { this.bossSpawned = true; this.enemies = this.enemies.filter(e => e.x > 0); this.spawnEnemy('boss', 1110, 295); emitMusic('boss'); emitAudio('warning'); }
 
     this.updateEnemies(dt, worldSpeed);
     this.updateShots(dt);
@@ -330,14 +390,58 @@ export class RedlineGame {
     }
   }
 
+  private playerAuthoredFrame(){
+    const p=this.player;
+    let frame=0;
+    if(p.jump>1){
+      if(p.jump<9&&p.jumpV>0)frame=1;
+      else if(p.jumpV>105)frame=4;
+      else if(p.jumpV>-80)frame=5;
+      else if(p.jumpV<-185)frame=6;
+      else frame=7;
+    }else{
+      frame=[0,0,3,3,6,6,7,7][((Math.floor(p.wheel)%8)+8)%8];
+    }
+    if(this.debugImpactStage!==null)frame=[0,2,2,7,7,7,7,7,0,0,0,7][this.debugImpactStage];
+    return frame;
+  }
+
+  private playerBodySheetFrame(){
+    const p=this.player,grounded=p.jump<=1;
+    if(this.debugImpactStage===null&&grounded&&p.fireHeld)return {sheet:'sustained' as const,frame:((Math.floor(p.fireLoop*9)%4)+4)%4};
+    if(this.debugImpactStage===null&&grounded&&p.fireReleaseElapsed>=0&&p.fireReleaseElapsed<FIRE_RELEASE_DURATION){
+      return {sheet:'release' as const,frame:Math.min(2,Math.floor(p.fireReleaseElapsed/(FIRE_RELEASE_DURATION/3)))};
+    }
+    return {sheet:'authored' as const,frame:this.playerAuthoredFrame()};
+  }
+
+  private playerMuzzleHardpoint(bodyX=this.player.x,bodyY=this.player.y-this.player.jump+38,pose=this.playerBodySheetFrame()){
+    const hero=HEROES[this.selected].id,size=HERO_AUTHORED_SIZE[hero];
+    const points=HERO_MUZZLE_SOURCE[hero][pose.sheet];
+    const source=points[Math.min(points.length-1,Math.max(0,pose.frame))];
+    const left=bodyX-size.width*size.anchorX,top=bodyY-size.height*size.anchorY;
+    return {
+      x:left+source[0]/256*size.width,
+      y:top+source[1]/192*size.height,
+      sourceX:source[0],sourceY:source[1],sheet:pose.sheet,frame:pose.frame,
+    };
+  }
+
   private firePlayer() {
     const p = this.player, hero = HEROES[this.selected];
     const rate = hero.fireRate * (p.rapid > 0 ? .56 : 1) * (p.specialTime > 0 && hero.id === 'throttle' ? .5 : 1) / (1 + (p.weaponRank - 1) * .08);
     p.cooldown = rate;
-    // A short visual timer decouples the two-frame muzzle/recoil pose from fire-rate balance.
+    p.shotsFired++;
+    // A short visual timer drives only the muzzle pulse.  The body animation is
+    // intentionally owned by the held-trigger state machine above.
     p.recoil = .072;
-    const x = p.x + 50, y = p.y - p.jump - 31;
-    const add = (vx:number, vy:number, damage:number, r:number, color:string, kind:Weapon, pierce=0, homing=false) => this.shots.push({x,y,vx,vy,r,life:2,damage,friendly:true,color,kind,pierce,homing,age:0,phase:rnd(0,Math.PI*2)});
+    const muzzle=this.playerMuzzleHardpoint(),x=muzzle.x,y=muzzle.y;
+    this.lastProjectileOrigin={x,y,barrelX:muzzle.x,barrelY:muzzle.y,hero:hero.id,sheet:muzzle.sheet,frame:muzzle.frame};
+    // The authored bike guns sit below the old placeholder origin.  Preserve
+    // the established enemy/collision lane by aiming gently toward that line
+    // over the next 500px; the projectile still visibly begins at the barrel.
+    const collisionLaneY=p.y-p.jump-31;
+    const add = (vx:number, vy:number, damage:number, r:number, color:string, kind:Weapon, pierce=0, homing=false) => this.shots.push({x,y,vx,vy:vy+(collisionLaneY-y)*Math.abs(vx)/500,r,life:2,damage,friendly:true,color,kind,pierce,homing,age:0,phase:rnd(0,Math.PI*2)});
     if (p.weapon === 'blaster') {
       add(690, 0, 11 + p.weaponRank * 3, 4, '#ffe45d', 'blaster', p.weaponRank >= 3 ? 1 : 0);
       if (p.weaponRank >= 2) { this.shots[this.shots.length-1].y -= 7; add(690, 0, 10 + p.weaponRank * 2, 3, '#ff8a35', 'blaster'); this.shots[this.shots.length-1].y += 7; }
@@ -555,10 +659,23 @@ export class RedlineGame {
   private loadScores(){try{const raw=localStorage.getItem('redline-highscores');if(raw)this.highScores=JSON.parse(raw);}catch{this.highScores=[];}}
 
   debugStart(hero:HeroId='throttle'){this.selected=Math.max(0,HEROES.findIndex(h=>h.id===hero));this.beginRun();}
-  debugMiniboss(){if(this.mode!=='playing')this.debugStart();this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.elapsed=145;this.enemies=[];this.shots=[];this.particles=[];this.floaters=[];}
+  debugSustain(rapid=false){
+    this.beginRun();this.debugSustainedFire=true;this.debugFireHeld=true;this.elapsed=92;
+    this.spawnClock=999;this.obstacleClock=999;this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.floaters=[];
+    this.player.rapid=rapid?999:0;this.player.fireHeld=true;this.player.fireReleaseBlend=1;this.player.fireReleaseElapsed=-1;
+  }
+  setDebugFireHeld(held:boolean){
+    if(this.debugSustainedFire){
+      this.debugFireHeld=held;
+      if(held){this.player.fireHeld=true;this.player.fireReleaseBlend=1;this.player.fireReleaseElapsed=-1;}
+      else if(this.player.fireHeld){this.player.fireHeld=false;this.player.fireReleaseBlend=1;this.player.fireReleaseElapsed=0;}
+    }
+    return this.snapshot();
+  }
+  debugMiniboss(){if(this.mode!=='playing')this.debugStart();this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.debugSustainedFire=false;this.debugFireHeld=false;this.elapsed=145;this.enemies=[];this.shots=[];this.particles=[];this.floaters=[];}
   debugBoss(){
     if(this.mode!=='playing')this.debugStart();
-    this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;
+    this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.debugSustainedFire=false;this.debugFireHeld=false;
     this.elapsed=LEVEL_BOSS_TIME;this.enemies=[];this.minibossSpawned=true;this.bossSpawned=true;this.bossDefeated=false;
     this.player.weapon='rockets';this.player.weaponRank=4;this.player.special=100;this.player.hp=HEROES[this.selected].maxHp;this.player.armor=HEROES[this.selected].maxArmor;
     this.spawnEnemy('boss',930,295);emitMusic('boss');emitAudio('warning');
@@ -702,6 +819,32 @@ export class RedlineGame {
     };
   }
 
+  private playerFireState(){
+    const p=this.player,h=HEROES[this.selected],grounded=p.jump<=1;
+    const loopFrame=((Math.floor(p.fireLoop*9)%4)+4)%4;
+    const releaseActive=p.fireReleaseElapsed>=0&&p.fireReleaseElapsed<FIRE_RELEASE_DURATION;
+    const releaseFrame=grounded&&releaseActive?Math.min(2,Math.floor(p.fireReleaseElapsed/(FIRE_RELEASE_DURATION/3))):-1;
+    const bodyMode: 'ride'|'sustained'|'recover'|'airborne' = !grounded?'airborne':p.fireHeld?'sustained':releaseActive?'recover':'ride';
+    // The authored cells already contain their own recoil acting.  Holding the
+    // world-space pivot fixed prevents the wheels from skating across the road.
+    const recoilOffset=0;
+    const size=HERO_AUTHORED_SIZE[h.id],anchorX=p.x-recoilOffset,anchorY=p.y-p.jump+38;
+    const muzzle=this.playerMuzzleHardpoint();
+    const projectileOrigin=this.lastProjectileOrigin;
+    const projectileOriginDeltaPx=projectileOrigin?Math.hypot(projectileOrigin.x-projectileOrigin.barrelX,projectileOrigin.y-projectileOrigin.barrelY):null;
+    return {
+      held:p.fireHeld,grounded,loopFrame,bodyMode,loopKind:bodyMode,shotsFired:p.shotsFired,recoilOffset,releaseFrame,
+      anchorX:Number(anchorX.toFixed(2)),anchorY:Number(anchorY.toFixed(2)),anchorBaseX:Number(p.x.toFixed(2)),anchorBaseY:Number((p.y-p.jump+38).toFixed(2)),
+      rapid:p.rapid>0,releaseBlend:Number(p.fireReleaseBlend.toFixed(3)),releaseElapsedMs:releaseActive?Number((p.fireReleaseElapsed*1000).toFixed(2)):-1,releaseDurationMs:FIRE_RELEASE_DURATION*1000,jumpPose:!grounded,roadBaseline:Number((p.y+38).toFixed(2)),
+      bodyBBox:{x:Number((anchorX-size.width*size.anchorX).toFixed(2)),y:Number((anchorY-size.height*size.anchorY).toFixed(2)),w:size.width,h:size.height},
+      muzzleX:Number(muzzle.x.toFixed(2)),muzzleY:Number(muzzle.y.toFixed(2)),
+      visibleBarrelHardpoint:{x:Number(muzzle.x.toFixed(2)),y:Number(muzzle.y.toFixed(2)),sourceX:muzzle.sourceX,sourceY:muzzle.sourceY,sheet:muzzle.sheet,frame:muzzle.frame},
+      projectileOrigin:projectileOrigin?{x:Number(projectileOrigin.x.toFixed(2)),y:Number(projectileOrigin.y.toFixed(2)),hero:projectileOrigin.hero,sheet:projectileOrigin.sheet,frame:projectileOrigin.frame}:null,
+      lastProjectileOriginX:projectileOrigin?Number(projectileOrigin.x.toFixed(2)):null,lastProjectileOriginY:projectileOrigin?Number(projectileOrigin.y.toFixed(2)):null,
+      projectileOriginDeltaPx:projectileOriginDeltaPx===null?null:Number(projectileOriginDeltaPx.toFixed(3)),
+    };
+  }
+
   snapshot() {
     const boss = this.enemies.find(e => e.kind === 'boss' || e.kind === 'miniboss');
     const debugRider=this.enemies.find(e=>e.kind==='rider');
@@ -719,11 +862,13 @@ export class RedlineGame {
     const scar=impactStage===null?null:{active:scarActive,node:'frontHardpoint',x:scarAnchor.x,y:scarAnchor.y,w:18,h:16,smokeBaseX:scarAnchor.x+2,smokeBaseY:scarAnchor.y-4,distance:Number(Math.hypot(2,4).toFixed(2)),smokeBaseDistance:Number(Math.hypot(2,4).toFixed(2)),smokeDiameter:smokeMetrics?.diameter??0,smokeValue:smokeMetrics?.value??0};
     const trajectory=impactStage===null?null:{earlyPanel:pathSamples?.earlyPanel??null,sparkA:pathSamples?.sparkA??null,sparkB:pathSamples?.sparkB??null,scar};
     const phaseAnchors=impactStage===null||!debugRider?null:{contact:this.impactAnchors(4,debugRider),hitstop:this.impactAnchors(5,debugRider),recoil1:this.impactAnchors(6,debugRider),recoil2:this.impactAnchors(7,debugRider),debris1:this.impactAnchors(8,debugRider),debris2:this.impactAnchors(9,debugRider),damageHold:this.impactAnchors(10,debugRider),recover:this.impactAnchors(11,debugRider)};
+    const fireState=this.player?this.playerFireState():null;
     return {
       state: this.mode, hero: HEROES[this.selected].id, score: Math.floor(this.score),
       health: this.player?.hp ?? null, armor: this.player?.armor ?? null,
       enemies: this.enemies.length, boss: boss ? { kind: boss.kind, health: boss.hp, maxHealth: boss.maxHp } : null,
       elapsed: Number(this.elapsed.toFixed(2)), combo: Number(this.combo.toFixed(1)), weapon: this.player?.weapon ?? null,
+      fireState,
       beat: this.debugBeat ? { riderReaction: Number((this.enemies[0]?.hitReact ?? 0).toFixed(2)), shots: this.shots.filter(s=>s.friendly).length, wobbleX:wobble?.x??(this.enemies[0]?this.riderReactionPose(this.enemies[0]).wobbleX:0),wobbleAngle:wobble?.angle??0,forkOffset:wobble?.forkOffset??0,counterphase:wobble?.headCounterphase??0,shadowOffset:wobble?.shadowOffset??0,shadowWidth:wobble?.shadowWidth??74 } : null,
       impact: this.debugImpactStage===null?null:{
         stage:this.debugImpactStage,label:IMPACT_LABELS[this.debugImpactStage],timelineMs:IMPACT_TIMELINE_MS[this.debugImpactStage],
@@ -751,6 +896,7 @@ export class RedlineGame {
     else if (/^impact-(?:[0-9]|1[01])$/.test(scene)) this.debugImpactFrame(Number(scene.slice(7)));
     else if (scene === 'wobble-a'||scene === 'wobble-b'||scene === 'wobble-c') this.debugWobble(scene.at(-1) as 'a'|'b'|'c');
     else if (scene === 'aerial') this.debugAerialWave();
+    else if (scene === 'sustain') this.debugSustain(time > 0);
     else { this.beginRun(); this.elapsed = clamp(time, 0, LEVEL_BOSS_TIME); }
     return this.snapshot();
   }
@@ -825,42 +971,33 @@ export class RedlineGame {
     const rideFrame=((Math.floor(p.wheel)%6)+6)%6;
     const firing=p.cooldown>0&&p.recoil>.034;
     const recoil=clamp(p.recoil/.072,0,1);
+    const fireState=this.playerFireState();
     // Keep invulnerability readable without bleaching the hero into a featureless white cutout.
     const hitFlash=p.invuln>0&&Math.floor(p.invuln*22)%2===0?.32:0;
     c.save();c.globalAlpha=.27;c.fillStyle='#000';c.beginPath();c.ellipse(x-5,p.y+15,54,11,0,0,Math.PI*2);c.fill();c.globalAlpha=1;
     if(p.specialTime>0){c.strokeStyle=h.accent;c.lineWidth=2;c.globalAlpha=.4+.25*Math.sin(this.time*18);for(let i=0;i<3;i++){c.beginPath();c.ellipse(x-10-i*7,y,62+i*7,27+i*3,0,0,Math.PI*2);c.stroke();}c.globalAlpha=1;}
-    // All three authored sheets share the same eight semantic poses.  Individual
-    // dimensions preserve character: Modo owns more road mass, Vinnie stays nimble.
-    let authoredFrame=0;
-    if(p.jump>1){
-      if(p.jump<9&&p.jumpV>0)authoredFrame=1;
-      else if(p.jumpV>105)authoredFrame=4;
-      else if(p.jumpV>-80)authoredFrame=5;
-      else if(p.jumpV<-185)authoredFrame=6;
-      else authoredFrame=7;
-    }else if(p.recoil>0){
-      authoredFrame=recoil>.58?2:recoil>.18?5:7;
-    }else{
-      authoredFrame=[0,0,3,3,6,6,7,7][((Math.floor(p.wheel)%8)+8)%8];
-    }
-    if(this.debugImpactStage!==null)authoredFrame=[0,2,2,7,7,7,7,7,0,0,0,7][this.debugImpactStage];
-    const authoredSize:Record<HeroId,{width:number;height:number;anchorX:number;anchorY:number}>={
-      throttle:{width:208,height:156,anchorX:.48,anchorY:.74},
-      modo:{width:220,height:164,anchorX:.5,anchorY:.75},
-      vinnie:{width:202,height:152,anchorX:.48,anchorY:.73},
-    };
-    const size=authoredSize[h.id];
+    // The regular hero sheets still own ride and airborne acting.  Grounded
+    // trigger holds use a dedicated four-frame row per hero, so projectile
+    // cadence can never bounce the body back to a ride frame.
+    const pose=this.playerBodySheetFrame();
+    const authoredFrame=pose.sheet==='authored'?pose.frame:2;
+    const size=HERO_AUTHORED_SIZE[h.id];
     const playerKick=this.debugImpactStage===null?0:this.impactShooterPose(this.debugImpactStage).shoulderRecoil;
-    const usedAtlas=drawSpriteFrame(c,h.id,authoredFrame,x-playerKick,y+38+(playerKick>0?2:0),{
-      ...size,
-      alpha:hitFlash>0?.62:1,
+    const sustained=pose.sheet==='sustained';
+    const recovering=pose.sheet==='release';
+    const bodyX=x-playerKick-fireState.recoilOffset;
+    const bodyY=y+38+(playerKick>0?2:0);
+    let usedAtlas=sustained&&drawSpriteFrame(c,'sustainedFire',this.selected*4+pose.frame,bodyX,bodyY,{...size,alpha:hitFlash>0?.62:1});
+    if(!usedAtlas&&recovering)usedAtlas=drawSpriteFrame(c,'fireRelease',this.selected*3+pose.frame,bodyX,bodyY,{...size,alpha:hitFlash>0?.62:1});
+    if(!usedAtlas)usedAtlas=drawSpriteFrame(c,h.id,authoredFrame,bodyX,bodyY,{
+      ...size,alpha:hitFlash>0?.62:1,
     });
     if(!usedAtlas){
       c.scale(2,2);
-      drawPixelHero(c,h.id,x/2,y/2,{frame:rideFrame,angle:p.lean*.055-p.jumpV*.00008,power:p.specialTime>0?1:clamp(.76+this.worldSpeed/h.speed*.18,.76,.96),firing,airborne:p.jump>1,flash:hitFlash,recoil});
+      drawPixelHero(c,h.id,bodyX/2,y/2,{frame:rideFrame,angle:p.lean*.055-p.jumpV*.00008,power:p.specialTime>0?1:clamp(.76+this.worldSpeed/h.speed*.18,.76,.96),firing:sustained||recovering||firing,airborne:p.jump>1,flash:hitFlash,recoil:sustained?1:recovering?p.fireReleaseBlend:recoil});
     }
     c.restore();
-    if(this.debugImpactStage===1||this.debugImpactStage===null&&firing)this.drawMuzzle(x+55-playerKick,y-35,p.weapon,recoil>.72?0:1);
+    if(this.debugImpactStage===1||this.debugImpactStage===null&&firing){const muzzle=this.playerMuzzleHardpoint(bodyX,bodyY,pose);this.drawMuzzle(muzzle.x,muzzle.y,p.weapon,recoil>.72?0:1);}
   }
 
   private impactStageFromAge(age:number){return age<.08?4:age<.16?5:age<.29?6:age<.42?7:age<.55?8:age<.68?9:age<1.18?10:11;}
@@ -1190,19 +1327,34 @@ export class RedlineGame {
   }
 
   private drawSelect(){
-    const c=this.ctx;drawEnvironment(c,{scroll:this.time*58,elapsed:82,speed:185,time:this.time,shake:0,intensity:.55});c.fillStyle='#080512b8';c.fillRect(0,0,W,H);this.text('CHOOSE YOUR RIDER',480,54,34,'#fff16d','center',true);this.text('THREE RIDERS. ONE REDLINE.',480,82,13,'#c7a5d4','center');
+    const c=this.ctx,pulse=.5+.5*Math.sin(this.time*5.5);
+    drawEnvironment(c,{scroll:this.time*58,elapsed:82,speed:185,time:this.time,shake:0,intensity:.55});
+    const veil=c.createLinearGradient(0,0,0,H);veil.addColorStop(0,'rgba(6,3,15,.82)');veil.addColorStop(.52,'rgba(8,4,18,.67)');veil.addColorStop(1,'rgba(4,2,11,.94)');c.fillStyle=veil;c.fillRect(0,0,W,H);
+    c.fillStyle='#090612e8';c.fillRect(0,0,W,91);c.fillStyle='#ef3e67';c.fillRect(0,88,W,3);c.fillStyle='#fff16d';c.fillRect(312,88,336,3);
+    c.save();c.translate(480,0);c.transform(1,0,-.08,1,0,0);c.fillStyle='#160b22';c.fillRect(-292,13,584,58);c.strokeStyle='#70405c';c.lineWidth=2;c.strokeRect(-292,13,584,58);c.restore();
+    this.text('CHOOSE YOUR RIDER',480,48,31,'#fff16d','center',true);this.text('THREE RIDERS // ONE REDLINE',480,70,12,'#d7b8df','center',true);
     for(let i=0;i<HEROES.length;i++){
-      const h=HEROES[i],active=i===this.selected,x=51+i*299,y=106,w=260,hh=337;c.save();
-      c.fillStyle=active?'#21152fef':'#0b0915dd';c.fillRect(x,y,w,hh);c.strokeStyle=active?h.accent:'#3a2e48';c.lineWidth=active?4:2;c.strokeRect(x,y,w,hh);
-      if(active){c.globalAlpha=.13;c.fillStyle=h.accent;for(let xx=x-60;xx<x+w;xx+=23){c.beginPath();c.moveTo(xx,y+220);c.lineTo(xx+100,y);c.lineTo(xx+112,y);c.lineTo(xx+12,y+220);c.fill();}c.globalAlpha=1;}
-      c.save();c.beginPath();c.rect(x+5,y+5,w-10,203);c.clip();this.drawPortrait(h,x+w/2,y+154,active?1.18:1);c.restore();
-      c.fillStyle='#080710d9';c.fillRect(x+10,y+207,w-20,118);this.text(h.name,x+w/2,y+237,26,active?h.accent:'#afa4b6','center',true);this.text(h.epithet,x+w/2,y+258,11,'#e5d6e7','center');
-      const names=['POWER','SPEED','ARMOR'];names.forEach((name,n)=>{this.text(name,x+22,y+280+n*17,10,'#a597ae');for(let s=0;s<5;s++){c.fillStyle=s<h.stats[n]?(active?h.accent:'#786c82'):'#292231';c.fillRect(x+104+s*23,y+271+n*17,17,8);}});
-      c.fillStyle=active?h.accent:'#342a3d';c.fillRect(x+10,y+328,w-20,2);this.text(h.weapon.toUpperCase(),x+20,y+352,12,'#ffd861');this.text(h.special,x+w-20,y+352,12,'#92f4e5','right');
+      const h=HEROES[i],active=i===this.selected,cx=180+i*300,w=active?280:248,hh=active?354:330,x=cx-w/2,y=active?99:112,portraitH=active?195:171;c.save();
+      c.shadowColor=active?h.accent:'#030109';c.shadowBlur=active?22:10;c.fillStyle=active?'#21152ff5':'#0a0814e8';c.fillRect(x,y,w,hh);c.shadowBlur=0;
+      c.strokeStyle=active?h.accent:'#3b3048';c.lineWidth=active?4:2;c.strokeRect(x,y,w,hh);c.fillStyle=active?h.accent:'#46364f';c.fillRect(x+4,y+4,w-8,active?4:2);
+      const portraitTop=y+7,portraitBottom=portraitTop+portraitH;
+      const portraitGradient=c.createLinearGradient(0,portraitTop,0,portraitBottom);portraitGradient.addColorStop(0,active?'#352048':'#1a1325');portraitGradient.addColorStop(1,'#090712');c.fillStyle=portraitGradient;c.fillRect(x+6,portraitTop,w-12,portraitH);
+      if(active){c.globalAlpha=.11+.05*pulse;c.fillStyle=h.accent;for(let xx=x-80;xx<x+w;xx+=28){c.beginPath();c.moveTo(xx,portraitBottom);c.lineTo(xx+92,portraitTop);c.lineTo(xx+103,portraitTop);c.lineTo(xx+11,portraitBottom);c.fill();}c.globalAlpha=1;}
+      c.save();c.beginPath();c.rect(x+6,portraitTop,w-12,portraitH);c.clip();
+      const portraitDrawn=drawHeroPortrait(c,h.id,cx,portraitBottom+7,active?278:240,active?209:180,{alpha:active?1:.7,selected:active,pulse,edgeColor:h.accent});
+      if(!portraitDrawn)this.drawPortrait(h,cx,portraitTop+(active?139:127),active?1.2:.98);
+      if(!active){c.fillStyle='rgba(7,5,13,.18)';c.fillRect(x+6,portraitTop,w-12,portraitH);}c.restore();
+      c.fillStyle=active?'#0b0715f2':'#08060fdc';c.fillRect(x+7,portraitBottom,w-14,hh-portraitH-8);c.fillStyle=active?h.accent:'#3a2e44';c.fillRect(x+7,portraitBottom,w-14,3);
+      if(active){c.fillStyle=h.accent;c.fillRect(x+8,y+8,72,18);this.text('SELECTED',x+44,y+22,9,'#090611','center',true);}
+      const nameY=portraitBottom+30;this.text(h.name,cx,nameY,active?27:23,active?h.accent:'#b0a6b7','center',true);this.text(h.epithet,cx,nameY+17,10,active?'#f1e3f3':'#9f94a6','center');
+      const names=['POWER','SPEED','ARMOR'],statsY=nameY+31;names.forEach((name,n)=>{const yy=statsY+n*14;this.text(name,x+18,yy+8,9,active?'#baadbf':'#817686');for(let s=0;s<5;s++){c.fillStyle=s<h.stats[n]?(active?h.accent:'#665b70'):'#27212f';c.fillRect(x+w-126+s*20,yy,14,8);if(active&&s<h.stats[n]){c.fillStyle='#ffffff66';c.fillRect(x+w-124+s*20,yy+1,10,2);}}});
+      const arsenalY=y+hh-31;c.fillStyle=active?'#160d22':'#0d0914';c.fillRect(x+8,arsenalY-14,w-16,38);c.fillStyle=active?h.accent:'#3c3047';c.fillRect(x+8,arsenalY-14,3,38);this.text(h.weapon.toUpperCase(),x+18,arsenalY,11,'#ffd861','left',true);this.text(h.special,x+w-17,arsenalY+18,10,active?'#92f4e5':'#766f7c','right',true);
+      c.fillStyle=active?h.accent:'#4a3a53';c.fillRect(x,portraitBottom-1,16,3);c.fillRect(x+w-16,portraitBottom-1,16,3);
       c.restore();
     }
-    const a=.6+.4*Math.sin(this.time*6);c.globalAlpha=a;this.text('◀',28,280,28,'#fff16b','center',true);this.text('▶',932,280,28,'#fff16b','center',true);c.globalAlpha=1;
-    c.fillStyle='#0a0716dd';c.fillRect(137,464,686,53);c.strokeStyle='#563b68';c.strokeRect(137,464,686,53);this.text('← → CHOOSE     ENTER / Z CONFIRM     ESC BACK',480,487,15,'#fff','center',true);this.text('IN RIDE:  WASD/ARROWS MOVE  •  Z FIRE  •  X JUMP  •  C SPECIAL  •  P PAUSE',480,507,11,'#bbadc4','center');
+    c.globalAlpha=.58+.42*pulse;this.text('<',24,286,30,'#fff16b','center',true);this.text('>',936,286,30,'#fff16b','center',true);c.globalAlpha=1;
+    c.fillStyle='#080510ed';c.fillRect(68,465,824,59);c.strokeStyle='#5e426e';c.lineWidth=2;c.strokeRect(68,465,824,59);c.fillStyle='#ef3e67';c.fillRect(70,467,4,55);c.fillStyle='#5de4e0';c.fillRect(886,467,4,55);
+    this.text('A / D  OR  LEFT / RIGHT   CHOOSE     ENTER / Z   CONFIRM     ESC   BACK',480,488,13,'#fff','center',true);this.text('IN RIDE:  MOVE WASD / ARROWS   |   Z FIRE   |   X JUMP   |   C SPECIAL   |   P PAUSE',480,511,10,'#bfb1c8','center');
   }
 
   private drawPortrait(h:HeroSpec,x:number,y:number,scale:number){
