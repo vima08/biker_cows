@@ -71,6 +71,10 @@ declare global {
       snapshot: () => ReturnType<RedlineGame['snapshot']>;
       gotoScene: (scene: string, time?: number) => ReturnType<RedlineGame['snapshot']>;
       setDebugFireHeld: (held: boolean) => ReturnType<RedlineGame['snapshot']>;
+      setCoop: (enabled: boolean) => ReturnType<RedlineGame['snapshot']>;
+      setPlayerInput: (id: 1|2, state: Parameters<RedlineGame['setDebugPlayerInput']>[1]) => ReturnType<RedlineGame['snapshot']>;
+      friendlyFireProbe: () => ReturnType<RedlineGame['debugFriendlyFireProbe']>;
+      damagePlayer: (id: 1|2, amount: number) => ReturnType<RedlineGame['debugDamagePlayer']>;
     };
   }
 }
@@ -80,4 +84,8 @@ window.__BMFM_DEBUG__ = {
   snapshot: () => game.snapshot(),
   gotoScene: (scene: string, time = 0) => game.gotoScene(scene, time),
   setDebugFireHeld: (held: boolean) => game.setDebugFireHeld(held),
+  setCoop: (enabled: boolean) => game.setCoop(enabled),
+  setPlayerInput: (id: 1|2, state: Parameters<RedlineGame['setDebugPlayerInput']>[1]) => game.setDebugPlayerInput(id,state),
+  friendlyFireProbe: () => game.debugFriendlyFireProbe(),
+  damagePlayer: (id: 1|2, amount: number) => game.debugDamagePlayer(id,amount),
 };

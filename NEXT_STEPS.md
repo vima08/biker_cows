@@ -1,21 +1,17 @@
-# NEXT STEPS — Gauntlet handoff after wave 14
+# NEXT_STEPS — Gauntlet handoff после Wave 16
 
-Проект оставлен в полностью запускаемом состоянии. Wave 13 исправила длительную стрельбу и экран выбора; wave 14 добавила authored release-переход и перенесла реальные точки рождения снарядов с линии головы на видимые пушки/носы байков.
+Проект оставлен в полностью запускаемом состоянии. Wave 15 выровняла художественный стиль, исправила Модо и экран выбора; Wave 16 добавила настоящий локальный кооператив без friendly fire.
 
-## Что уже работает
+## Что работает
 
-- полный маршрут `title → select → 7:45 stage → miniboss → final boss → victory/defeat → restart`;
-- три разных героя, четыре оружия, четыре уровня улучшения, rapid fire, pickups, combo, score и локальные рекорды;
-- наземные и воздушные враги, препятствия, Road Ripper и Limburger Dreadnaught;
-- 12 локальных art-directed атласов, authored Mars panorama, параллакс, hard-pixel FX, rock soundtrack и SFX;
-- устойчивый четырёхкадровый grounded sustained-fire loop каждого героя: зажатая кнопка больше не переключает тело обратно в neutral ride между выстрелами;
-- rapid Vinnie проверен 4 секунды / 54 выстрела без neutral-frame snap и с нулевым drift опоры/bbox;
-- после отпускания огня воспроизводятся три authored release-позы `0 → 1 → 2` за 150–180 мс;
-- для каждого героя размечены muzzle hardpoints authored/sustained/release кадров: muzzle flash и физический projectile используют одну точку на пушке/носе байка, в том числе в прыжке;
-- небольшой общий ballistic lift возвращает снаряд к боевой линии без телепорта и debug-only обходов; реальный collision beat снова попадает в rider;
-- character select использует три крупных авторских портрета с отдельными силуэтами, лицами, светом и selected hierarchy;
-- keyboard/Gamepad, пауза, победа, поражение и рестарт;
-- канонический smoke: `ok=true`, 12/12 atlases ready, `runtimeErrors=[]`, boss kill → victory → restart проходит.
+- полный solo-маршрут: `title → select → level → miniboss → final boss → victory/defeat → restart`;
+- локальный режим на двоих с независимым выбором героев, движением, прыжком, стрельбой, HP, armor, оружием, улучшениями и спецприёмами;
+- P1: `WASD / Z / X / C`; P2: `Arrows / Numpad1 / Numpad2 / Numpad3`; поддерживаются два геймпада;
+- дружественные снаряды имеют `ownerId` и не наносят урон игрокам;
+- враги выбирают живую цель, pickups получает коснувшийся игрок; один выбитый байкер остаётся видимым wreck-маркером, игра заканчивается только после потери обоих;
+- совместный финальный босс, командная победа/поражение, restart на двоих и командные локальные рекорды;
+- 13/13 art-directed игровых атласов, мужской портрет Винни, стабильная повязка Модо, authored tank/mine/pod и authored roadside/foreground props;
+- сохранены solo sustained-fire, release bridge, bike muzzle hardpoints, impact chain, пауза, звук и весь старый маршрут.
 
 ## Как запустить
 
@@ -38,50 +34,41 @@ npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
 npm run test:smoke
 ```
 
-После установки зависимостей игра не требует сети или внешних API.
+После установки зависимостей игре не нужны внешние API или сеть.
 
 ## Последняя проверка
 
-- canonical report: [.gauntlet/iteration-14/report.json](.gauntlet/iteration-14/report.json);
-- integration verdict: [.gauntlet/iteration-14/INTEGRATION_VERDICT.md](.gauntlet/iteration-14/INTEGRATION_VERDICT.md);
-- independent critique: [.gauntlet/iteration-14/CRITIQUE.md](.gauntlet/iteration-14/CRITIQUE.md);
-- [all muzzle hardpoints](.gauntlet/iteration-14/integration-review/muzzle-all.png);
-- [Throttle release contact sheet](.gauntlet/iteration-14/integration-review/release-throttle.png);
-- [Modo release contact sheet](.gauntlet/iteration-14/integration-review/release-modo.png);
-- [Vinnie rapid release contact sheet](.gauntlet/iteration-14/integration-review/release-vinnie-rapid.png);
-- [rapid Vinnie sustained fire](.gauntlet/iteration-14/integration-review/sustain-vinnie-rapid.png);
-- [new character select](.gauntlet/iteration-14/select.png);
-- [boss exchange](.gauntlet/iteration-14/boss-exchange.png);
-- [verified victory](.gauntlet/iteration-14/victory.png).
+- canonical report: [.gauntlet/iteration-16/report.json](.gauntlet/iteration-16/report.json) — `ok=true`, 13/13 атласов ready, `runtimeErrors=[]`;
+- integration verdict: [.gauntlet/iteration-16/INTEGRATION_VERDICT.md](.gauntlet/iteration-16/INTEGRATION_VERDICT.md) — PASS;
+- independent critique: [.gauntlet/iteration-16/CRITIQUE.md](.gauntlet/iteration-16/CRITIQUE.md) — requested co-op scope PASS, whole-game premium NO;
+- [co-op select](.gauntlet/iteration-16/coop-select.png);
+- [co-op sustained combat](.gauntlet/iteration-16/coop-combat.png);
+- [one rider down](.gauntlet/iteration-16/coop-one-down.png);
+- [co-op boss exchange](.gauntlet/iteration-16/coop-boss-exchange.png);
+- [team victory](.gauntlet/iteration-16/coop-victory.png).
 
-Workbench iterations 0–14: `http://localhost:5173/workbench/index.html`.
+Wave 15 corrective scope также принят свежим критиком: [.gauntlet/iteration-15/CRITIQUE_15B.md](.gauntlet/iteration-15/CRITIQUE_15B.md).
+
+Workbench: `http://localhost:5173/workbench/index.html`.
 
 ## Последнее заключение независимого критика
 
-Все скорректированные пользователем критерии получили **PASS**:
+Локальный co-op принят: экран подключения и выбора понятен, два персонажа и их HUD различимы, владельцы снарядов и muzzle origins независимы, friendly fire отсутствует, адресный вражеский урон/one-down/both-down/boss victory/restart подтверждены, solo-регрессии нет.
 
-- длительный зажатый огонь и rapid Vinnie — PASS;
-- происхождение muzzle/projectile из пушки/носа, а не головы — PASS;
-- трёхкадровый release bridge — PASS;
-- новый character select — PASS;
-- полный маршрут без визуальной регрессии — PASS.
-
-Критик отдельно подтвердил: у sustained/jump отклонение origin от hardpoint равно `0 px`, у release — `1.720–2.291 px` при лимите `6 px`; release длится 150–180 мс и держит колёса/дорогу без дрейфа.
+Whole-game premium verdict остаётся **NO**.
 
 ## Один крупнейший оставшийся недостаток
 
-**Читаемость пикового боя с финальным боссом.** В `boss-exchange.png` пересекающиеся ракеты и диагонали дыма временами доминируют над центральной/правой частью playfield: зрелищность высокая, но силуэт boss/core и входящие опасные линии могут читаться медленнее, чем в лучших 16-битных шутерах.
+**Читаемость принадлежности игрока и его огня во время непрерывного плотного co-op боя.** Когда байки перекрываются, а оба игрока используют ракеты максимального уровня, одинаковые красно-белые снаряды и длинные дымовые ленты сливаются. Игроку приходится смотреть в HUD, чтобы мгновенно понять, где он и какой поток огня принадлежит ему.
 
-## Точная следующая итерация — wave 15
+## Точная следующая Gauntlet-итерация — Wave 17
 
-1. Заморозить героев, select, sustained/release, muzzle hardpoints, cadence, damage, collision, enemy schedule и весь маршрут.
-2. Добавить debug-сцену worst-case boss exchange: `Rockets Lv.4`, multiplier `x1.3`, непрерывный огонь и максимальная штатная атака босса.
-3. Записать 10 секунд реального 960×540 gameplay с выборкой каждые 100 мс.
-4. Ввести единый VFX budget для центральной области `x=240–720, y=120–460`: ограничить суммарную площадь friendly rocket smoke, сокращать lifetime/размер дальних клубов и объединять перекрывающиеся хвосты.
-5. Разнести визуальные приоритеты: incoming telegraphs и boss/core поверх friendly smoke; ракета/impact остаются яркими, их хвосты быстрее уходят в тёмный низкоконтрастный material ramp.
-6. Не удалять зрелищность и не снижать количество реальных снарядов — менять только presentation/layering/decay.
-7. Acceptance по 100 кадрам: минимум 90% кадров сохраняют узнаваемые player и boss/core silhouettes; каждая входящая damage lane имеет незакрытый telegraph не менее 250 мс; friendly rocket/smoke закрывает не более 25% центральной области.
-8. После builder pass запустить отдельный integration/smoothing pass, затем свежего critic, который смотрит полные 10 секунд в движении и сравнивает wave 14/15 без подсказки версии.
-9. Сохранить `runtimeErrors=[]`, 12/12 ready, реальную победу и рестарт.
+1. Заморозить механику, cadence, damage, collision, уровень, solo и все принятые Wave 15/16 состояния.
+2. Добавить мягкое formation-разведение активных игроков: не телепортировать и не запрещать обгон, но при почти полном наложении давать читаемую разницу по `y`/контактной тени и краткий цветной ground marker P1/P2.
+3. Пронести цвет владельца в общие виды оружия: небольшой yellow/cyan ember у muzzle/trail/impact, не меняя основной цвет оружия и hitbox. Для ракет ограничить слияние соседних smoke-ribbons через stagger/decay, не уменьшая количество реальных снарядов.
+4. Добавить production debug-сцену 10 секунд crowded co-op: оба игрока с Rockets Lv.4, пересечения траекторий, воздушные враги и финальный босс.
+5. Снимать не меньше 20 последовательных кадров плюс контрольные `overlap`, `cross`, `separated`, `boss`; проверять, что P1/P2 и их текущий поток огня правильно определяются без HUD минимум в 18/20 кадров.
+6. Сохранить `runtimeErrors=[]`, 13/13 ready, no-friendly-fire, targeted damage, one-down/both-down, совместную победу/restart и полный solo smoke.
+7. После builder-pass вызвать отдельного integration/smoothing агента, затем свежего critic, который смотрит реальную 10-секундную последовательность и сравнивает её с Gunstar Heroes / Contra: Hard Corps по co-op action readability.
 
-Не возвращаться к прежней узкой оптимизации single-hit/debris sequence, если новая пользовательская проверка не обнаружит там реальную игровую проблему.
+Не возвращаться к узкой оптимизации одиночного impact-chain, пока живая пользовательская проверка не выявит там новый игровой дефект.

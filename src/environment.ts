@@ -70,6 +70,20 @@ const PANORAMA_URL = '/assets/world/mars-highway-panorama.png';
 let panorama: HTMLImageElement | null = null;
 let panoramaState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
 
+/**
+ * One deliberately small atlas replaces the last highly visible procedural
+ * roadside silhouettes. Cell semantics are fixed so the renderer and the
+ * source-art prompt cannot quietly drift apart:
+ *
+ *   row 0: guardrail, lamp, warning sign, shoulder wreckage
+ *   row 1: shoulder rock A/B, foreground rock A/B
+ */
+const ROAD_PROPS_URL = '/assets/world/roadside-props-sheet.png';
+const ROAD_PROPS_COLUMNS = 4;
+const ROAD_PROPS_ROWS = 2;
+let roadProps: HTMLImageElement | null = null;
+let roadPropsState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
+
 function getPanorama(): HTMLImageElement | null {
   if (panoramaState === 'ready') return panorama;
   if (panoramaState !== 'idle' || typeof Image === 'undefined') return null;
@@ -89,6 +103,33 @@ function getPanorama(): HTMLImageElement | null {
     image.src = PANORAMA_URL;
   } catch {
     panoramaState = 'failed';
+  }
+  return null;
+}
+
+function getRoadProps(): HTMLImageElement | null {
+  if (roadPropsState === 'ready') return roadProps;
+  if (roadPropsState !== 'idle' || typeof Image === 'undefined') return null;
+  roadPropsState = 'loading';
+  try {
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => {
+      if (image.naturalWidth >= ROAD_PROPS_COLUMNS && image.naturalHeight >= ROAD_PROPS_ROWS) {
+        roadProps = image;
+        roadPropsState = 'ready';
+      } else {
+        roadProps = null;
+        roadPropsState = 'failed';
+      }
+    };
+    image.onerror = () => {
+      roadProps = null;
+      roadPropsState = 'failed';
+    };
+    image.src = ROAD_PROPS_URL;
+  } catch {
+    roadPropsState = 'failed';
   }
   return null;
 }
@@ -198,6 +239,57 @@ function repeatedPositions(scroll: number, factor: number, spacing: number, padd
     const index = first + offset;
     return { index, x: index * spacing - shifted };
   });
+}
+
+const enum RoadPropCell {
+  Guardrail = 0,
+  Lamp = 1,
+  Sign = 2,
+  Wreck = 3,
+  ShoulderRockA = 4,
+  ShoulderRockB = 5,
+  ForegroundRockA = 6,
+  ForegroundRockB = 7,
+}
+
+/** Draw a complete cell around a bottom-centre world anchor. */
+function drawRoadPropCell(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  cell: RoadPropCell,
+  anchorX: number,
+  groundY: number,
+  width: number,
+  height: number,
+  flip = false,
+  alpha = 1,
+): void {
+  const sourceWidth = image.naturalWidth / ROAD_PROPS_COLUMNS;
+  const sourceHeight = image.naturalHeight / ROAD_PROPS_ROWS;
+  const column = cell % ROAD_PROPS_COLUMNS;
+  const row = Math.floor(cell / ROAD_PROPS_COLUMNS);
+  const destinationX = Math.round(anchorX - width * .5);
+  const destinationY = Math.round(groundY - height);
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha *= alpha;
+  if (flip) {
+    ctx.translate(Math.round(anchorX * 2), 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(
+    image,
+    Math.round(column * sourceWidth),
+    Math.round(row * sourceHeight),
+    Math.round(sourceWidth),
+    Math.round(sourceHeight),
+    destinationX,
+    destinationY,
+    Math.round(width),
+    Math.round(height),
+  );
+  ctx.restore();
 }
 
 function drawBandSky(ctx: CanvasRenderingContext2D, palette: Palette, time: number, scroll: number) {
@@ -670,6 +762,19 @@ function drawLaneReflectors(ctx: CanvasRenderingContext2D, palette: Palette, scr
 }
 
 function drawGuardrail(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number) {
+  const props = getRoadProps();
+  if (props) {
+    // Slight overlap makes the authored rail read as one uninterrupted beam,
+    // while its post cadence still supplies a clean parallax beat.
+    // The generated cell intentionally contains breathing room. A wider draw
+    // and 104px cadence make the 165px painted beam itself overlap by ~4px,
+    // eliminating white-space seams without cropping its authored post/foot.
+    for (const item of repeatedPositions(scroll, .72, 104, 2)) {
+      drawRoadPropCell(ctx, props, RoadPropCell.Guardrail, pixel2(item.x + 52), 328, 168, 108);
+    }
+    return;
+  }
+
   // Three-tone metal contract: 2px top-left highlight, mid face, dark base.
   ctx.fillStyle = '#090b12';
   ctx.fillRect(0, 294, ENVIRONMENT_WIDTH, 8);
@@ -691,7 +796,12 @@ function drawGuardrail(ctx: CanvasRenderingContext2D, palette: Palette, scroll: 
   }
 }
 
-function drawRoadSign(ctx: CanvasRenderingContext2D, palette: Palette, x: number) {
+function drawRoadSign(ctx: CanvasRenderingContext2D, palette: Palette, x: number, props: HTMLImageElement | null) {
+  if (props) {
+    drawRoadPropCell(ctx, props, RoadPropCell.Sign, x, 300, 128, 96);
+    return;
+  }
+
   const dark = '#070a11';
   const mid = mixColor(palette.metal, palette.road0, .25);
   const light = mixColor(palette.metal, '#f4dfbd', .34);
@@ -723,26 +833,37 @@ function drawRoadSign(ctx: CanvasRenderingContext2D, palette: Palette, x: number
   }
 }
 
-function drawRoadLamp(ctx: CanvasRenderingContext2D, palette: Palette, x: number, time: number, seed: number) {
-  const dark = '#070910';
-  const mid = mixColor(palette.metal, palette.road0, .2);
-  const light = mixColor(palette.metal, '#f4dfbd', .32);
-  ctx.fillStyle = dark;
-  ctx.fillRect(x, 222, 8, 74);
-  ctx.fillStyle = mid;
-  ctx.fillRect(x + 2, 222, 6, 72);
-  ctx.fillStyle = light;
-  ctx.fillRect(x + 2, 222, 2, 64);
+function drawRoadLamp(
+  ctx: CanvasRenderingContext2D,
+  palette: Palette,
+  x: number,
+  time: number,
+  seed: number,
+  props: HTMLImageElement | null,
+) {
+  if (props) {
+    drawRoadPropCell(ctx, props, RoadPropCell.Lamp, x + 8, 298, 128, 96);
+  } else {
+    const dark = '#070910';
+    const mid = mixColor(palette.metal, palette.road0, .2);
+    const light = mixColor(palette.metal, '#f4dfbd', .32);
+    ctx.fillStyle = dark;
+    ctx.fillRect(x, 222, 8, 74);
+    ctx.fillStyle = mid;
+    ctx.fillRect(x + 2, 222, 6, 72);
+    ctx.fillStyle = light;
+    ctx.fillRect(x + 2, 222, 2, 64);
 
-  ctx.fillStyle = dark;
-  ctx.fillRect(x - 4, 216, 40, 12);
-  ctx.fillRect(x, 212, 30, 16);
-  ctx.fillStyle = mid;
-  ctx.fillRect(x, 216, 32, 8);
-  ctx.fillRect(x + 4, 214, 24, 10);
-  ctx.fillStyle = light;
-  ctx.fillRect(x + 4, 214, 20, 2);
-  ctx.fillRect(x, 216, 2, 6);
+    ctx.fillStyle = dark;
+    ctx.fillRect(x - 4, 216, 40, 12);
+    ctx.fillRect(x, 212, 30, 16);
+    ctx.fillStyle = mid;
+    ctx.fillRect(x, 216, 32, 8);
+    ctx.fillRect(x + 4, 214, 24, 10);
+    ctx.fillStyle = light;
+    ctx.fillRect(x + 4, 214, 20, 2);
+    ctx.fillRect(x, 216, 2, 6);
+  }
 
   const pulse = .58 + Math.sin(time * 4 + seed) * .2;
   ctx.globalAlpha = pulse;
@@ -764,12 +885,13 @@ function drawRoadLamp(ctx: CanvasRenderingContext2D, palette: Palette, x: number
 }
 
 function drawRoadsideProps(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number, time: number, section: EnvironmentSection) {
+  const props = getRoadProps();
   for (const item of repeatedPositions(scroll, .48, 312, 2)) {
     const x = pixel2(item.x + 84);
     if (item.index % 3 === 0) {
-      drawRoadSign(ctx, palette, x);
+      drawRoadSign(ctx, palette, x, props);
     } else {
-      drawRoadLamp(ctx, palette, x, time, item.index);
+      drawRoadLamp(ctx, palette, x, time, item.index, props);
     }
   }
 
@@ -778,12 +900,16 @@ function drawRoadsideProps(ctx: CanvasRenderingContext2D, palette: Palette, scro
     const x = Math.floor(item.x + 15);
     const front = item.index % 2 === 0;
     const y = front ? 493 : 317;
-    ctx.fillStyle = '#080a10';
-    polygon(ctx, [[x, y], [x + 24, y - 14], [x + 53, y - 9], [x + 75, y], [x + 59, y + 7], [x + 16, y + 5]]);
-    ctx.fillStyle = palette.metal;
-    polygon(ctx, [[x + 9, y - 1], [x + 28, y - 10], [x + 53, y - 6], [x + 63, y], [x + 45, y + 2]]);
-    ctx.fillStyle = item.index % 3 === 0 ? palette.hot : palette.accent;
-    ctx.fillRect(x + 28, y - 8, 14, 3);
+    if (props) {
+      drawRoadPropCell(ctx, props, RoadPropCell.Wreck, x + 38, y + 7, 118, 88, item.index % 4 === 0);
+    } else {
+      ctx.fillStyle = '#080a10';
+      polygon(ctx, [[x, y], [x + 24, y - 14], [x + 53, y - 9], [x + 75, y], [x + 59, y + 7], [x + 16, y + 5]]);
+      ctx.fillStyle = palette.metal;
+      polygon(ctx, [[x + 9, y - 1], [x + 28, y - 10], [x + 53, y - 6], [x + 63, y], [x + 45, y + 2]]);
+      ctx.fillStyle = item.index % 3 === 0 ? palette.hot : palette.accent;
+      ctx.fillRect(x + 28, y - 8, 14, 3);
+    }
   }
 
   if (section === 'lava-foundry') {
@@ -799,12 +925,18 @@ function drawShoulders(ctx: CanvasRenderingContext2D, palette: Palette, scroll: 
   ctx.fillRect(0, ENVIRONMENT_ROAD_BOTTOM, ENVIRONMENT_WIDTH, ENVIRONMENT_HEIGHT - ENVIRONMENT_ROAD_BOTTOM);
   ctx.fillStyle = '#08090e';
   ctx.fillRect(0, ENVIRONMENT_ROAD_BOTTOM, ENVIRONMENT_WIDTH, 7);
-  for (const item of repeatedPositions(scroll, 1.85, 67, 2)) {
+  const props = getRoadProps();
+  for (const item of repeatedPositions(scroll, 1.85, props ? 104 : 67, 2)) {
     const x = Math.floor(item.x);
-    ctx.fillStyle = item.index % 3 === 0 ? palette.metal : palette.road0;
-    polygon(ctx, [[x - 18, 540], [x + 4, 509], [x + 31, 506], [x + 56, 540]]);
-    ctx.fillStyle = '#07080d';
-    polygon(ctx, [[x + 14, 540], [x + 35, 511], [x + 57, 540]]);
+    if (props) {
+      const cell = item.index % 2 === 0 ? RoadPropCell.ShoulderRockA : RoadPropCell.ShoulderRockB;
+      drawRoadPropCell(ctx, props, cell, x + 28, 544, 98, 74, item.index % 4 === 1, .94);
+    } else {
+      ctx.fillStyle = item.index % 3 === 0 ? palette.metal : palette.road0;
+      polygon(ctx, [[x - 18, 540], [x + 4, 509], [x + 31, 506], [x + 56, 540]]);
+      ctx.fillStyle = '#07080d';
+      polygon(ctx, [[x + 14, 540], [x + 35, 511], [x + 57, 540]]);
+    }
   }
 }
 
@@ -900,16 +1032,25 @@ export function drawEnvironmentForeground(ctx: CanvasRenderingContext2D, options
   const velocity = clamp((options.speed - 100) / 310);
   withLogicalCanvas(ctx, options, () => {
     ctx.save();
+    const props = getRoadProps();
     for (const item of repeatedPositions(options.scroll, 2.46, 296, 2)) {
       if (item.index % 3 === 1) continue;
       const x = Math.floor(item.x);
-      ctx.globalAlpha = .65 + velocity * .2;
-      ctx.fillStyle = '#05060b';
-      polygon(ctx, [[x - 52, 540], [x - 18, 516], [x + 11, 520], [x + 45, 540]]);
-      ctx.fillStyle = palette.shoulder;
-      ctx.globalAlpha = .34;
-      polygon(ctx, [[x - 23, 540], [x - 3, 521], [x + 17, 525], [x + 31, 540]]);
+      if (props) {
+        const cell = item.index % 2 === 0 ? RoadPropCell.ForegroundRockA : RoadPropCell.ForegroundRockB;
+        // Still large enough to establish the fastest parallax plane, but its
+        // crest remains beneath rider torsos and projectile silhouettes.
+        drawRoadPropCell(ctx, props, cell, x, 548, 152, 114, item.index % 4 === 2, .82 + velocity * .12);
+      } else {
+        ctx.globalAlpha = .65 + velocity * .2;
+        ctx.fillStyle = '#05060b';
+        polygon(ctx, [[x - 52, 540], [x - 18, 516], [x + 11, 520], [x + 45, 540]]);
+        ctx.fillStyle = palette.shoulder;
+        ctx.globalAlpha = .34;
+        polygon(ctx, [[x - 23, 540], [x - 3, 521], [x + 17, 525], [x + 31, 540]]);
+      }
     }
+    ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'screen';
     ctx.globalAlpha = (.06 + velocity * .13) * intensity;
     ctx.fillStyle = palette.accent;

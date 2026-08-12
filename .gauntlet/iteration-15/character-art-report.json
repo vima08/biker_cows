@@ -1,0 +1,25 @@
+﻿{
+    "Modo":  [
+                 {
+                     "Asset":  "public\\assets\\sprites\\modo-sheet.png",
+                     "ChangedInsideFace":  1604,
+                     "ChangedOutsideFace":  0
+                 },
+                 {
+                     "Asset":  "public\\assets\\sprites\\sustained-fire-sheet.png",
+                     "ChangedInsideFace":  803,
+                     "ChangedOutsideFace":  0
+                 },
+                 {
+                     "Asset":  "public\\assets\\sprites\\fire-release-sheet.png",
+                     "ChangedInsideFace":  601,
+                     "ChangedOutsideFace":  0
+                 }
+             ],
+    "Portrait":  {
+                     "Asset":  "public\\assets\\ui\\hero-portraits-sheet.png",
+                     "PreservedCellPixelChanges":  0,
+                     "VinnieSourceBounds":  "75,91,1206,1045",
+                     "VinnieDestination":  "532,6,215,186"
+                 }
+}
