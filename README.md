@@ -24,15 +24,16 @@ npm run preview
 
 ## Управление
 
-| Действие | Клавиатура | Геймпад |
-| --- | --- | --- |
-| Движение / выбор | `WASD` или стрелки | D-pad / левый стик |
-| Огонь / подтверждение | `Z`, `J` или `Space` | A |
-| Прыжок | `X`, `K` или левый `Shift` | B |
-| Спецприём | `C`, `L` или левый `Ctrl` | X |
-| Пауза / назад | `P`, `Esc` или `Enter` | Start / Back |
+Одиночная игра сохраняет прежнюю раскладку: `WASD` или стрелки — движение, `Z` — огонь, `X` — прыжок, `C` — спецприём, `P`/`Esc` — пауза. Также работают совместимые клавиши `J/K/L`, `Space`, `Shift` и `Ctrl`.
 
-Подсказка также всегда доступна на экране выбора героя.
+На экране выбора нажмите `Tab`, чтобы включить локальный режим на двоих:
+
+| Игрок | Выбор героя | Движение | Огонь | Прыжок | Спецприём |
+| --- | --- | --- | --- | --- | --- |
+| P1 | `A/D`, готовность `Z` | `WASD` | `Z` | `X` | `C` |
+| P2 | стрелки, готовность `Numpad1` или `/` | стрелки | `Numpad1` или `/` | `Numpad2` | `Numpad3` |
+
+Первый и второй подключённые геймпады управляют P1 и P2 соответственно: левый стик/D-pad, A — огонь/готовность, B — прыжок, X — спецприём, Start — пауза. Подсказки обеих раскладок показаны прямо на экране выбора.
 
 ## Байкеры
 
@@ -46,14 +47,15 @@ npm run preview
 
 - заставка, главное меню и таблица рекордов;
 - выбор из трёх заметно различающихся героев;
+- полноценный локальный кооператив: независимый выбор героев, движение, прыжки, здоровье, броня, оружие, улучшения и спецприёмы; friendly fire отключён, а поражение наступает только после потери обоих байкеров;
 - 7:45 пути до финального штурма плюс бой с боссом;
 - наземные riders/tanks/mines и воздушные drones/skimmers/pods;
 - мини-босс, финальный Limburger Dreadnaught, победа и поражение;
-- двенадцать art-directed PNG atlases: три героя, отдельные sustained-fire и release-bridge sheets, rider, 12-frame impact chain, material-FX sheet, воздушный roster, мини-босс и финальный босс;
+- тринадцать art-directed PNG atlases: три героя, отдельные sustained-fire и release-bridge sheets, rider, 12-frame impact chain, material-FX sheet, полный наземный и воздушный roster, мини-босс и финальный босс;
 - непрерывная наземная стрельба использует устойчивую четырёхфазную боевую стойку каждого героя без возврата в neutral ride между выстрелами; rapid-fire Vinnie проверен отдельной четырёхсекундной последовательностью;
 - отпускание огня проходит через три авторские переходные позы за 150 мс; вспышка и физический снаряд рождаются из размеченного ствола/носа каждого байка в ride, sustained, release и jump состояниях;
-- экран выбора использует три крупных авторских pixel-art портрета вместо процедурных лиц;
-- authored Mars panorama, многослойный параллакс, дорожная перспектива и 2px material grid;
+- экран выбора использует три крупных авторских pixel-art портрета вместо процедурных лиц; портрет Винни выполнен как взрослый мужской персонаж, а повязка Модо согласована во всех игровых циклах;
+- authored Mars panorama, многослойный параллакс, дорожная перспектива, 2px material grid и отдельный атлас рельсов, фонарей, знаков, обломков и foreground-камней;
 - screen shake, жёсткие pixel-art вспышки, дым, пыль, искры, раздельные обломки и взрывы;
 - полностью процедурный Web Audio rock-саундтрек и игровые SFX;
 - клавиатура, Gamepad API, пауза и рестарт.
@@ -72,7 +74,7 @@ npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
 npm run test:smoke
 ```
 
-Smoke-тест использует установленный Microsoft Edge, проходит меню, выбор героя, движение, стрельбу, прыжок, исходный 8-кадровый regression beat и 12-кадровый registered material-impact beat с реальным столкновением, воздушный бой, мини-босса, паузу, финального босса, победу и рестарт. Дополнительно он удерживает огонь по 3,2 секунды у каждого героя и 4 секунды у rapid-fire Vinnie, снимает 19–20 последовательных release-кадров и проверяет происхождение снарядов из видимых стволов в sustained/release/jump. Он проверяет загрузку всех двенадцати локальных атласов, causal/material runtime contracts и runtime/console errors, а также сохраняет реальные кадры в `.gauntlet/latest/`. Путь к другому Chromium можно передать через `BMFM_BROWSER`, адрес сервера — через `BMFM_URL`.
+Smoke-тест использует установленный Microsoft Edge и сохраняет реальные кадры в `.gauntlet/latest/`. Он проходит весь solo-маршрут, sustained/release/muzzle и impact-регрессии, воздушный бой, мини-босса, финального босса, победу и рестарт. Отдельный co-op-маршрут проверяет независимый выбор и огонь обоих игроков, владельцев снарядов, отсутствие friendly fire, адресный вражеский урон, продолжение игры после потери одного байкера, поражение обоих, совместную победу над боссом и рестарт на двоих. Gate также требует 13/13 локальных атласов и `runtimeErrors=[]`. Путь к другому Chromium передаётся через `BMFM_BROWSER`, адрес сервера — через `BMFM_URL`.
 
 Отладочные сцены для локальной визуальной проверки:
 
@@ -83,6 +85,10 @@ Smoke-тест использует установленный Microsoft Edge, �
 - `?scene=aerial&hero=throttle`
 - `?scene=beat&hero=throttle`
 - `?scene=sustain&hero=vinnie`
+- `?scene=enemy-roster`
+- `?scene=coop-select`
+- `?scene=coop`
+- `?scene=coop-boss`
 
 ## Локальный арт-пайплайн
 
@@ -96,6 +102,7 @@ powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -Sour
 powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -SourceDirectory .gauntlet/iteration-10
 powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -SourceDirectory .gauntlet/iteration-13
 powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -SourceDirectory .gauntlet/iteration-14
+powershell -ExecutionPolicy Bypass -File scripts/process_sprite_sheets.ps1 -SourceDirectory .gauntlet/iteration-15
 ```
 
 Для запуска игры повторная генерация или обработка не нужны: production-ready PNG уже включены в проект.

@@ -6,6 +6,7 @@ const baseURL = process.env.BMFM_URL ?? 'http://127.0.0.1:4173';
 const executablePath = process.env.BMFM_BROWSER ??
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const outputDir = path.resolve(process.env.BMFM_CAPTURE_DIR ?? '.gauntlet/latest');
+const EXPECTED_ATLAS_COUNT = 13;
 await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({
@@ -69,14 +70,15 @@ const checkpoints = {};
 try {
   await page.goto(baseURL, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => Boolean(window.__BMFM_DEBUG__));
-  await page.waitForFunction(() => {
+  await page.waitForFunction(expectedCount => {
     const atlas = window.__BMFM_DEBUG__.snapshot().atlas;
-    return atlas && Object.keys(atlas).length === 12 && Object.values(atlas).every(sheet => sheet.state === 'ready');
-  });
+    return atlas && Object.keys(atlas).length === expectedCount && Object.values(atlas).every(sheet => sheet.state === 'ready');
+  }, EXPECTED_ATLAS_COUNT);
   checkpoints.atlas = (await state()).atlas;
-  if (Object.keys(checkpoints.atlas).length !== 12 || checkpoints.atlas.riderImpact?.frames !== 12 ||
-      !checkpoints.atlas.impactMaterial || !checkpoints.atlas.sustainedFire || checkpoints.atlas.fireRelease?.frames !== 9) {
-    throw new Error(`Expected 12 atlases including riderImpact, impactMaterial, sustainedFire and 9-frame fireRelease, received ${JSON.stringify(checkpoints.atlas)}`);
+  if (Object.keys(checkpoints.atlas).length !== EXPECTED_ATLAS_COUNT || checkpoints.atlas.riderImpact?.frames !== 12 ||
+      !checkpoints.atlas.impactMaterial || !checkpoints.atlas.sustainedFire || checkpoints.atlas.fireRelease?.frames !== 9 ||
+      checkpoints.atlas.enemyRoster?.frames !== 12) {
+    throw new Error(`Expected ${EXPECTED_ATLAS_COUNT} atlases including riderImpact, impactMaterial, sustainedFire, 9-frame fireRelease and 12-frame enemyRoster, received ${JSON.stringify(checkpoints.atlas)}`);
   }
   checkpoints.menu = await assertState('title');
   await shot('menu');
@@ -88,13 +90,37 @@ try {
   await shot('select');
   console.log('[gauntlet] select');
 
+  // Wave 15 portrait gate: visit Vinnie through the real selection input path
+  // and preserve the full production card at native viewport resolution.  The
+  // snapshot's hero id is the selected card even before a run begins.
   await page.keyboard.press('ArrowRight');
+  // The game's edge-triggered input intentionally consumes one selection per
+  // animation frame; keep consecutive navigation taps on distinct frames.
+  await page.waitForTimeout(50);
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(140);
+  checkpoints.selectVinnie = await assertState('select');
+  if (checkpoints.selectVinnie.hero !== 'vinnie') {
+    throw new Error(`Select portrait gate did not land on Vinnie: ${JSON.stringify(checkpoints.selectVinnie)}`);
+  }
+  await shot('select-vinnie');
+  console.log('[gauntlet] Vinnie select portrait');
+
+  // Return one card to keep Modo as the full-route integration hero.
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForTimeout(80);
+  const modoSelect = await assertState('select');
+  if (modoSelect.hero !== 'modo') {
+    throw new Error(`Hero select did not return to Modo: ${JSON.stringify(modoSelect)}`);
+  }
   await page.keyboard.press('Enter');
   await page.waitForTimeout(350);
   checkpoints.start = await assertState('playing');
   if (checkpoints.start.hero !== 'modo') {
     throw new Error(`Hero select did not start Modo: ${JSON.stringify(checkpoints.start)}`);
   }
+  await shot('modo-base');
+  console.log('[gauntlet] Modo base pose');
 
   await page.keyboard.down('KeyZ');
   await page.keyboard.down('ArrowRight');
@@ -111,6 +137,78 @@ try {
   await page.waitForTimeout(120);
   await shot('ride-sequence-c');
   console.log('[gauntlet] ride sequence');
+
+  // Wave 15 final-enemy-atlas gate.  All three formerly procedural classes
+  // must coexist inside the real production entity renderer with no boss
+  // substitution. Sequential frames make their motion/animation reviewable.
+  await page.keyboard.up('KeyZ');
+  const rosterStart = await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('enemy-roster'));
+  if (rosterStart.state !== 'playing') {
+    throw new Error(`Enemy roster did not enter gameplay: ${JSON.stringify(rosterStart)}`);
+  }
+  await page.waitForTimeout(180);
+  const rosterFrames = [];
+  for (const [index, delay] of [0, 130, 160].entries()) {
+    if (delay) await page.waitForTimeout(delay);
+    const sample = await state();
+    const kinds = [...new Set(sample.enemyKinds ?? [])].sort();
+    if (!['mine', 'pod', 'tank'].every(kind => kinds.includes(kind)) || sample.boss !== null ||
+        kinds.includes('boss') || kinds.includes('miniboss')) {
+      throw new Error(`Enemy roster frame ${index} lost tank/mine/pod or introduced a boss: ${JSON.stringify(sample)}`);
+    }
+    const file = `enemy-roster-${index}`;
+    await canvasShot(file);
+    rosterFrames.push({ file: `${file}.png`, elapsed: sample.elapsed, enemyKinds: sample.enemyKinds, boss: sample.boss });
+  }
+  checkpoints.enemyRoster = {
+    contract: { requiredKinds: ['tank', 'mine', 'pod'], boss: null, renderer: 'production gameplay canvas' },
+    frames: rosterFrames,
+  };
+  console.log('[gauntlet] authored enemy roster');
+
+  // The roadside-props atlas is loaded by the environment renderer rather than
+  // the combat atlas registry. Verify that the local bitmap decodes, then keep
+  // three production ride frames as the visual contract for rail/lamp/sign,
+  // wreckage, shoulder rocks and foreground rocks.
+  await page.goto(new URL('/?scene=game&hero=throttle&time=92', baseURL).href, { waitUntil: 'networkidle' });
+  await page.waitForFunction(expectedCount => {
+    const snapshot = window.__BMFM_DEBUG__?.snapshot();
+    return snapshot?.state === 'playing' && snapshot.hero === 'throttle' && snapshot.atlas &&
+      Object.keys(snapshot.atlas).length === expectedCount &&
+      Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
+  }, EXPECTED_ATLAS_COUNT);
+  const roadPropsAsset = await page.evaluate(async () => {
+    const image = new Image();
+    image.src = '/assets/world/roadside-props-sheet.png';
+    await image.decode();
+    return { src: image.src, width: image.naturalWidth, height: image.naturalHeight, complete: image.complete };
+  });
+  if (!roadPropsAsset.complete || roadPropsAsset.width < 4 || roadPropsAsset.height < 2) {
+    throw new Error(`Roadside props bitmap failed to decode: ${JSON.stringify(roadPropsAsset)}`);
+  }
+  // Give the renderer-owned Image one draw boundary after the independent
+  // decode above, then advance with normal keyboard input.
+  await page.waitForTimeout(180);
+  await page.keyboard.down('ArrowRight');
+  const worldFrames = [];
+  for (const [index, delay] of [0, 170, 190].entries()) {
+    if (delay) await page.waitForTimeout(delay);
+    const sample = await assertState('playing');
+    const file = `world-authored-props-${index}`;
+    await canvasShot(file);
+    worldFrames.push({ file: `${file}.png`, elapsed: sample.elapsed, hero: sample.hero, enemyKinds: sample.enemyKinds });
+  }
+  await page.keyboard.up('ArrowRight');
+  checkpoints.worldAuthoredProps = {
+    contract: {
+      asset: '/assets/world/roadside-props-sheet.png',
+      requiredVisualClasses: ['guardrail', 'lamp', 'sign', 'wreckage', 'shoulder-rocks', 'foreground-rocks'],
+      review: 'three sequential real gameplay canvas frames',
+    },
+    decodedAsset: roadPropsAsset,
+    frames: worldFrames,
+  };
+  console.log('[gauntlet] authored world props ride sequence');
 
   // One deterministic, real-update-loop combat sentence. The blaster projectile
   // travels through normal collision code and drives the raider's local hit timer.
@@ -671,11 +769,11 @@ try {
   // ride and Throttle combat sentence cannot expose.
   await page.goto(new URL('/?scene=game&hero=vinnie', baseURL).href, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => Boolean(window.__BMFM_DEBUG__));
-  await page.waitForFunction(() => {
+  await page.waitForFunction(expectedCount => {
     const snapshot = window.__BMFM_DEBUG__.snapshot();
     return snapshot.hero === 'vinnie' && snapshot.atlas &&
-      Object.keys(snapshot.atlas).length === 12 && Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
-  });
+      Object.keys(snapshot.atlas).length === expectedCount && Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
+  }, EXPECTED_ATLAS_COUNT);
   await page.keyboard.down('ArrowRight');
   await page.keyboard.down('KeyZ');
   await page.waitForTimeout(850);
@@ -694,12 +792,12 @@ try {
   const captureSustainedFire = async ({ hero, rapid = false, count, durationMs, prefix }) => {
     await page.keyboard.up('KeyZ').catch(() => {});
     await page.goto(new URL(`/?scene=game&hero=${hero}`, baseURL).href, { waitUntil: 'networkidle' });
-    await page.waitForFunction(expectedHero => {
+    await page.waitForFunction(({ expectedHero, expectedCount }) => {
       const snapshot = window.__BMFM_DEBUG__?.snapshot();
       return snapshot?.hero === expectedHero && snapshot.atlas &&
-        Object.keys(snapshot.atlas).length === 12 &&
+        Object.keys(snapshot.atlas).length === expectedCount &&
         Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
-    }, hero);
+    }, { expectedHero: hero, expectedCount: EXPECTED_ATLAS_COUNT });
     const staged = await page.evaluate(rapidFlag => window.__BMFM_DEBUG__.gotoScene('sustain', rapidFlag), rapid ? 1 : 0);
     if (staged.state !== 'playing' || staged.hero !== hero || !staged.fireState) {
       throw new Error(`Sustained-fire scene failed for ${hero}/${rapid ? 'rapid' : 'normal'}: ${JSON.stringify(staged)}`);
@@ -865,12 +963,12 @@ try {
     const capturePrefix = `release-${hero}${rapid ? '-rapid' : ''}`;
     await page.keyboard.up('KeyZ').catch(() => {});
     await page.goto(new URL(`/?scene=game&hero=${hero}`, baseURL).href, { waitUntil: 'networkidle' });
-    await page.waitForFunction(expectedHero => {
+    await page.waitForFunction(({ expectedHero, expectedCount }) => {
       const snapshot = window.__BMFM_DEBUG__?.snapshot();
       return snapshot?.hero === expectedHero && snapshot.atlas &&
-        Object.keys(snapshot.atlas).length === 12 &&
+        Object.keys(snapshot.atlas).length === expectedCount &&
         Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
-    }, hero);
+    }, { expectedHero: hero, expectedCount: EXPECTED_ATLAS_COUNT });
     const staged = await page.evaluate(rapidFlag => window.__BMFM_DEBUG__.gotoScene('sustain', rapidFlag), rapid ? 1 : 0);
     if (staged.state !== 'playing' || staged.hero !== hero || !staged.fireState) {
       throw new Error(`Release bridge scene failed for ${capturePrefix}: ${JSON.stringify(staged)}`);
@@ -1161,12 +1259,12 @@ try {
 
     await page.keyboard.up('KeyZ').catch(() => {});
     await page.goto(new URL(`/?scene=game&hero=${hero}`, baseURL).href, { waitUntil: 'networkidle' });
-    await page.waitForFunction(expectedHero => {
+    await page.waitForFunction(({ expectedHero, expectedCount }) => {
       const snapshot = window.__BMFM_DEBUG__?.snapshot();
       return snapshot?.hero === expectedHero && snapshot.atlas &&
-        Object.keys(snapshot.atlas).length === 12 &&
+        Object.keys(snapshot.atlas).length === expectedCount &&
         Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
-    }, hero);
+    }, { expectedHero: hero, expectedCount: EXPECTED_ATLAS_COUNT });
     await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('sustain', 0));
     await page.evaluate(() => window.__BMFM_DEBUG__.setDebugFireHeld(false));
     await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().fireState?.bodyMode === 'ride', undefined, { polling: 'raf' });
@@ -1345,6 +1443,190 @@ try {
   await shot('aerial-combat');
   console.log('[gauntlet] aerial combat');
 
+  // Wave 16 local co-op contract.  Selection and the sustained ride use the
+  // production keyboard mappings.  Debug helpers only arrange deterministic
+  // collision situations; damage, downing, terminal state and boss death still
+  // travel through the same runtime mechanics as normal play.
+  const requireCoop = (condition, message, evidence) => {
+    if (!condition) throw new Error(`Wave 16 co-op contract: ${message}: ${JSON.stringify(evidence)}`);
+  };
+  const playerById = (snapshot, id) => snapshot.players?.find(player => player.id === id);
+  const vitals = player => player && ({ hp: player.hp, armor: player.armor, alive: player.alive, downed: player.downed });
+  const sameVitals = (a, b) => a && b && a.hp === b.hp && a.armor === b.armor;
+
+  await page.keyboard.up('KeyZ').catch(() => {});
+  await page.keyboard.up('Numpad1').catch(() => {});
+  const coopSelectStart = await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('coop-select'));
+  requireCoop(coopSelectStart.state === 'select' && coopSelectStart.coopEnabled === true &&
+      Array.isArray(coopSelectStart.selectedHeroes) && coopSelectStart.selectedHeroes.length === 2,
+    'coop select did not expose two independent slots', coopSelectStart);
+  const initialSelections = [...coopSelectStart.selectedHeroes];
+  await page.keyboard.press('KeyD');
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(140);
+  checkpoints.coopSelect = await assertState('select');
+  requireCoop(checkpoints.coopSelect.selectedHeroes[0] !== initialSelections[0] &&
+      checkpoints.coopSelect.selectedHeroes[1] !== initialSelections[1],
+    'production P1/P2 keys did not move both selection cursors independently', {
+      initialSelections, selectedHeroes: checkpoints.coopSelect.selectedHeroes,
+    });
+  requireCoop(checkpoints.coopSelect.coopControls?.players === 2 &&
+      checkpoints.coopSelect.coopControls?.keyboard?.p1 && checkpoints.coopSelect.coopControls?.keyboard?.p2 &&
+      checkpoints.coopSelect.coopControls?.gamepadSlots === 2,
+    'select metadata did not expose both keyboard maps and two gamepad slots', checkpoints.coopSelect.coopControls);
+  await shot('coop-select');
+  console.log(`[gauntlet] co-op select: ${checkpoints.coopSelect.selectedHeroes.join(' + ')}`);
+
+  // Each rider confirms with the real select controls.  P1 confirmation alone
+  // must not start a run; P2 confirmation completes the handshake.
+  await page.keyboard.press('KeyZ');
+  await page.waitForTimeout(80);
+  const p1Ready = await assertState('select');
+  requireCoop(p1Ready.selectReady?.[0] === true && p1Ready.selectReady?.[1] === false,
+    'P1 confirmation did not wait for P2', p1Ready);
+  await page.keyboard.press('Numpad1');
+  await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().state === 'playing', undefined, { polling: 'raf' });
+  const coopRideStart = await assertState('playing');
+  requireCoop(coopRideStart.coopEnabled === true && coopRideStart.players?.length === 2 &&
+      coopRideStart.players.every(player => player.alive && !player.downed),
+    'confirmed co-op run did not create two live riders', coopRideStart);
+  const rideStartPositions = Object.fromEntries(coopRideStart.players.map(player => [player.id, { x: player.x, y: player.y }]));
+
+  // Hold both triggers and opposing movement for a full gameplay sentence.
+  // Sample owners throughout because fast projectiles may leave the viewport
+  // between individual screenshots.
+  await page.keyboard.down('KeyA');
+  await page.keyboard.down('ArrowRight');
+  await page.keyboard.down('KeyZ');
+  await page.keyboard.down('Numpad1');
+  const ownerSamples = new Set();
+  const coopRideFrames = [];
+  for (let second = 0; second <= 8; second += 1) {
+    if (second > 0) await page.waitForTimeout(1_000);
+    const sample = await assertState('playing');
+    for (const projectile of sample.friendlyProjectiles ?? []) ownerSamples.add(projectile.ownerId);
+    if (second === 0 || second === 4 || second === 8) {
+      const file = second === 0 ? 'coop-ride' : second === 4 ? 'coop-fire' : 'coop-combat';
+      await canvasShot(file);
+      coopRideFrames.push({ file: `${file}.png`, elapsed: sample.elapsed, players: sample.players,
+        projectileOwners: [...new Set((sample.friendlyProjectiles ?? []).map(projectile => projectile.ownerId))] });
+    }
+  }
+  await page.keyboard.up('KeyA');
+  await page.keyboard.up('ArrowRight');
+  await page.keyboard.up('KeyZ');
+  await page.keyboard.up('Numpad1');
+  checkpoints.coopRide = await assertState('playing');
+  const rideP1 = playerById(checkpoints.coopRide, 1), rideP2 = playerById(checkpoints.coopRide, 2);
+  requireCoop(rideP1 && rideP2 && rideP1.x < rideStartPositions[1].x && rideP2.x > rideStartPositions[2].x,
+    'riders did not move independently under opposing held input', { rideStartPositions, players: checkpoints.coopRide.players });
+  requireCoop(rideP1.shotsFired >= 8 && rideP2.shotsFired >= 8 && ownerSamples.has(1) && ownerSamples.has(2),
+    'both production triggers did not sustain owner-tagged fire', {
+      shotsFired: [rideP1.shotsFired, rideP2.shotsFired], ownerSamples: [...ownerSamples],
+    });
+  requireCoop(rideP1.lastMuzzle && rideP2.lastMuzzle &&
+      Number.isFinite(rideP1.lastMuzzle.x) && Number.isFinite(rideP2.lastMuzzle.x) &&
+      Math.hypot(rideP1.lastMuzzle.x - rideP2.lastMuzzle.x, rideP1.lastMuzzle.y - rideP2.lastMuzzle.y) >= 8,
+    'owner fire did not retain two distinct visible muzzle origins', { p1: rideP1.lastMuzzle, p2: rideP2.lastMuzzle });
+  checkpoints.coopRide.frames = coopRideFrames;
+  checkpoints.coopRide.ownerSamples = [...ownerSamples].sort();
+  console.log(`[gauntlet] co-op grounded ride: ${rideP1.shotsFired}/${rideP2.shotsFired} shots`);
+
+  // Cross a P1 projectile through P2's actual collision rectangle.  Friendly
+  // projectiles remain in the production projectile list, but player vitals
+  // must be byte-for-byte stable because players are not valid friendly targets.
+  const friendlyBefore = await state();
+  const friendlyProbe = await page.evaluate(() => window.__BMFM_DEBUG__.friendlyFireProbe());
+  await page.waitForTimeout(260);
+  const friendlyAfter = await assertState('playing');
+  const friendlyP1Before = playerById(friendlyBefore, 1), friendlyP2Before = playerById(friendlyBefore, 2);
+  const friendlyP1After = playerById(friendlyAfter, 1), friendlyP2After = playerById(friendlyAfter, 2);
+  requireCoop(friendlyProbe?.crossedTarget === true && friendlyProbe?.ownerId === 1 && friendlyProbe?.targetId === 2 &&
+      sameVitals(friendlyP1Before, friendlyP1After) && sameVitals(friendlyP2Before, friendlyP2After) &&
+      friendlyAfter.noFriendlyFire?.playerVsPlayerDisabled === true,
+    'cross-player friendly shot changed rider HP/armor or did not cross the target', {
+      probe: friendlyProbe, before: friendlyBefore.players, after: friendlyAfter.players,
+      noFriendlyFire: friendlyAfter.noFriendlyFire,
+    });
+  checkpoints.coopFriendlyFire = {
+    probe: friendlyProbe,
+    before: friendlyBefore.players.map(player => ({ id: player.id, ...vitals(player) })),
+    after: friendlyAfter.players.map(player => ({ id: player.id, ...vitals(player) })),
+  };
+  await canvasShot('coop-friendly-fire');
+  console.log('[gauntlet] co-op friendly fire disabled');
+
+  // A deterministic enemy projectile is arranged on P2 and resolved by the
+  // production collision/damage routine.  Only the struck rider may change.
+  const enemyBefore = await state();
+  const enemyProbe = await page.evaluate(() => window.__BMFM_DEBUG__.damagePlayer(2, 18));
+  await page.waitForTimeout(80);
+  const enemyAfter = await assertState('playing');
+  const enemyP1Before = playerById(enemyBefore, 1), enemyP2Before = playerById(enemyBefore, 2);
+  const enemyP1After = playerById(enemyAfter, 1), enemyP2After = playerById(enemyAfter, 2);
+  const targetLoss = (enemyP2Before.hp + enemyP2Before.armor) - (enemyP2After.hp + enemyP2After.armor);
+  requireCoop(enemyProbe?.targetId === 2 && enemyProbe?.productionCollision === true &&
+      sameVitals(enemyP1Before, enemyP1After) && targetLoss > 0,
+    'enemy projectile did not damage exactly P2 through production collision', {
+      probe: enemyProbe, before: enemyBefore.players, after: enemyAfter.players, targetLoss,
+    });
+  checkpoints.coopEnemyDamage = { probe: enemyProbe, targetLoss,
+    before: enemyBefore.players.map(player => ({ id: player.id, ...vitals(player) })),
+    after: enemyAfter.players.map(player => ({ id: player.id, ...vitals(player) })) };
+  await canvasShot('coop-enemy-hit');
+
+  // Downing is team-aware: one rider down keeps the run alive; the second
+  // down transitions through the normal lose state.
+  const downP2Probe = await page.evaluate(() => window.__BMFM_DEBUG__.damagePlayer(2, 99_999));
+  await page.waitForTimeout(100);
+  checkpoints.coopOneDown = await assertState('playing');
+  requireCoop(downP2Probe?.productionCollision === true && playerById(checkpoints.coopOneDown, 2)?.downed === true &&
+      playerById(checkpoints.coopOneDown, 1)?.alive === true,
+    'one downed rider incorrectly ended the shared run', { probe: downP2Probe, state: checkpoints.coopOneDown });
+  await canvasShot('coop-one-down');
+  const downP1Probe = await page.evaluate(() => window.__BMFM_DEBUG__.damagePlayer(1, 99_999));
+  await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().state === 'lose', undefined, { polling: 'raf' });
+  checkpoints.coopBothDown = await assertState('lose');
+  requireCoop(downP1Probe?.productionCollision === true && checkpoints.coopBothDown.players?.every(player => player.downed),
+    'both downed riders did not enter defeat', { probe: downP1Probe, state: checkpoints.coopBothDown });
+  await canvasShot('coop-defeat');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(180);
+  checkpoints.coopDefeatRestart = await assertState('playing');
+  requireCoop(checkpoints.coopDefeatRestart.coopEnabled === true && checkpoints.coopDefeatRestart.players?.length === 2,
+    'defeat restart did not preserve the requested co-op mode', checkpoints.coopDefeatRestart);
+
+  // Two real held triggers finish the dedicated co-op boss setup.  The debug
+  // scene may shorten the boss health bar, but does not apply scripted damage:
+  // owner-tagged production projectiles must be observed before victory.
+  const coopBossStart = await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('coop-boss'));
+  requireCoop(coopBossStart.state === 'playing' && coopBossStart.coopEnabled === true &&
+      coopBossStart.players?.length === 2 && coopBossStart.boss?.kind === 'boss',
+    'co-op boss scene did not contain two riders and the final boss', coopBossStart);
+  await page.keyboard.down('KeyZ');
+  await page.keyboard.down('Numpad1');
+  // Capture while the boss silhouette is still intact.  Waiting until the
+  // first health bar is already gone produces an explosion/victory image, not
+  // evidence of a readable two-rider boss exchange.
+  await page.waitForTimeout(620);
+  checkpoints.coopBossExchange = await assertState('playing');
+  requireCoop(checkpoints.coopBossExchange.boss?.kind === 'boss' &&
+      checkpoints.coopBossExchange.players.every(player => player.shotsFired > 0) &&
+      new Set((checkpoints.coopBossExchange.friendlyProjectiles ?? []).map(projectile => projectile.ownerId)).size === 2,
+    'boss exchange did not contain an intact boss and real fire from both owners', checkpoints.coopBossExchange);
+  await canvasShot('coop-boss-exchange');
+  await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().state === 'win', undefined, { timeout: 45_000, polling: 'raf' });
+  await page.keyboard.up('KeyZ');
+  await page.keyboard.up('Numpad1');
+  checkpoints.coopVictory = await assertState('win');
+  await canvasShot('coop-victory');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(180);
+  checkpoints.coopVictoryRestart = await assertState('playing');
+  requireCoop(checkpoints.coopVictoryRestart.coopEnabled === true && checkpoints.coopVictoryRestart.players?.length === 2,
+    'victory restart did not preserve the requested co-op mode', checkpoints.coopVictoryRestart);
+  console.log('[gauntlet] co-op down/restart/boss/victory');
+
   if (runtimeErrors.length) {
     throw new Error(`Browser runtime errors:\n${runtimeErrors.join('\n')}`);
   }
@@ -1353,5 +1635,8 @@ try {
   console.log(JSON.stringify(report, null, 2));
 } finally {
   await page.keyboard.up('KeyZ').catch(() => {});
+  await page.keyboard.up('Numpad1').catch(() => {});
+  await page.keyboard.up('KeyA').catch(() => {});
+  await page.keyboard.up('ArrowRight').catch(() => {});
   await browser.close();
 }

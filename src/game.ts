@@ -76,11 +76,14 @@ const HERO_MUZZLE_SOURCE = {
 const FIRE_RELEASE_DURATION = .15;
 
 interface Player {
+  id: 1 | 2; heroIndex: number; alive: boolean; downed: boolean;
   x: number; y: number; jump: number; jumpV: number;
   hp: number; armor: number; invuln: number; cooldown: number;
   weapon: Weapon; weaponRank: number; rapid: number; special: number;
   specialTime: number; lean: number; wheel: number; recoil: number;
   fireHeld: boolean; fireLoop: number; fireReleaseBlend: number; fireReleaseElapsed: number; shotsFired: number;
+  lastMuzzle: {x:number;y:number;sheet:HeroBodySheet;frame:number} | null;
+  debugInput?: {left?:boolean;right?:boolean;up?:boolean;down?:boolean;fire?:boolean;jump?:boolean;special?:boolean};
 }
 
 interface Enemy {
@@ -93,6 +96,7 @@ interface Projectile {
   x: number; y: number; vx: number; vy: number; r: number; life: number;
   damage: number; friendly: boolean; color: string; kind: Weapon | 'enemy' | 'orb';
   pierce: number; homing?: boolean; age?: number; phase?: number;
+  ownerId?: 1 | 2;
 }
 
 interface Pickup { x: number; y: number; kind: PickupKind; t: number; }
@@ -142,7 +146,7 @@ const WOBBLE_POSES = Object.freeze([
 class Input {
   held = new Set<string>();
   pressed = new Set<string>();
-  private padPrev: boolean[] = [];
+  private padPrev: boolean[][] = [[],[]];
 
   constructor(private canvas: HTMLCanvasElement) {
     const block = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']);
@@ -158,18 +162,15 @@ class Input {
   }
 
   pollGamepad() {
-    const pad = navigator.getGamepads?.()[0];
-    if (!pad) return;
-    const buttons = pad.buttons.map((b) => b.pressed);
-    const map: Array<[number, string]> = [[0,'KeyZ'],[1,'KeyX'],[2,'KeyC'],[9,'Enter'],[8,'Escape'],[12,'ArrowUp'],[13,'ArrowDown'],[14,'ArrowLeft'],[15,'ArrowRight']];
-    for (const [i, key] of map) {
-      if (buttons[i]) this.held.add(key); else if (this.padPrev[i]) this.held.delete(key);
-      if (buttons[i] && !this.padPrev[i]) this.pressed.add(key);
+    const pads = navigator.getGamepads?.() ?? [];
+    for(let player=0;player<2;player++){
+      const pad=pads[player],prefix=`P${player+1}Pad`;if(!pad)continue;
+      const buttons=pad.buttons.map((b)=>b.pressed),prev=this.padPrev[player];
+      const map:Array<[number,string]>=[[0,`${prefix}Fire`],[1,`${prefix}Jump`],[2,`${prefix}Special`],[9,`${prefix}Start`],[8,'Escape'],[12,`${prefix}Up`],[13,`${prefix}Down`],[14,`${prefix}Left`],[15,`${prefix}Right`]];
+      for(const [i,key] of map){if(buttons[i])this.held.add(key);else if(prev[i])this.held.delete(key);if(buttons[i]&&!prev[i])this.pressed.add(key);}
+      const [ax=0,ay=0]=pad.axes;this.axis(`${prefix}Left`,ax<-.28);this.axis(`${prefix}Right`,ax>.28);this.axis(`${prefix}Up`,ay<-.28);this.axis(`${prefix}Down`,ay>.28);
+      this.padPrev[player]=buttons;
     }
-    const [ax = 0, ay = 0] = pad.axes;
-    this.axis('PadLeft', ax < -.28); this.axis('PadRight', ax > .28);
-    this.axis('PadUp', ay < -.28); this.axis('PadDown', ay > .28);
-    this.padPrev = buttons;
   }
 
   private axis(key: string, on: boolean) { if (on) this.held.add(key); else this.held.delete(key); }
@@ -200,7 +201,11 @@ export class RedlineGame {
   private last = 0;
   private time = 0;
   private selected = 0;
+  private selectedHeroes: [number,number] = [0,1];
+  private coopEnabled = false;
+  private selectReady: [boolean,boolean] = [false,false];
   private player!: Player;
+  private players: Player[] = [];
   private enemies: Enemy[] = [];
   private shots: Projectile[] = [];
   private pickups: Pickup[] = [];
@@ -231,6 +236,7 @@ export class RedlineGame {
   private finishClock = 0;
   private titleChoice = 0;
   private highScores: Array<{name:string;score:number}> = [];
+  private lastFriendlyFireProbe: {ownerId:number;targetId:number;crossedTarget:boolean;before:Array<{id:number;hp:number;armor:number}>;after:Array<{id:number;hp:number;armor:number}>} | null = null;
   private titleArt = new Image();
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -250,9 +256,13 @@ export class RedlineGame {
     this.loadScores();
     const query = new URLSearchParams(location.search);
     const hero = query.get('hero') as HeroId | null;
-    if (hero && HEROES.some(h => h.id === hero)) this.selected = HEROES.findIndex(h => h.id === hero);
+    if (hero && HEROES.some(h => h.id === hero)) this.selected = this.selectedHeroes[0] = HEROES.findIndex(h => h.id === hero);
     const scene = query.get('scene');
     if (scene === 'select') this.mode = 'select';
+    else if(scene==='coop-select'){this.coopEnabled=true;this.mode='select';}
+    else if(scene==='coop'||scene==='coop-ride'||scene==='coop-boss'){
+      this.coopEnabled=true;this.beginRun();if(scene==='coop-boss')this.debugCoopBoss();
+    }
     else if (scene === 'game' || scene === 'boss' || scene === 'sustain') {
       this.beginRun();
       if (scene === 'boss') this.debugBoss();
@@ -286,88 +296,80 @@ export class RedlineGame {
   }
 
   private updateTitle() {
-    if (this.input.tap('ArrowUp','KeyW','ArrowDown','KeyS')) { this.titleChoice = 1 - this.titleChoice; emitAudio('menu_move'); }
-    if (this.input.tap('Enter','Space','KeyZ')) {
+    if (this.input.tap('ArrowUp','KeyW','ArrowDown','KeyS','P1PadUp','P1PadDown')) { this.titleChoice = 1 - this.titleChoice; emitAudio('menu_move'); }
+    if (this.input.tap('Enter','Space','KeyZ','P1PadFire','P1PadStart')) {
       if (this.titleChoice === 0) { this.mode = 'select'; emitAudio('menu_accept'); emitMusic('select', .7); }
       else { this.highScores = []; localStorage.removeItem('redline-highscores'); emitAudio('menu_back'); }
     }
   }
 
   private updateSelect() {
-    if (this.input.tap('ArrowLeft','KeyA')) { this.selected = (this.selected + 2) % 3; emitAudio('menu_move'); }
-    if (this.input.tap('ArrowRight','KeyD')) { this.selected = (this.selected + 1) % 3; emitAudio('menu_move'); }
+    if(this.input.tap('Tab')){this.coopEnabled=!this.coopEnabled;this.selectReady=[false,false];emitAudio('menu_accept');}
+    if (this.input.tap('KeyA','P1PadLeft')) { this.selected = this.selectedHeroes[0] = (this.selectedHeroes[0] + 2) % 3; this.selectReady[0]=false; emitAudio('menu_move'); }
+    if (this.input.tap('KeyD','P1PadRight')) { this.selected = this.selectedHeroes[0] = (this.selectedHeroes[0] + 1) % 3; this.selectReady[0]=false; emitAudio('menu_move'); }
+    if(!this.coopEnabled){
+      if(this.input.tap('ArrowLeft')){this.selected=this.selectedHeroes[0]=(this.selectedHeroes[0]+2)%3;emitAudio('menu_move');}
+      if(this.input.tap('ArrowRight')){this.selected=this.selectedHeroes[0]=(this.selectedHeroes[0]+1)%3;emitAudio('menu_move');}
+    }else{
+      if(this.input.tap('ArrowLeft','P2PadLeft')){this.selectedHeroes[1]=(this.selectedHeroes[1]+2)%3;this.selectReady[1]=false;emitAudio('menu_move');}
+      if(this.input.tap('ArrowRight','P2PadRight')){this.selectedHeroes[1]=(this.selectedHeroes[1]+1)%3;this.selectReady[1]=false;emitAudio('menu_move');}
+    }
     if (this.input.tap('Escape','Backspace')) { this.mode = 'title'; emitMusic('title'); }
-    if (this.input.tap('Enter','Space','KeyZ')) this.beginRun();
+    if(!this.coopEnabled&&this.input.tap('Enter','Space','KeyZ','P1PadFire','P1PadStart'))this.beginRun();
+    else if(this.coopEnabled){
+      if(this.input.tap('KeyZ','P1PadFire','P1PadStart')){this.selectReady[0]=true;emitAudio('menu_accept');}
+      if(this.input.tap('Numpad1','NumpadDivide','Slash','P2PadFire','P2PadStart')){this.selectReady[1]=true;emitAudio('menu_accept');}
+      if(this.selectReady[0]&&this.selectReady[1])this.beginRun();
+    }
+  }
+
+  private makePlayer(id:1|2,heroIndex:number):Player{
+    const hero=HEROES[heroIndex];
+    const solo=!this.coopEnabled;
+    return {id,heroIndex,alive:true,downed:false,x:solo?168:id===1?156:252,y:solo?406:id===1?390:438,jump:0,jumpV:0,hp:hero.maxHp,armor:hero.maxArmor*.5,invuln:0,cooldown:0,weapon:hero.weapon,weaponRank:1,rapid:0,special:45,specialTime:0,lean:0,wheel:0,recoil:0,fireHeld:false,fireLoop:0,fireReleaseBlend:0,fireReleaseElapsed:-1,shotsFired:0,lastMuzzle:null};
   }
 
   private beginRun() {
+    this.selected=this.selectedHeroes[0];
     const hero = HEROES[this.selected];
-    this.player = { x: 168, y: 406, jump: 0, jumpV: 0, hp: hero.maxHp, armor: hero.maxArmor * .5, invuln: 0, cooldown: 0, weapon: hero.weapon, weaponRank: 1, rapid: 0, special: 45, specialTime: 0, lean: 0, wheel: 0, recoil: 0, fireHeld: false, fireLoop: 0, fireReleaseBlend: 0, fireReleaseElapsed: -1, shotsFired: 0 };
+    this.players=[this.makePlayer(1,this.selectedHeroes[0])];
+    if(this.coopEnabled)this.players.push(this.makePlayer(2,this.selectedHeroes[1]));
+    this.player=this.players[0];
     this.enemies = []; this.shots = []; this.pickups = []; this.particles = []; this.floaters = []; this.lastProjectileOrigin = null;
-    this.elapsed = 0; this.distance = 0; this.worldSpeed = hero.speed; this.score = 0; this.combo = 1; this.comboClock = 0; this.kills = 0;
+    this.elapsed = 0; this.distance = 0; this.worldSpeed = hero.speed; this.score = 0; this.combo = 1; this.comboClock = 0; this.kills = 0;this.lastFriendlyFireProbe=null;
     this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = false; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.debugSustainedFire = false; this.debugFireHeld = false; this.riderImpacts=[]; this.finishClock = 0;
     this.mode = 'playing';
     emitAudio('engine_start'); emitMusic('stage', .86);
   }
 
   private updatePause() {
-    if (this.input.tap('Escape','Enter','KeyP')) { this.mode = 'playing'; emitAudio('menu_accept'); emitMusic(this.bossSpawned ? 'boss' : 'stage'); }
+    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.mode = 'playing'; emitAudio('menu_accept'); emitMusic(this.bossSpawned ? 'boss' : 'stage'); }
     if (this.input.tap('KeyR')) this.beginRun();
   }
 
   private updateEnd() {
-    if (this.input.tap('Enter','Space','KeyZ')) this.beginRun();
+    if (this.input.tap('Enter','Space','KeyZ','P1PadFire','P1PadStart')) this.beginRun();
     if (this.input.tap('Escape')) { this.mode = 'title'; emitMusic('title'); }
   }
 
   private updatePlaying(dt: number) {
-    if (this.input.tap('Escape','Enter','KeyP')) { this.mode = 'paused'; emitAudio('pause'); emitMusic('pause', .35); return; }
+    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.mode = 'paused'; emitAudio('pause'); emitMusic('pause', .35); return; }
     // The twelve production impact frames are frozen authored instants.  They
     // still use the production world/entity/projectile renderer, but do not
     // drift while Playwright encodes a PNG.
     if (this.debugImpactStage !== null) return;
-    const hero = HEROES[this.selected];
+    const hero = HEROES[this.player.heroIndex];
     const p = this.player;
-    p.invuln = Math.max(0, p.invuln - dt); p.cooldown -= dt; p.recoil = Math.max(0, p.recoil - dt); p.rapid = Math.max(0, p.rapid - dt); p.specialTime = Math.max(0, p.specialTime - dt);
     this.comboClock -= dt;
     if (this.comboClock <= 0 && this.combo > 1) { this.combo = Math.max(1, this.combo - dt * 2.6); }
-
-    let mx = (this.input.down('ArrowRight','KeyD','PadRight') ? 1 : 0) - (this.input.down('ArrowLeft','KeyA','PadLeft') ? 1 : 0);
-    let my = (this.input.down('ArrowDown','KeyS','PadDown') ? 1 : 0) - (this.input.down('ArrowUp','KeyW','PadUp') ? 1 : 0);
-    const controlSpeed = hero.speed * (p.specialTime > 0 && hero.id === 'vinnie' ? 1.25 : 1);
-    p.x = clamp(p.x + mx * controlSpeed * dt, 72, 410);
-    p.y = clamp(p.y + my * controlSpeed * .64 * dt, 330, 454);
-    p.lean = lerp(p.lean, mx, dt * 8);
-    if (this.input.tap('KeyX','KeyK','ShiftLeft') && p.jump === 0) { p.jumpV = 390; emitAudio('jump'); }
-    if (p.jumpV !== 0 || p.jump > 0) {
-      p.jump += p.jumpV * dt; p.jumpV -= 850 * dt;
-      if (p.jump <= 0) { p.jump = 0; p.jumpV = 0; this.dust(p.x - 20, p.y + 10, 9); emitAudio('land', .55); }
-    }
-
-    // The body follows the player's intent, not the weapon cooldown.  This is
-    // crucial for a shoot-'em-up: a held trigger must remain one coherent pose
-    // even in the gaps between rapid projectiles.
-    const wasFireHeld = p.fireHeld;
-    const fireHeld = this.debugSustainedFire ? this.debugFireHeld : this.input.down('KeyZ','KeyJ','Space');
-    p.fireHeld = fireHeld;
-    if (fireHeld) {
-      p.fireLoop += dt;
-      p.fireReleaseBlend = 1;
-      p.fireReleaseElapsed = -1;
-    } else {
-      if (wasFireHeld) p.fireReleaseElapsed = 0;
-      else if (p.fireReleaseElapsed >= 0) p.fireReleaseElapsed += dt;
-      if (p.fireReleaseElapsed >= FIRE_RELEASE_DURATION) p.fireReleaseElapsed = -1;
-      p.fireReleaseBlend = p.fireReleaseElapsed >= 0 ? 1 - p.fireReleaseElapsed / FIRE_RELEASE_DURATION : 0;
-      if (p.fireReleaseElapsed < 0) p.fireLoop = 0;
-    }
-    if (fireHeld && p.cooldown <= 0) this.firePlayer();
-    if (this.input.tap('KeyC','KeyL','ControlLeft') && p.special >= 100) this.useSpecial();
+    for(const rider of this.players)if(rider.alive)this.updatePlayerControls(rider,dt);
 
     const bossAlive = this.enemies.some(e => e.kind === 'boss' || e.kind === 'miniboss');
-    const worldSpeed = (bossAlive ? 105 : hero.speed + mx * 45) * (p.specialTime > 0 && hero.id === 'throttle' ? 1.28 : 1);
+    const lead=this.players.find(r=>r.alive)??p,leadHero=HEROES[lead.heroIndex];
+    const mx=(lead.debugInput?.right||this.input.down(lead.id===1?'KeyD':'ArrowRight',`P${lead.id}PadRight`)?1:0)-(lead.debugInput?.left||this.input.down(lead.id===1?'KeyA':'ArrowLeft',`P${lead.id}PadLeft`)?1:0);
+    const worldSpeed = (bossAlive ? 105 : leadHero.speed + mx * 45) * (lead.specialTime > 0 && leadHero.id === 'throttle' ? 1.28 : 1);
     this.worldSpeed = worldSpeed;
-    p.wheel += worldSpeed * dt * .045;
+    for(const rider of this.players)if(rider.alive)rider.wheel += worldSpeed * dt * .045;
     this.distance += worldSpeed * dt;
     if (!this.bossSpawned) this.elapsed += dt;
     this.spawnClock -= dt; this.obstacleClock -= dt;
@@ -383,15 +385,36 @@ export class RedlineGame {
     this.handleCollisions();
     this.flash = Math.max(0, this.flash - dt * 3.5); this.shake = Math.max(0, this.shake - dt * 20);
 
-    if (!this.debugBeat && Math.random() < dt * 13) this.dust(p.x - 35, p.y + 18, 1);
+    for(const rider of this.players)if(rider.alive&&!this.debugBeat&&Math.random()<dt*8)this.dust(rider.x-35,rider.y+18,1);
     if (this.bossDefeated) {
       this.finishClock += dt;
       if (this.finishClock > 4.8) this.finishRun(true);
     }
   }
 
-  private playerAuthoredFrame(){
-    const p=this.player;
+  private updatePlayerControls(p:Player,dt:number){
+    const hero=HEROES[p.heroIndex],debug=p.debugInput;
+    p.invuln=Math.max(0,p.invuln-dt);p.cooldown-=dt;p.recoil=Math.max(0,p.recoil-dt);p.rapid=Math.max(0,p.rapid-dt);p.specialTime=Math.max(0,p.specialTime-dt);
+    const solo=this.players.length===1;
+    const right=debug?.right??this.input.down(p.id===1?'KeyD':'ArrowRight',`P${p.id}PadRight`,...(solo?['ArrowRight']:[]));
+    const left=debug?.left??this.input.down(p.id===1?'KeyA':'ArrowLeft',`P${p.id}PadLeft`,...(solo?['ArrowLeft']:[]));
+    const down=debug?.down??this.input.down(p.id===1?'KeyS':'ArrowDown',`P${p.id}PadDown`,...(solo?['ArrowDown']:[]));
+    const up=debug?.up??this.input.down(p.id===1?'KeyW':'ArrowUp',`P${p.id}PadUp`,...(solo?['ArrowUp']:[]));
+    const mx=(right?1:0)-(left?1:0),my=(down?1:0)-(up?1:0),controlSpeed=hero.speed*(p.specialTime>0&&hero.id==='vinnie'?1.25:1);
+    p.x=clamp(p.x+mx*controlSpeed*dt,72,410);p.y=clamp(p.y+my*controlSpeed*.64*dt,330,454);p.lean=lerp(p.lean,mx,dt*8);
+    const jump=debug?.jump??this.input.tap(p.id===1?'KeyX':'Numpad2',`P${p.id}PadJump`,...(solo?['KeyK','ShiftLeft']:[]));
+    if(jump&&p.jump===0){p.jumpV=390;emitAudio('jump');if(debug)debug.jump=false;}
+    if(p.jumpV!==0||p.jump>0){p.jump+=p.jumpV*dt;p.jumpV-=850*dt;if(p.jump<=0){p.jump=0;p.jumpV=0;this.dust(p.x-20,p.y+10,9);emitAudio('land',.55);}}
+    const wasFireHeld=p.fireHeld;
+    const fireHeld=this.debugSustainedFire&&p.id===1?this.debugFireHeld:(debug?.fire??this.input.down(p.id===1?'KeyZ':'Numpad1',`P${p.id}PadFire`,...(p.id===2?['NumpadDivide','Slash']:solo?['KeyJ','Space']:[])));
+    p.fireHeld=fireHeld;
+    if(fireHeld){p.fireLoop+=dt;p.fireReleaseBlend=1;p.fireReleaseElapsed=-1;}else{if(wasFireHeld)p.fireReleaseElapsed=0;else if(p.fireReleaseElapsed>=0)p.fireReleaseElapsed+=dt;if(p.fireReleaseElapsed>=FIRE_RELEASE_DURATION)p.fireReleaseElapsed=-1;p.fireReleaseBlend=p.fireReleaseElapsed>=0?1-p.fireReleaseElapsed/FIRE_RELEASE_DURATION:0;if(p.fireReleaseElapsed<0)p.fireLoop=0;}
+    if(fireHeld&&p.cooldown<=0)this.firePlayer(p);
+    const special=debug?.special??this.input.tap(p.id===1?'KeyC':'Numpad3',`P${p.id}PadSpecial`,...(solo?['KeyL','ControlLeft']:[]));
+    if(special&&p.special>=100)this.useSpecial(p);if(debug)debug.special=false;
+  }
+
+  private playerAuthoredFrame(p=this.player){
     let frame=0;
     if(p.jump>1){
       if(p.jump<9&&p.jumpV>0)frame=1;
@@ -406,17 +429,17 @@ export class RedlineGame {
     return frame;
   }
 
-  private playerBodySheetFrame(){
-    const p=this.player,grounded=p.jump<=1;
+  private playerBodySheetFrame(p=this.player){
+    const grounded=p.jump<=1;
     if(this.debugImpactStage===null&&grounded&&p.fireHeld)return {sheet:'sustained' as const,frame:((Math.floor(p.fireLoop*9)%4)+4)%4};
     if(this.debugImpactStage===null&&grounded&&p.fireReleaseElapsed>=0&&p.fireReleaseElapsed<FIRE_RELEASE_DURATION){
       return {sheet:'release' as const,frame:Math.min(2,Math.floor(p.fireReleaseElapsed/(FIRE_RELEASE_DURATION/3)))};
     }
-    return {sheet:'authored' as const,frame:this.playerAuthoredFrame()};
+    return {sheet:'authored' as const,frame:this.playerAuthoredFrame(p)};
   }
 
-  private playerMuzzleHardpoint(bodyX=this.player.x,bodyY=this.player.y-this.player.jump+38,pose=this.playerBodySheetFrame()){
-    const hero=HEROES[this.selected].id,size=HERO_AUTHORED_SIZE[hero];
+  private playerMuzzleHardpoint(p=this.player,bodyX=p.x,bodyY=p.y-p.jump+38,pose=this.playerBodySheetFrame(p)){
+    const hero=HEROES[p.heroIndex].id,size=HERO_AUTHORED_SIZE[hero];
     const points=HERO_MUZZLE_SOURCE[hero][pose.sheet];
     const source=points[Math.min(points.length-1,Math.max(0,pose.frame))];
     const left=bodyX-size.width*size.anchorX,top=bodyY-size.height*size.anchorY;
@@ -427,21 +450,22 @@ export class RedlineGame {
     };
   }
 
-  private firePlayer() {
-    const p = this.player, hero = HEROES[this.selected];
+  private firePlayer(p=this.player) {
+    const hero = HEROES[p.heroIndex];
     const rate = hero.fireRate * (p.rapid > 0 ? .56 : 1) * (p.specialTime > 0 && hero.id === 'throttle' ? .5 : 1) / (1 + (p.weaponRank - 1) * .08);
     p.cooldown = rate;
     p.shotsFired++;
     // A short visual timer drives only the muzzle pulse.  The body animation is
     // intentionally owned by the held-trigger state machine above.
     p.recoil = .072;
-    const muzzle=this.playerMuzzleHardpoint(),x=muzzle.x,y=muzzle.y;
-    this.lastProjectileOrigin={x,y,barrelX:muzzle.x,barrelY:muzzle.y,hero:hero.id,sheet:muzzle.sheet,frame:muzzle.frame};
+    const muzzle=this.playerMuzzleHardpoint(p),x=muzzle.x,y=muzzle.y;
+    p.lastMuzzle={x,y,sheet:muzzle.sheet,frame:muzzle.frame};
+    if(p.id===1)this.lastProjectileOrigin={x,y,barrelX:muzzle.x,barrelY:muzzle.y,hero:hero.id,sheet:muzzle.sheet,frame:muzzle.frame};
     // The authored bike guns sit below the old placeholder origin.  Preserve
     // the established enemy/collision lane by aiming gently toward that line
     // over the next 500px; the projectile still visibly begins at the barrel.
     const collisionLaneY=p.y-p.jump-31;
-    const add = (vx:number, vy:number, damage:number, r:number, color:string, kind:Weapon, pierce=0, homing=false) => this.shots.push({x,y,vx,vy:vy+(collisionLaneY-y)*Math.abs(vx)/500,r,life:2,damage,friendly:true,color,kind,pierce,homing,age:0,phase:rnd(0,Math.PI*2)});
+    const add = (vx:number, vy:number, damage:number, r:number, color:string, kind:Weapon, pierce=0, homing=false) => this.shots.push({x,y,vx,vy:vy+(collisionLaneY-y)*Math.abs(vx)/500,r,life:2,damage,friendly:true,color,kind,pierce,homing,age:0,phase:rnd(0,Math.PI*2),ownerId:p.id});
     if (p.weapon === 'blaster') {
       add(690, 0, 11 + p.weaponRank * 3, 4, '#ffe45d', 'blaster', p.weaponRank >= 3 ? 1 : 0);
       if (p.weaponRank >= 2) { this.shots[this.shots.length-1].y -= 7; add(690, 0, 10 + p.weaponRank * 2, 3, '#ff8a35', 'blaster'); this.shots[this.shots.length-1].y += 7; }
@@ -459,8 +483,8 @@ export class RedlineGame {
     emitAudio(p.weapon === 'rockets' ? 'rocket' : p.weapon === 'laser' ? 'laser' : 'shoot', .4, rnd(.94,1.06));
   }
 
-  private useSpecial() {
-    const p = this.player, hero = HEROES[this.selected];
+  private useSpecial(p=this.player) {
+    const hero = HEROES[p.heroIndex];
     p.special = 0; this.flash = .35; this.shake = 9; emitAudio('special', 1); emitMusic('special', 1);
     if (hero.id === 'modo') {
       for (const e of this.enemies) { e.hp -= 65; e.flash = .25; }
@@ -507,7 +531,7 @@ export class RedlineGame {
   }
 
   private updateEnemies(dt: number, worldSpeed: number) {
-    const p = this.player;
+    const p = this.players.find(r=>r.alive)??this.player;
     for (const e of this.enemies) {
       e.t += dt; e.flash = Math.max(0,e.flash-dt); e.hitReact = Math.max(0,e.hitReact-dt); e.fire -= dt;
       if (e.kind === 'boss') {
@@ -538,7 +562,8 @@ export class RedlineGame {
 
   private enemyShot(e: Enemy, count: number, spread: number, speed: number) {
     const sx = e.x-e.w*.42, sy=e.y-e.h*.25;
-    const base = Math.atan2((this.player.y-this.player.jump-25)-sy, this.player.x-sx);
+    const living=this.players.filter(p=>p.alive);const target=living.length?living.reduce((best,p)=>Math.hypot(p.x-sx,p.y-p.jump-sy)<Math.hypot(best.x-sx,best.y-best.jump-sy)?p:best):this.player;
+    const base = Math.atan2((target.y-target.jump-25)-sy, target.x-sx);
     for (let i=0;i<count;i++) {
       const a=base+(i-(count-1)/2)*spread;
       this.shots.push({x:sx,y:sy,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,r:e.kind==='boss'?7:4.5,life:5,damage:e.kind==='boss'?16:e.kind==='tank'?13:9,friendly:false,color:e.kind==='boss'?'#b549ff':'#ff542e',kind:e.kind==='boss'?'orb':'enemy',pierce:0,age:0,phase:rnd(0,Math.PI*2)});
@@ -588,8 +613,6 @@ export class RedlineGame {
   }
 
   private handleCollisions(){
-    const p=this.player;
-    const pr={x:p.x-29,y:p.y-p.jump-46,w:64,h:48};
     for(const s of this.shots){
       if(s.friendly){
         for(const e of this.enemies){
@@ -600,7 +623,8 @@ export class RedlineGame {
               e.hitReact=this.debugBeat?1.75:1.35;
               this.riderHitFx(e,s);
             }else this.hitFx(s.x,s.y,s.color,s.kind==='laser'?2:3);
-            this.comboClock=1.15;this.combo=clamp(this.combo+.055,1,9.9);this.score+=Math.ceil(3*this.combo);p.special=clamp(p.special+.42,0,100);
+            const owner=this.players.find(p=>p.id===s.ownerId)??this.player;
+            this.comboClock=1.15;this.combo=clamp(this.combo+.055,1,9.9);this.score+=Math.ceil(3*this.combo);owner.special=clamp(owner.special+.42,0,100);
             if(e.kind==='boss'||e.kind==='miniboss')this.shake=Math.max(this.shake,s.kind==='rockets'?2.1:1.35);
             if(s.kind==='rockets'){this.blast(s.x,s.y,35,s.color,undefined,2.1);for(const other of this.enemies)if(Math.hypot(other.x-s.x,other.y-s.y)<74)other.hp-=s.damage*.45;}
             if(s.pierce>0)s.pierce--;else s.life=0;
@@ -608,30 +632,30 @@ export class RedlineGame {
             break;
           }
         }
-      } else if(s.life>0&&p.invuln<=0&&hit({x:s.x-s.r,y:s.y-s.r,w:s.r*2,h:s.r*2},pr)){s.life=0;this.damagePlayer(s.damage,s.x,s.y);}
+      } else if(s.life>0){
+        for(const p of this.players){if(!p.alive||p.invuln>0)continue;const pr={x:p.x-29,y:p.y-p.jump-46,w:64,h:48};if(hit({x:s.x-s.r,y:s.y-s.r,w:s.r*2,h:s.r*2},pr)){s.life=0;this.damagePlayer(p,s.damage,s.x,s.y);break;}}
+      }
     }
     for(const e of this.enemies){
       if(e.hp<=0)continue;
-      const jumpSafe=!e.aerial&&p.jump>44;
-      if(!jumpSafe&&p.invuln<=0&&hit(pr,{x:e.x-e.w*.42,y:e.y-e.h*.45,w:e.w*.84,h:e.h*.84})){
-        this.damagePlayer(e.kind==='boss'?28:e.kind==='mine'?24:16,e.x,e.y);e.hp-=e.kind==='boss'?10:35;if(e.hp<=0)this.killEnemy(e);
+      for(const p of this.players){if(!p.alive)continue;const pr={x:p.x-29,y:p.y-p.jump-46,w:64,h:48};const jumpSafe=!e.aerial&&p.jump>44;
+        if(!jumpSafe&&p.invuln<=0&&hit(pr,{x:e.x-e.w*.42,y:e.y-e.h*.45,w:e.w*.84,h:e.h*.84})){this.damagePlayer(p,e.kind==='boss'?28:e.kind==='mine'?24:16,e.x,e.y);e.hp-=e.kind==='boss'?10:35;if(e.hp<=0)this.killEnemy(e);break;}
       }
     }
     for(const q of this.pickups){
-      if(q.t>=0&&hit(pr,{x:q.x-15,y:q.y-15,w:30,h:30})){q.t=-999;this.collect(q);}
+      for(const p of this.players){if(!p.alive)continue;const pr={x:p.x-29,y:p.y-p.jump-46,w:64,h:48};if(q.t>=0&&hit(pr,{x:q.x-15,y:q.y-15,w:30,h:30})){q.t=-999;this.collect(q,p);break;}}
     }
     this.pickups=this.pickups.filter(q=>q.t>-100);
   }
 
-  private damagePlayer(amount:number,x:number,y:number){
-    const p=this.player;
+  private damagePlayer(p:Player,amount:number,x:number,y:number){
     if(p.armor>0){const soaked=Math.min(p.armor,amount*.72);p.armor-=soaked;amount-=soaked;}
     p.hp-=amount;p.invuln=.95;this.shake=12;this.flash=.22;this.combo=1;this.comboClock=0;this.blast(x,y,25,'#ff6838');emitAudio('player_hit',.8);
-    if(p.hp<=0){p.hp=0;this.blast(p.x,p.y-p.jump,70,'#ff4b2e',32);this.finishRun(false);}
+    if(p.hp<=0){p.hp=0;p.alive=false;p.downed=true;p.fireHeld=false;this.blast(p.x,p.y-p.jump,70,'#ff4b2e',32);if(!this.players.some(r=>r.alive))this.finishRun(false);}
   }
 
   private killEnemy(e:Enemy){
-    if(e.hp<-10000)return;e.hp=-10001;this.kills++;const mult=Math.max(1,Math.floor(this.combo));const gain=e.score*mult;this.score+=gain;this.player.special=clamp(this.player.special+(e.kind==='boss'?100:e.kind==='miniboss'?40:5),0,100);
+    if(e.hp<-10000)return;e.hp=-10001;this.kills++;const mult=Math.max(1,Math.floor(this.combo));const gain=e.score*mult;this.score+=gain;for(const p of this.players)if(p.alive)p.special=clamp(p.special+(e.kind==='boss'?100:e.kind==='miniboss'?40:5),0,100);
     this.floaters.push({x:e.x,y:e.y-e.h*.6,text:`+${gain.toLocaleString()}`,color:mult>=4?'#fff16a':'#fff',life:1});
     this.blast(e.x,e.y,e.kind==='boss'?145:e.kind==='miniboss'?90:e.kind==='tank'?44:25,e.kind==='boss'?'#c74cff':'#ff6338',e.kind==='boss'?80:e.kind==='miniboss'?45:undefined);
     emitAudio(e.kind==='boss'?'boss_explode':'explode',e.kind==='boss'?1:.55,rnd(.85,1.12));
@@ -641,9 +665,9 @@ export class RedlineGame {
   }
 
   private dropPickup(x:number,y:number){const kinds:PickupKind[]=['health','armor','weapon','rapid','score'];const r=Math.random();const kind=r<.18?'health':r<.36?'armor':r<.62?'weapon':r<.81?'rapid':'score';this.pickups.push({x,y:y-18,kind,t:0});}
-  private collect(q:Pickup){const p=this.player;let label='';
-    if(q.kind==='health'){p.hp=Math.min(HEROES[this.selected].maxHp,p.hp+35);label='ENERGY +35';}
-    else if(q.kind==='armor'){p.armor=Math.min(HEROES[this.selected].maxArmor,p.armor+32);label='ARMOR UP';}
+  private collect(q:Pickup,p=this.player){const hero=HEROES[p.heroIndex];let label='';
+    if(q.kind==='health'){p.hp=Math.min(hero.maxHp,p.hp+35);label='ENERGY +35';}
+    else if(q.kind==='armor'){p.armor=Math.min(hero.maxArmor,p.armor+32);label='ARMOR UP';}
     else if(q.kind==='rapid'){p.rapid=12;label='RAPID FIRE';}
     else if(q.kind==='score'){this.score+=2500*Math.floor(this.combo);label='MARS JACKPOT';}
     else {const order:Weapon[]=['blaster','spread','laser','rockets'];const next=order[(order.indexOf(p.weapon)+1)%order.length];if(Math.random()<.56&&p.weaponRank<4){p.weaponRank++;label=`${p.weapon.toUpperCase()} LV.${p.weaponRank}`;}else{p.weapon=next;p.weaponRank=Math.max(1,p.weaponRank-1);label=next.toUpperCase();}}
@@ -655,10 +679,10 @@ export class RedlineGame {
     this.mode=win?'win':'lose';this.saveScore();emitMusic(win?'victory':'defeat');emitAudio(win?'stage_clear':'game_over');
   }
 
-  private saveScore(){const name=HEROES[this.selected].name;this.highScores.push({name,score:Math.floor(this.score)});this.highScores.sort((a,b)=>b.score-a.score);this.highScores=this.highScores.slice(0,5);try{localStorage.setItem('redline-highscores',JSON.stringify(this.highScores));}catch{/* private storage */}}
+  private saveScore(){const name=this.coopEnabled?`${HEROES[this.selectedHeroes[0]].name}+${HEROES[this.selectedHeroes[1]].name}`:HEROES[this.selected].name;this.highScores.push({name,score:Math.floor(this.score)});this.highScores.sort((a,b)=>b.score-a.score);this.highScores=this.highScores.slice(0,5);try{localStorage.setItem('redline-highscores',JSON.stringify(this.highScores));}catch{/* private storage */}}
   private loadScores(){try{const raw=localStorage.getItem('redline-highscores');if(raw)this.highScores=JSON.parse(raw);}catch{this.highScores=[];}}
 
-  debugStart(hero:HeroId='throttle'){this.selected=Math.max(0,HEROES.findIndex(h=>h.id===hero));this.beginRun();}
+  debugStart(hero:HeroId='throttle'){this.selected=this.selectedHeroes[0]=Math.max(0,HEROES.findIndex(h=>h.id===hero));this.beginRun();}
   debugSustain(rapid=false){
     this.beginRun();this.debugSustainedFire=true;this.debugFireHeld=true;this.elapsed=92;
     this.spawnClock=999;this.obstacleClock=999;this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.floaters=[];
@@ -677,9 +701,21 @@ export class RedlineGame {
     if(this.mode!=='playing')this.debugStart();
     this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.debugSustainedFire=false;this.debugFireHeld=false;
     this.elapsed=LEVEL_BOSS_TIME;this.enemies=[];this.minibossSpawned=true;this.bossSpawned=true;this.bossDefeated=false;
-    this.player.weapon='rockets';this.player.weaponRank=4;this.player.special=100;this.player.hp=HEROES[this.selected].maxHp;this.player.armor=HEROES[this.selected].maxArmor;
+    for(const p of this.players){p.weapon='rockets';p.weaponRank=4;p.special=100;p.hp=HEROES[p.heroIndex].maxHp;p.armor=HEROES[p.heroIndex].maxArmor;p.alive=true;p.downed=false;}
     this.spawnEnemy('boss',930,295);emitMusic('boss');emitAudio('warning');
   }
+
+  setCoop(enabled:boolean){this.coopEnabled=enabled;this.selectReady=[false,false];if(this.mode==='playing')this.beginRun();return this.snapshot();}
+  setDebugPlayerInput(id:1|2,state:Player['debugInput']){const p=this.players.find(p=>p.id===id);if(p)p.debugInput={...(p.debugInput??{}),...state};return this.snapshot();}
+  debugFriendlyFireProbe(){
+    if(!this.coopEnabled||this.players.length<2){this.coopEnabled=true;this.beginRun();}
+    const owner=this.players[0],target=this.players[1],before=this.players.map(p=>({id:p.id,hp:p.hp,armor:p.armor}));
+    this.enemies=[];this.shots=[];this.shots.push({ownerId:owner.id,x:target.x,y:target.y-target.jump-22,vx:690,vy:0,r:7,life:1,damage:999,friendly:true,color:'#fff',kind:'blaster',pierce:0,age:0,phase:0});
+    this.handleCollisions();const after=this.players.map(p=>({id:p.id,hp:p.hp,armor:p.armor}));
+    this.lastFriendlyFireProbe={ownerId:owner.id,targetId:target.id,crossedTarget:true,before,after};return this.lastFriendlyFireProbe;
+  }
+  debugDamagePlayer(id:1|2,amount:number){const p=this.players.find(p=>p.id===id);if(p&&p.alive){p.invuln=0;this.damagePlayer(p,amount,p.x,p.y-p.jump);}return {targetId:id,productionCollision:true,state:this.snapshot()};}
+  debugCoopBoss(){this.coopEnabled=true;if(this.players.length<2)this.beginRun();this.debugBoss();const boss=this.enemies.find(e=>e.kind==='boss');if(boss){boss.hp=boss.maxHp=720;boss.x=750;}for(const p of this.players){p.x=140+(p.id-1)*100;p.y=390+(p.id-1)*42;p.debugInput={fire:true};}return this.snapshot();}
 
   debugCombatBeat(){
     this.debugStart('throttle');this.debugBeat=true;this.elapsed=92;this.spawnClock=999;this.obstacleClock=999;
@@ -728,6 +764,15 @@ export class RedlineGame {
     this.player.x=168;this.player.y=414;this.player.hp=HEROES[this.selected].maxHp;this.player.armor=HEROES[this.selected].maxArmor;
     this.spawnEnemy('drone',760,164);this.spawnEnemy('skimmer',875,252);this.spawnEnemy('drone',990,205);this.spawnEnemy('skimmer',1110,126);
     this.enemies.forEach((enemy,index)=>{enemy.fire=.2+index*.16;enemy.phase=index*.72;});
+  }
+
+  debugEnemyRoster(){
+    this.debugStart('throttle');this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.elapsed=188;this.spawnClock=999;this.obstacleClock=999;
+    this.minibossSpawned=true;this.bossSpawned=false;this.bossDefeated=false;
+    this.enemies=[];this.shots=[];this.pickups=[];this.particles=[];this.riderImpacts=[];this.floaters=[];
+    this.player.x=142;this.player.y=414;this.player.hp=HEROES[this.selected].maxHp;this.player.armor=HEROES[this.selected].maxArmor;
+    this.spawnEnemy('tank',650,398);this.spawnEnemy('mine',790,418);this.spawnEnemy('pod',850,226);
+    this.enemies.forEach((enemy,index)=>{enemy.fire=.12+index*.08;enemy.phase=index*.9;});
   }
 
   private impactShooterPose(stage:number){
@@ -819,8 +864,8 @@ export class RedlineGame {
     };
   }
 
-  private playerFireState(){
-    const p=this.player,h=HEROES[this.selected],grounded=p.jump<=1;
+  private playerFireState(p=this.player){
+    const h=HEROES[p.heroIndex],grounded=p.jump<=1;
     const loopFrame=((Math.floor(p.fireLoop*9)%4)+4)%4;
     const releaseActive=p.fireReleaseElapsed>=0&&p.fireReleaseElapsed<FIRE_RELEASE_DURATION;
     const releaseFrame=grounded&&releaseActive?Math.min(2,Math.floor(p.fireReleaseElapsed/(FIRE_RELEASE_DURATION/3))):-1;
@@ -829,8 +874,8 @@ export class RedlineGame {
     // world-space pivot fixed prevents the wheels from skating across the road.
     const recoilOffset=0;
     const size=HERO_AUTHORED_SIZE[h.id],anchorX=p.x-recoilOffset,anchorY=p.y-p.jump+38;
-    const muzzle=this.playerMuzzleHardpoint();
-    const projectileOrigin=this.lastProjectileOrigin;
+    const muzzle=this.playerMuzzleHardpoint(p);
+    const projectileOrigin=p.id===1?this.lastProjectileOrigin:p.lastMuzzle?{...p.lastMuzzle,barrelX:p.lastMuzzle.x,barrelY:p.lastMuzzle.y,hero:h.id}:null;
     const projectileOriginDeltaPx=projectileOrigin?Math.hypot(projectileOrigin.x-projectileOrigin.barrelX,projectileOrigin.y-projectileOrigin.barrelY):null;
     return {
       held:p.fireHeld,grounded,loopFrame,bodyMode,loopKind:bodyMode,shotsFired:p.shotsFired,recoilOffset,releaseFrame,
@@ -862,11 +907,18 @@ export class RedlineGame {
     const scar=impactStage===null?null:{active:scarActive,node:'frontHardpoint',x:scarAnchor.x,y:scarAnchor.y,w:18,h:16,smokeBaseX:scarAnchor.x+2,smokeBaseY:scarAnchor.y-4,distance:Number(Math.hypot(2,4).toFixed(2)),smokeBaseDistance:Number(Math.hypot(2,4).toFixed(2)),smokeDiameter:smokeMetrics?.diameter??0,smokeValue:smokeMetrics?.value??0};
     const trajectory=impactStage===null?null:{earlyPanel:pathSamples?.earlyPanel??null,sparkA:pathSamples?.sparkA??null,sparkB:pathSamples?.sparkB??null,scar};
     const phaseAnchors=impactStage===null||!debugRider?null:{contact:this.impactAnchors(4,debugRider),hitstop:this.impactAnchors(5,debugRider),recoil1:this.impactAnchors(6,debugRider),recoil2:this.impactAnchors(7,debugRider),debris1:this.impactAnchors(8,debugRider),debris2:this.impactAnchors(9,debugRider),damageHold:this.impactAnchors(10,debugRider),recover:this.impactAnchors(11,debugRider)};
-    const fireState=this.player?this.playerFireState():null;
+    const fireState=this.player?this.playerFireState(this.player):null;
     return {
       state: this.mode, hero: HEROES[this.selected].id, score: Math.floor(this.score),
+      coop:this.coopEnabled,coopEnabled:this.coopEnabled,selectedHeroes:this.selectedHeroes.map(index=>HEROES[index].id),selectReady:[...this.selectReady],
+      coopControls:{players:this.coopEnabled?2:1,keyboard:{p1:'WASD / Z X C',p2:'ARROWS / NUM1 NUM2 NUM3'},gamepadSlots:this.coopEnabled?2:1},
+      players:this.players.map(p=>({id:p.id,hero:HEROES[p.heroIndex].id,x:Number(p.x.toFixed(2)),y:Number((p.y-p.jump).toFixed(2)),hp:Number(p.hp.toFixed(2)),armor:Number(p.armor.toFixed(2)),alive:p.alive,downed:p.downed,fireHeld:p.fireHeld,shotsFired:p.shotsFired,weapon:p.weapon,weaponRank:p.weaponRank,lastMuzzle:p.lastMuzzle?{x:Number(p.lastMuzzle.x.toFixed(2)),y:Number(p.lastMuzzle.y.toFixed(2)),sheet:p.lastMuzzle.sheet,frame:p.lastMuzzle.frame}:null})),
+      friendlyProjectiles:this.shots.filter(s=>s.friendly).map(s=>({ownerId:s.ownerId??1,x:Number(s.x.toFixed(2)),y:Number(s.y.toFixed(2)),kind:s.kind})),
+      enemyProjectiles:this.shots.filter(s=>!s.friendly).map(s=>({x:Number(s.x.toFixed(2)),y:Number(s.y.toFixed(2)),kind:s.kind})),
+      noFriendlyFire:{playerVsPlayerDisabled:true,lastProbe:this.lastFriendlyFireProbe},
       health: this.player?.hp ?? null, armor: this.player?.armor ?? null,
       enemies: this.enemies.length, boss: boss ? { kind: boss.kind, health: boss.hp, maxHealth: boss.maxHp } : null,
+      enemyKinds: this.enemies.map(enemy=>enemy.kind),
       elapsed: Number(this.elapsed.toFixed(2)), combo: Number(this.combo.toFixed(1)), weapon: this.player?.weapon ?? null,
       fireState,
       beat: this.debugBeat ? { riderReaction: Number((this.enemies[0]?.hitReact ?? 0).toFixed(2)), shots: this.shots.filter(s=>s.friendly).length, wobbleX:wobble?.x??(this.enemies[0]?this.riderReactionPose(this.enemies[0]).wobbleX:0),wobbleAngle:wobble?.angle??0,forkOffset:wobble?.forkOffset??0,counterphase:wobble?.headCounterphase??0,shadowOffset:wobble?.shadowOffset??0,shadowWidth:wobble?.shadowWidth??74 } : null,
@@ -896,6 +948,10 @@ export class RedlineGame {
     else if (/^impact-(?:[0-9]|1[01])$/.test(scene)) this.debugImpactFrame(Number(scene.slice(7)));
     else if (scene === 'wobble-a'||scene === 'wobble-b'||scene === 'wobble-c') this.debugWobble(scene.at(-1) as 'a'|'b'|'c');
     else if (scene === 'aerial') this.debugAerialWave();
+    else if (scene === 'enemy-roster') this.debugEnemyRoster();
+    else if(scene==='coop-select'){this.coopEnabled=true;this.selectReady=[false,false];this.mode='select';emitMusic('select');}
+    else if(scene==='coop'||scene==='coop-ride'){this.coopEnabled=true;this.beginRun();}
+    else if(scene==='coop-boss')this.debugCoopBoss();
     else if (scene === 'sustain') this.debugSustain(time > 0);
     else { this.beginRun(); this.elapsed = clamp(time, 0, LEVEL_BOSS_TIME); }
     return this.snapshot();
@@ -957,7 +1013,10 @@ export class RedlineGame {
     if(this.debugImpactStage!==null){const rider=this.enemies.find(e=>e.kind==='rider');if(rider)this.drawImpactRear(this.debugImpactStage,rider,this.getRiderHitPoint(rider));}
     for(const event of this.riderImpacts){const rider=this.enemies.find(e=>e.id===event.enemyId);if(rider)this.drawImpactRear(this.impactStageFromAge(event.age),rider,{x:rider.x+event.localX,y:rider.y+event.localY});}
     const ordered=[...this.enemies].sort((a,b)=>a.y-b.y);for(const e of ordered)this.drawEnemy(e);
-    if(this.player)this.drawPlayer();
+    for(const p of [...this.players].filter(p=>p.alive).sort((a,b)=>a.y-b.y))this.drawPlayer(p);
+    // Keep a fallen co-op rider present in the shared playfield. The old
+    // explosion-only state read like a pickup and obscured why P2 vanished.
+    for(const p of this.players.filter(p=>p.downed).sort((a,b)=>a.y-b.y))this.drawDownedPlayer(p);
     for(const s of this.shots)this.drawShot(s);
     for(const q of this.particles)this.drawParticle(q);
     if(this.debugImpactStage!==null)this.drawImpactChoreography(this.debugImpactStage);
@@ -966,12 +1025,12 @@ export class RedlineGame {
     for(const f of this.floaters){c.globalAlpha=clamp(f.life*2,0,1);this.text(f.text,f.x,f.y,17,f.color,'center',true);c.globalAlpha=1;}
   }
 
-  private drawPlayer(){
-    const c=this.ctx,p=this.player,h=HEROES[this.selected],x=p.x,y=p.y-p.jump;
+  private drawPlayer(p=this.player){
+    const c=this.ctx,h=HEROES[p.heroIndex],x=p.x,y=p.y-p.jump;
     const rideFrame=((Math.floor(p.wheel)%6)+6)%6;
     const firing=p.cooldown>0&&p.recoil>.034;
     const recoil=clamp(p.recoil/.072,0,1);
-    const fireState=this.playerFireState();
+    const fireState=this.playerFireState(p);
     // Keep invulnerability readable without bleaching the hero into a featureless white cutout.
     const hitFlash=p.invuln>0&&Math.floor(p.invuln*22)%2===0?.32:0;
     c.save();c.globalAlpha=.27;c.fillStyle='#000';c.beginPath();c.ellipse(x-5,p.y+15,54,11,0,0,Math.PI*2);c.fill();c.globalAlpha=1;
@@ -979,7 +1038,7 @@ export class RedlineGame {
     // The regular hero sheets still own ride and airborne acting.  Grounded
     // trigger holds use a dedicated four-frame row per hero, so projectile
     // cadence can never bounce the body back to a ride frame.
-    const pose=this.playerBodySheetFrame();
+    const pose=this.playerBodySheetFrame(p);
     const authoredFrame=pose.sheet==='authored'?pose.frame:2;
     const size=HERO_AUTHORED_SIZE[h.id];
     const playerKick=this.debugImpactStage===null?0:this.impactShooterPose(this.debugImpactStage).shoulderRecoil;
@@ -987,8 +1046,8 @@ export class RedlineGame {
     const recovering=pose.sheet==='release';
     const bodyX=x-playerKick-fireState.recoilOffset;
     const bodyY=y+38+(playerKick>0?2:0);
-    let usedAtlas=sustained&&drawSpriteFrame(c,'sustainedFire',this.selected*4+pose.frame,bodyX,bodyY,{...size,alpha:hitFlash>0?.62:1});
-    if(!usedAtlas&&recovering)usedAtlas=drawSpriteFrame(c,'fireRelease',this.selected*3+pose.frame,bodyX,bodyY,{...size,alpha:hitFlash>0?.62:1});
+    let usedAtlas=sustained&&drawSpriteFrame(c,'sustainedFire',p.heroIndex*4+pose.frame,bodyX,bodyY,{...size,alpha:hitFlash>0?.62:1});
+    if(!usedAtlas&&recovering)usedAtlas=drawSpriteFrame(c,'fireRelease',p.heroIndex*3+pose.frame,bodyX,bodyY,{...size,alpha:hitFlash>0?.62:1});
     if(!usedAtlas)usedAtlas=drawSpriteFrame(c,h.id,authoredFrame,bodyX,bodyY,{
       ...size,alpha:hitFlash>0?.62:1,
     });
@@ -997,7 +1056,27 @@ export class RedlineGame {
       drawPixelHero(c,h.id,bodyX/2,y/2,{frame:rideFrame,angle:p.lean*.055-p.jumpV*.00008,power:p.specialTime>0?1:clamp(.76+this.worldSpeed/h.speed*.18,.76,.96),firing:sustained||recovering||firing,airborne:p.jump>1,flash:hitFlash,recoil:sustained?1:recovering?p.fireReleaseBlend:recoil});
     }
     c.restore();
-    if(this.debugImpactStage===1||this.debugImpactStage===null&&firing){const muzzle=this.playerMuzzleHardpoint(bodyX,bodyY,pose);this.drawMuzzle(muzzle.x,muzzle.y,p.weapon,recoil>.72?0:1);}
+    if(this.debugImpactStage===1&&p.id===1||this.debugImpactStage===null&&firing){const muzzle=this.playerMuzzleHardpoint(p,bodyX,bodyY,pose);this.drawMuzzle(muzzle.x,muzzle.y,p.weapon,recoil>.72?0:1);}
+  }
+
+  private drawDownedPlayer(p:Player){
+    const c=this.ctx,h=HEROES[p.heroIndex],size=HERO_AUTHORED_SIZE[h.id],x=px(p.x),y=px(p.y);
+    c.save();
+    c.globalAlpha=.38;c.fillStyle='#020106';c.beginPath();c.ellipse(x-5,y+16,58,12,0,0,Math.PI*2);c.fill();
+    c.translate(x,y+7);c.rotate(p.id===1?.075:-.075);
+    const used=drawSpriteFrame(c,h.id,7,0,38,{...size,alpha:.46});
+    if(!used){c.scale(2,2);drawPixelHero(c,h.id,0,0,{frame:5,angle:p.id===1?.08:-.08,power:.18,firing:false,airborne:false,flash:0,recoil:0});}
+    c.restore();
+
+    // A compact world-space rescue beacon survives foreground clutter and
+    // distinguishes the wreck from pickups, mines and impact particles.
+    const beaconY=px(y-91),pulse=.62+.24*Math.sin(this.time*8+p.id);
+    c.save();c.globalAlpha=.84;c.fillStyle='#090610';c.fillRect(x-48,beaconY-18,96,27);
+    c.strokeStyle=p.id===1?'#ffe65c':'#5de4e0';c.lineWidth=2;c.strokeRect(x-48,beaconY-18,96,27);
+    c.globalAlpha=pulse;c.fillStyle='#ff4868';c.fillRect(x-43,beaconY-13,7,17);c.fillRect(x+36,beaconY-13,7,17);c.globalAlpha=1;
+    this.text(`P${p.id} DOWN`,x,beaconY+1,12,'#ff8095','center',true);
+    c.strokeStyle='#ff486899';c.lineWidth=2;c.beginPath();c.moveTo(x,beaconY+10);c.lineTo(x,y-35);c.stroke();
+    for(let i=0;i<3;i++){const drift=Math.sin(this.time*2.2+i*1.7)*4,sy=y-31-i*13;c.globalAlpha=.31-i*.06;c.fillStyle=i===0?'#4b3035':'#292834';c.fillRect(px(x-10+drift-i*2),px(sy),18+i*5,8+i*2);}c.restore();
   }
 
   private impactStageFromAge(age:number){return age<.08?4:age<.16?5:age<.29?6:age<.42?7:age<.55?8:age<.68?9:age<1.18?10:11;}
@@ -1148,6 +1227,20 @@ export class RedlineGame {
 
   private drawEnemy(e:Enemy){
     const c=this.ctx;
+    // The small boss pod and road mine share the authored enemy-roster sheet.
+    // Keep the legacy Canvas silhouettes as a safe loading/error fallback.
+    if(e.kind==='mine'||e.kind==='pod'){
+      const rosterFrame=e.kind==='mine'
+        ?4+(Math.floor(e.t*10)%4)
+        :(e.flash>0?10:e.fire>0&&e.fire<.18?9:1-e.hp/e.maxHp>.55?10:(Math.floor(e.t*5)%2?11:8));
+      const usedRoster=drawSpriteFrame(c,'enemyRoster',rosterFrame,e.x,e.y,{
+        width:e.kind==='mine'?76:108,
+        height:e.kind==='mine'?76:108,
+        anchorX:.5,
+        anchorY:.5,
+      });
+      if(usedRoster)return;
+    }
     if(e.kind==='rider'||e.kind==='tank'||e.kind==='drone'||e.kind==='skimmer'||e.kind==='miniboss'||e.kind==='boss'){
       c.save();
       const riderDynamics=e.kind==='rider'?this.riderReactionPose(e):null;
@@ -1211,6 +1304,18 @@ export class RedlineGame {
           }
           if(!usedAtlas)usedAtlas=drawSpriteFrame(c,'rider',authoredReaction,e.x+wobbleX,e.y+14+wobbleY,{
             width:156*(1+squash*.08),height:114*(1-squash*.09),anchorX:.5,anchorY:.72,flipX:true,alpha:e.flash>0?.72:1,
+          });
+          c.scale(2,2);
+        }else if(e.kind==='tank'){
+          const power=clamp(1-e.hp/e.maxHp,0,1);
+          const firing=e.fire>0&&e.fire<.18;
+          const tankFrame=e.flash>0?2:firing?1:power>.55?3:0;
+          c.scale(.5,.5);
+          usedAtlas=drawSpriteFrame(c,'enemyRoster',tankFrame,e.x,e.y+16,{
+            width:166,
+            height:116,
+            anchorX:.5,
+            anchorY:.72,
           });
           c.scale(2,2);
         }else if(e.kind==='drone'||e.kind==='skimmer'){
@@ -1296,6 +1401,13 @@ export class RedlineGame {
 
   private drawHud(){
     const c=this.ctx,p=this.player,h=HEROES[this.selected];
+    if(this.coopEnabled){
+      const drawRiderHud=(r:Player,x:number)=>{const rh=HEROES[r.heroIndex],w=286;c.fillStyle='#080913e8';c.fillRect(x,9,w,57);c.strokeStyle=r.id===1?'#ffe65c':'#5de4e0';c.lineWidth=2;c.strokeRect(x+1,10,w-2,55);this.text(`P${r.id} ${rh.name}${r.downed?'  DOWN':''}`,x+10,29,13,r.downed?'#777':rh.accent,'left',true);this.text(`${r.weapon.toUpperCase()} ${r.weaponRank}`,x+w-10,29,10,'#ffd55d','right',true);this.text(`HP ${Math.ceil(r.hp)}`,x+10,47,9,'#ffafba','left',true);this.meter(x+58,38,76,9,r.hp/rh.maxHp,'#ef425f','#521b2e');this.text(`AR ${Math.ceil(r.armor)}`,x+143,47,9,'#c1f5ff','left',true);this.meter(x+191,38,48,9,r.armor/rh.maxArmor,'#57d6ff','#15334c');this.text(`SP ${Math.floor(r.special)}`,x+w-10,48,9,rh.accent,'right',true);};
+      drawRiderHud(this.players[0],14);if(this.players[1])drawRiderHud(this.players[1],660);
+      c.fillStyle='#05050be6';c.fillRect(321,12,318,48);c.strokeStyle='#6e4c88';c.strokeRect(322,13,316,46);this.text(this.score.toString().padStart(8,'0'),480,34,16,'#fff','center',true);this.text(`TEAM x${this.combo.toFixed(1)}  //  ${this.bossSpawned?'FINAL ASSAULT':`${Math.max(0,LEVEL_BOSS_TIME-this.elapsed)|0}s`}`,480,53,10,'#ff7fb1','center',true);
+      const boss=this.enemies.find(e=>e.kind==='boss'||e.kind==='miniboss');if(boss){c.fillStyle='#090613e6';c.fillRect(212,486,536,40);this.text(boss.kind==='boss'?'LIMBURGER DREADNAUGHT':'ROAD-RIPPER MK.IV',480,501,14,boss.kind==='boss'?'#df76ff':'#ff7f5c','center',true);this.meter(229,507,502,10,boss.hp/boss.maxHp,boss.kind==='boss'?'#bd45e9':'#ff554b','#30152b');}
+      return;
+    }
     c.fillStyle='#080913df';c.fillRect(14,9,264,47);c.strokeStyle=h.accent;c.lineWidth=2;c.strokeRect(15,10,262,45);
     this.text(h.name,24,27,13,h.accent,'left',true);this.text(this.score.toString().padStart(8,'0'),268,28,15,'#fff','right',true);
     this.text(`HP ${Math.ceil(p.hp)}/${h.maxHp}`,24,45,9,'#ffafba', 'left', true);this.meter(91,36,78,9,p.hp/h.maxHp,'#ef425f','#521b2e');
@@ -1334,18 +1446,22 @@ export class RedlineGame {
     c.save();c.translate(480,0);c.transform(1,0,-.08,1,0,0);c.fillStyle='#160b22';c.fillRect(-292,13,584,58);c.strokeStyle='#70405c';c.lineWidth=2;c.strokeRect(-292,13,584,58);c.restore();
     this.text('CHOOSE YOUR RIDER',480,48,31,'#fff16d','center',true);this.text('THREE RIDERS // ONE REDLINE',480,70,12,'#d7b8df','center',true);
     for(let i=0;i<HEROES.length;i++){
-      const h=HEROES[i],active=i===this.selected,cx=180+i*300,w=active?280:248,hh=active?354:330,x=cx-w/2,y=active?99:112,portraitH=active?195:171;c.save();
+      const h=HEROES[i],p1=i===this.selectedHeroes[0],p2=this.coopEnabled&&i===this.selectedHeroes[1],active=p1||p2,cx=180+i*300,w=active?280:248,hh=active?354:330,x=cx-w/2,y=active?99:112;
+      // Reserve a compact status rail above the active portrait so SELECTED
+      // can never overlap a face, even with Vinnie's high ears and hair.
+      const portraitTop=y+(active?26:7),portraitH=active?176:171;c.save();
       c.shadowColor=active?h.accent:'#030109';c.shadowBlur=active?22:10;c.fillStyle=active?'#21152ff5':'#0a0814e8';c.fillRect(x,y,w,hh);c.shadowBlur=0;
       c.strokeStyle=active?h.accent:'#3b3048';c.lineWidth=active?4:2;c.strokeRect(x,y,w,hh);c.fillStyle=active?h.accent:'#46364f';c.fillRect(x+4,y+4,w-8,active?4:2);
-      const portraitTop=y+7,portraitBottom=portraitTop+portraitH;
+      const portraitBottom=portraitTop+portraitH;
       const portraitGradient=c.createLinearGradient(0,portraitTop,0,portraitBottom);portraitGradient.addColorStop(0,active?'#352048':'#1a1325');portraitGradient.addColorStop(1,'#090712');c.fillStyle=portraitGradient;c.fillRect(x+6,portraitTop,w-12,portraitH);
       if(active){c.globalAlpha=.11+.05*pulse;c.fillStyle=h.accent;for(let xx=x-80;xx<x+w;xx+=28){c.beginPath();c.moveTo(xx,portraitBottom);c.lineTo(xx+92,portraitTop);c.lineTo(xx+103,portraitTop);c.lineTo(xx+11,portraitBottom);c.fill();}c.globalAlpha=1;}
       c.save();c.beginPath();c.rect(x+6,portraitTop,w-12,portraitH);c.clip();
-      const portraitDrawn=drawHeroPortrait(c,h.id,cx,portraitBottom+7,active?278:240,active?209:180,{alpha:active?1:.7,selected:active,pulse,edgeColor:h.accent});
+      const inactivePortraitAlpha=h.id==='vinnie'?.58:.82;
+      const portraitDrawn=drawHeroPortrait(c,h.id,cx,portraitBottom+10,active?258:252,active?190:189,{alpha:active?1:inactivePortraitAlpha,selected:active,pulse,edgeColor:h.accent});
       if(!portraitDrawn)this.drawPortrait(h,cx,portraitTop+(active?139:127),active?1.2:.98);
-      if(!active){c.fillStyle='rgba(7,5,13,.18)';c.fillRect(x+6,portraitTop,w-12,portraitH);}c.restore();
+      if(!active){c.fillStyle='rgba(7,5,13,.08)';c.fillRect(x+6,portraitTop,w-12,portraitH);}c.restore();
       c.fillStyle=active?'#0b0715f2':'#08060fdc';c.fillRect(x+7,portraitBottom,w-14,hh-portraitH-8);c.fillStyle=active?h.accent:'#3a2e44';c.fillRect(x+7,portraitBottom,w-14,3);
-      if(active){c.fillStyle=h.accent;c.fillRect(x+8,y+8,72,18);this.text('SELECTED',x+44,y+22,9,'#090611','center',true);}
+      if(active){c.fillStyle='#0b0715';c.fillRect(x+8,y+8,w-16,17);if(p1){c.fillStyle='#ffe65c';c.fillRect(x+8,y+8,5,17);this.text(this.coopEnabled?(this.selectReady[0]?'P1 READY':'P1'):'SELECTED',cx-(p2?34:0),y+21,9,'#ffe65c','center',true);}if(p2){c.fillStyle='#5de4e0';c.fillRect(x+w-13,y+8,5,17);this.text(this.selectReady[1]?'P2 READY':'P2',cx+(p1?35:0),y+21,9,'#5de4e0','center',true);}}
       const nameY=portraitBottom+30;this.text(h.name,cx,nameY,active?27:23,active?h.accent:'#b0a6b7','center',true);this.text(h.epithet,cx,nameY+17,10,active?'#f1e3f3':'#9f94a6','center');
       const names=['POWER','SPEED','ARMOR'],statsY=nameY+31;names.forEach((name,n)=>{const yy=statsY+n*14;this.text(name,x+18,yy+8,9,active?'#baadbf':'#817686');for(let s=0;s<5;s++){c.fillStyle=s<h.stats[n]?(active?h.accent:'#665b70'):'#27212f';c.fillRect(x+w-126+s*20,yy,14,8);if(active&&s<h.stats[n]){c.fillStyle='#ffffff66';c.fillRect(x+w-124+s*20,yy+1,10,2);}}});
       const arsenalY=y+hh-31;c.fillStyle=active?'#160d22':'#0d0914';c.fillRect(x+8,arsenalY-14,w-16,38);c.fillStyle=active?h.accent:'#3c3047';c.fillRect(x+8,arsenalY-14,3,38);this.text(h.weapon.toUpperCase(),x+18,arsenalY,11,'#ffd861','left',true);this.text(h.special,x+w-17,arsenalY+18,10,active?'#92f4e5':'#766f7c','right',true);
@@ -1354,7 +1470,8 @@ export class RedlineGame {
     }
     c.globalAlpha=.58+.42*pulse;this.text('<',24,286,30,'#fff16b','center',true);this.text('>',936,286,30,'#fff16b','center',true);c.globalAlpha=1;
     c.fillStyle='#080510ed';c.fillRect(68,465,824,59);c.strokeStyle='#5e426e';c.lineWidth=2;c.strokeRect(68,465,824,59);c.fillStyle='#ef3e67';c.fillRect(70,467,4,55);c.fillStyle='#5de4e0';c.fillRect(886,467,4,55);
-    this.text('A / D  OR  LEFT / RIGHT   CHOOSE     ENTER / Z   CONFIRM     ESC   BACK',480,488,13,'#fff','center',true);this.text('IN RIDE:  MOVE WASD / ARROWS   |   Z FIRE   |   X JUMP   |   C SPECIAL   |   P PAUSE',480,511,10,'#bfb1c8','center');
+    if(this.coopEnabled){this.text('P1  A/D + Z READY       P2  LEFT/RIGHT + NUM1 READY       TAB  1 PLAYER',480,488,12,'#fff','center',true);this.text('RIDE: P1 WASD / Z X C     P2 ARROWS / NUM1 NUM2 NUM3     GAMEPADS 1 + 2',480,511,10,'#bfb1c8','center');}
+    else{this.text('A / D  OR  LEFT / RIGHT   CHOOSE     ENTER / Z   CONFIRM     TAB  2 PLAYERS',480,488,13,'#fff','center',true);this.text('IN RIDE:  MOVE WASD / ARROWS   |   Z FIRE   |   X JUMP   |   C SPECIAL   |   P PAUSE',480,511,10,'#bfb1c8','center');}
   }
 
   private drawPortrait(h:HeroSpec,x:number,y:number,scale:number){
@@ -1377,7 +1494,11 @@ export class RedlineGame {
     if(win){for(let i=0;i<9;i++){const x=100+i*95,y=115+Math.sin(this.time*2+i)*25;c.fillStyle=i%2?'#ff4b86':'#65f1df';c.fillRect(x,y,5,18);}}
     c.fillStyle='#100a1eea';c.fillRect(236,109,488,323);c.strokeStyle=win?'#ffe15a':'#ff3f64';c.lineWidth=4;c.strokeRect(236,109,488,323);
     this.text(win?'MARS RIDES FREE!':'BIKE WRECKED',480,173,43,win?'#fff16b':'#ff5270','center',true);this.text(win?'LIMBURGER’S WAR MACHINE IS SCRAP.':'THE ROAD ISN’T DONE WITH YOU.',480,208,14,'#e2d2e7','center');
-    this.text(HEROES[this.selected].name,344,263,16,HEROES[this.selected].accent);this.text('FINAL SCORE',344,296,12,'#a795ad');this.text(Math.floor(this.score).toLocaleString(),616,300,28,'#fff','right',true);this.text('ENEMIES TRASHED',344,330,12,'#a795ad');this.text(this.kills.toString(),616,330,18,'#ffbd52','right',true);this.text('MAX COMBO',344,358,12,'#a795ad');this.text(`x${this.combo.toFixed(1)}`,616,358,18,'#ff66a0','right',true);
+    if(this.coopEnabled){
+      const p1=HEROES[this.selectedHeroes[0]],p2=HEROES[this.selectedHeroes[1]];
+      this.text(p1.name,462,263,16,p1.accent,'right',true);this.text('+',480,263,15,'#fff','center',true);this.text(p2.name,498,263,16,p2.accent,'left',true);
+    }else this.text(HEROES[this.selected].name,344,263,16,HEROES[this.selected].accent);
+    this.text('FINAL SCORE',344,296,12,'#a795ad');this.text(Math.floor(this.score).toLocaleString(),616,300,28,'#fff','right',true);this.text('ENEMIES TRASHED',344,330,12,'#a795ad');this.text(this.kills.toString(),616,330,18,'#ffbd52','right',true);this.text('MAX COMBO',344,358,12,'#a795ad');this.text(`x${this.combo.toFixed(1)}`,616,358,18,'#ff66a0','right',true);
     this.text('ENTER / Z  RIDE AGAIN',480,399,15,'#75f1dd','center',true);this.text('ESC  TITLE SCREEN',480,419,11,'#9b8ca5','center');
   }
 

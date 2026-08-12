@@ -18,7 +18,8 @@ export type SpriteSheetId =
   | "bossCore"
   | "bossBody"
   | "roadRipper"
-  | "aerials";
+  | "aerials"
+  | "enemyRoster";
 
 export interface DrawSpriteFrameOptions {
   /** Destination size in logical canvas pixels. Defaults to the source cell. */
@@ -59,6 +60,7 @@ const SHEET_ORDER = [
   "bossBody",
   "roadRipper",
   "aerials",
+  "enemyRoster",
 ] as const satisfies readonly SpriteSheetId[];
 
 const SHEET_DEFINITIONS: Readonly<Record<SpriteSheetId, {
@@ -139,6 +141,12 @@ const SHEET_DEFINITIONS: Readonly<Record<SpriteSheetId, {
     rows: 2,
     frames: 8,
   }),
+  enemyRoster: Object.freeze({
+    path: "/assets/sprites/enemy-roster-sheet.png",
+    columns: 4,
+    rows: 3,
+    frames: 12,
+  }),
 });
 
 interface RuntimeSheet {
@@ -162,6 +170,7 @@ const runtime: Record<SpriteSheetId, RuntimeSheet> = {
   bossBody: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   roadRipper: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   aerials: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
+  enemyRoster: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
 };
 
 function loadSpriteSheet(id: SpriteSheetId): Promise<void> {
