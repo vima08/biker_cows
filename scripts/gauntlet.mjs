@@ -2,10 +2,10 @@ import { chromium } from 'playwright-core';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-const baseURL = process.env.BMFM_URL ?? 'http://127.0.0.1:4173';
-const executablePath = process.env.BMFM_BROWSER ??
+const baseURL = process.env.BCFV_URL ?? 'http://127.0.0.1:4173';
+const executablePath = process.env.BCFV_BROWSER ??
   'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-const outputDir = path.resolve(process.env.BMFM_CAPTURE_DIR ?? '.gauntlet/latest');
+const outputDir = path.resolve(process.env.BCFV_CAPTURE_DIR ?? '.gauntlet/latest');
 const EXPECTED_ATLAS_COUNT = 13;
 await mkdir(outputDir, { recursive: true });
 
@@ -52,9 +52,9 @@ const canvasShot = async name => {
   });
   await writeFile(path.join(outputDir, `${name}.png`), Buffer.from(dataUrl.split(',')[1], 'base64'));
 };
-const state = () => page.evaluate(() => window.__BMFM_DEBUG__.snapshot());
+const state = () => page.evaluate(() => window.__BCFV_DEBUG__.snapshot());
 const waitForElapsed = target => page.waitForFunction(
-  elapsed => window.__BMFM_DEBUG__.snapshot().elapsed >= elapsed,
+  elapsed => window.__BCFV_DEBUG__.snapshot().elapsed >= elapsed,
   target,
   { timeout: 5_000, polling: 'raf' },
 );
@@ -69,9 +69,9 @@ const assertState = async expected => {
 const checkpoints = {};
 try {
   await page.goto(baseURL, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => Boolean(window.__BMFM_DEBUG__));
+  await page.waitForFunction(() => Boolean(window.__BCFV_DEBUG__));
   await page.waitForFunction(expectedCount => {
-    const atlas = window.__BMFM_DEBUG__.snapshot().atlas;
+    const atlas = window.__BCFV_DEBUG__.snapshot().atlas;
     return atlas && Object.keys(atlas).length === expectedCount && Object.values(atlas).every(sheet => sheet.state === 'ready');
   }, EXPECTED_ATLAS_COUNT);
   checkpoints.atlas = (await state()).atlas;
@@ -90,7 +90,7 @@ try {
   await shot('select');
   console.log('[gauntlet] select');
 
-  // Wave 15 portrait gate: visit Vinnie through the real selection input path
+  // Wave 15 portrait gate: visit Nova through the real selection input path
   // and preserve the full production card at native viewport resolution.  The
   // snapshot's hero id is the selected card even before a run begins.
   await page.keyboard.press('ArrowRight');
@@ -99,28 +99,28 @@ try {
   await page.waitForTimeout(50);
   await page.keyboard.press('ArrowRight');
   await page.waitForTimeout(140);
-  checkpoints.selectVinnie = await assertState('select');
-  if (checkpoints.selectVinnie.hero !== 'vinnie') {
-    throw new Error(`Select portrait gate did not land on Vinnie: ${JSON.stringify(checkpoints.selectVinnie)}`);
+  checkpoints.selectNova = await assertState('select');
+  if (checkpoints.selectNova.hero !== 'nova') {
+    throw new Error(`Select portrait gate did not land on Nova: ${JSON.stringify(checkpoints.selectNova)}`);
   }
-  await shot('select-vinnie');
-  console.log('[gauntlet] Vinnie select portrait');
+  await shot('select-nova');
+  console.log('[gauntlet] Nova select portrait');
 
-  // Return one card to keep Modo as the full-route integration hero.
+  // Return one card to keep Bruna as the full-route integration hero.
   await page.keyboard.press('ArrowLeft');
   await page.waitForTimeout(80);
-  const modoSelect = await assertState('select');
-  if (modoSelect.hero !== 'modo') {
-    throw new Error(`Hero select did not return to Modo: ${JSON.stringify(modoSelect)}`);
+  const brunaSelect = await assertState('select');
+  if (brunaSelect.hero !== 'bruna') {
+    throw new Error(`Hero select did not return to Bruna: ${JSON.stringify(brunaSelect)}`);
   }
   await page.keyboard.press('Enter');
   await page.waitForTimeout(350);
   checkpoints.start = await assertState('playing');
-  if (checkpoints.start.hero !== 'modo') {
-    throw new Error(`Hero select did not start Modo: ${JSON.stringify(checkpoints.start)}`);
+  if (checkpoints.start.hero !== 'bruna') {
+    throw new Error(`Hero select did not start Bruna: ${JSON.stringify(checkpoints.start)}`);
   }
-  await shot('modo-base');
-  console.log('[gauntlet] Modo base pose');
+  await shot('bruna-base');
+  console.log('[gauntlet] Bruna base pose');
 
   await page.keyboard.down('KeyZ');
   await page.keyboard.down('ArrowRight');
@@ -142,7 +142,7 @@ try {
   // must coexist inside the real production entity renderer with no boss
   // substitution. Sequential frames make their motion/animation reviewable.
   await page.keyboard.up('KeyZ');
-  const rosterStart = await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('enemy-roster'));
+  const rosterStart = await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('enemy-roster'));
   if (rosterStart.state !== 'playing') {
     throw new Error(`Enemy roster did not enter gameplay: ${JSON.stringify(rosterStart)}`);
   }
@@ -170,10 +170,10 @@ try {
   // the combat atlas registry. Verify that the local bitmap decodes, then keep
   // three production ride frames as the visual contract for rail/lamp/sign,
   // wreckage, shoulder rocks and foreground rocks.
-  await page.goto(new URL('/?scene=game&hero=throttle&time=92', baseURL).href, { waitUntil: 'networkidle' });
+  await page.goto(new URL('/?scene=game&hero=cassia&time=92', baseURL).href, { waitUntil: 'networkidle' });
   await page.waitForFunction(expectedCount => {
-    const snapshot = window.__BMFM_DEBUG__?.snapshot();
-    return snapshot?.state === 'playing' && snapshot.hero === 'throttle' && snapshot.atlas &&
+    const snapshot = window.__BCFV_DEBUG__?.snapshot();
+    return snapshot?.state === 'playing' && snapshot.hero === 'cassia' && snapshot.atlas &&
       Object.keys(snapshot.atlas).length === expectedCount &&
       Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
   }, EXPECTED_ATLAS_COUNT);
@@ -214,11 +214,11 @@ try {
   // travels through normal collision code and drives the raider's local hit timer.
   // Targets use gameplay elapsed time, so screenshot encoding cannot reorder the beat.
   await page.keyboard.up('KeyZ');
-  await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('beat'));
+  await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('beat'));
   await page.waitForTimeout(120);
   checkpoints.beatStart = await assertState('playing');
-  if (checkpoints.beatStart.hero !== 'throttle') {
-    throw new Error(`Combat beat did not start Throttle: ${JSON.stringify(checkpoints.beatStart)}`);
+  if (checkpoints.beatStart.hero !== 'cassia') {
+    throw new Error(`Combat beat did not start Cassia: ${JSON.stringify(checkpoints.beatStart)}`);
   }
   const beatOrigin = checkpoints.beatStart.elapsed;
   const beatFrames = [];
@@ -251,7 +251,7 @@ try {
 
   await page.waitForFunction(
     startScore => {
-      const snapshot = window.__BMFM_DEBUG__.snapshot();
+      const snapshot = window.__BCFV_DEBUG__.snapshot();
       return snapshot.beat?.riderReaction > 0 && snapshot.score > startScore;
     },
     checkpoints.beatStart.score,
@@ -304,7 +304,7 @@ try {
   const impactFrames = [];
   const impactNames = ['pre','muzzle','travel-25','travel-75','contact','hitstop','recoil-1','recoil-2','debris-1','debris-2','damage-hold','recover'];
   for (let index = 0; index < impactNames.length; index += 1) {
-    const staged = await page.evaluate(frame => window.__BMFM_DEBUG__.gotoScene(`impact-${frame}`), index);
+    const staged = await page.evaluate(frame => window.__BCFV_DEBUG__.gotoScene(`impact-${frame}`), index);
     if (staged.state !== 'playing' || staged.impact?.stage !== index || staged.impact.label !== impactNames[index]) {
       throw new Error(`Impact stage ${index} did not freeze deterministically: ${JSON.stringify(staged)}`);
     }
@@ -670,7 +670,7 @@ try {
   // keeping screenshot encoding outside the original eight-frame timer.
   const wobbleRegression = [];
   for (const [stage, expectedSign] of [['a', 1], ['b', -1], ['c', 1]]) {
-    const staged = await page.evaluate(scene => window.__BMFM_DEBUG__.gotoScene(scene), `wobble-${stage}`);
+    const staged = await page.evaluate(scene => window.__BCFV_DEBUG__.gotoScene(scene), `wobble-${stage}`);
     const wobbleX = staged.beat?.wobbleX ?? 0;
     if (Math.sign(wobbleX) !== expectedSign) {
       throw new Error(`Recovery wobble-${stage} lost sign ${expectedSign}: ${JSON.stringify(staged.beat)}`);
@@ -703,7 +703,7 @@ try {
   console.log(`[gauntlet] recovery wobble: ${wobbleRegression.map(frame => `${frame.stage}:${frame.wobbleX}`).join(', ')}`);
 
   await page.keyboard.down('KeyZ');
-  await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('miniboss'));
+  await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('miniboss'));
   await page.waitForTimeout(1800);
   checkpoints.combat = await assertState('playing');
   if (!checkpoints.combat.boss || checkpoints.combat.boss.kind !== 'miniboss') {
@@ -719,7 +719,7 @@ try {
   await page.waitForTimeout(120);
   await assertState('playing');
 
-  await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('boss'));
+  await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('boss'));
   await page.waitForTimeout(1800);
   checkpoints.boss = await assertState('playing');
   if (!checkpoints.boss.boss || checkpoints.boss.boss.kind !== 'boss') {
@@ -742,7 +742,7 @@ try {
   // Exercise the real boss-death -> delayed victory -> restart path without
   // burning through a second full health bar in the software-rendered harness.
   checkpoints.victorySetup = await page.evaluate(() => {
-    const game = window.redlineGame;
+    const game = window.venusGame;
     const boss = game.enemies.find(enemy => enemy.kind === 'boss');
     if (boss) {
       boss.hp = 1;
@@ -756,7 +756,7 @@ try {
     throw new Error('Boss missing before victory transition check without a recorded defeat');
   });
   await page.keyboard.down('KeyZ');
-  await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().state === 'win', undefined, { timeout: 45_000 });
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'win', undefined, { timeout: 45_000 });
   await page.keyboard.up('KeyZ');
   checkpoints.victory = await assertState('win');
   await shot('victory');
@@ -765,13 +765,13 @@ try {
   checkpoints.restart = await assertState('playing');
 
   // Keep a real third-hero production capture in every full Gauntlet report.
-  // This catches per-sheet pivot, muzzle, and scale regressions that the Modo
-  // ride and Throttle combat sentence cannot expose.
-  await page.goto(new URL('/?scene=game&hero=vinnie', baseURL).href, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => Boolean(window.__BMFM_DEBUG__));
+  // This catches per-sheet pivot, muzzle, and scale regressions that the Bruna
+  // ride and Cassia combat sentence cannot expose.
+  await page.goto(new URL('/?scene=game&hero=nova', baseURL).href, { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => Boolean(window.__BCFV_DEBUG__));
   await page.waitForFunction(expectedCount => {
-    const snapshot = window.__BMFM_DEBUG__.snapshot();
-    return snapshot.hero === 'vinnie' && snapshot.atlas &&
+    const snapshot = window.__BCFV_DEBUG__.snapshot();
+    return snapshot.hero === 'nova' && snapshot.atlas &&
       Object.keys(snapshot.atlas).length === expectedCount && Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
   }, EXPECTED_ATLAS_COUNT);
   await page.keyboard.down('ArrowRight');
@@ -779,12 +779,12 @@ try {
   await page.waitForTimeout(850);
   await page.keyboard.up('KeyZ');
   await page.keyboard.up('ArrowRight');
-  checkpoints.vinnieRide = await assertState('playing');
-  if (checkpoints.vinnieRide.hero !== 'vinnie') {
-    throw new Error(`Vinnie debug capture selected the wrong hero: ${JSON.stringify(checkpoints.vinnieRide)}`);
+  checkpoints.novaRide = await assertState('playing');
+  if (checkpoints.novaRide.hero !== 'nova') {
+    throw new Error(`Nova debug capture selected the wrong hero: ${JSON.stringify(checkpoints.novaRide)}`);
   }
-  await shot('vinnie-ride');
-  console.log('[gauntlet] Vinnie ride');
+  await shot('nova-ride');
+  console.log('[gauntlet] Nova ride');
 
   // Wave 13 sustained-fire contract. Each sequence is driven by the production
   // keyboard path for at least three seconds, while the deterministic debug
@@ -793,19 +793,19 @@ try {
     await page.keyboard.up('KeyZ').catch(() => {});
     await page.goto(new URL(`/?scene=game&hero=${hero}`, baseURL).href, { waitUntil: 'networkidle' });
     await page.waitForFunction(({ expectedHero, expectedCount }) => {
-      const snapshot = window.__BMFM_DEBUG__?.snapshot();
+      const snapshot = window.__BCFV_DEBUG__?.snapshot();
       return snapshot?.hero === expectedHero && snapshot.atlas &&
         Object.keys(snapshot.atlas).length === expectedCount &&
         Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
     }, { expectedHero: hero, expectedCount: EXPECTED_ATLAS_COUNT });
-    const staged = await page.evaluate(rapidFlag => window.__BMFM_DEBUG__.gotoScene('sustain', rapidFlag), rapid ? 1 : 0);
+    const staged = await page.evaluate(rapidFlag => window.__BCFV_DEBUG__.gotoScene('sustain', rapidFlag), rapid ? 1 : 0);
     if (staged.state !== 'playing' || staged.hero !== hero || !staged.fireState) {
       throw new Error(`Sustained-fire scene failed for ${hero}/${rapid ? 'rapid' : 'normal'}: ${JSON.stringify(staged)}`);
     }
 
     await page.keyboard.down('KeyZ');
-    await page.evaluate(() => window.__BMFM_DEBUG__.setDebugFireHeld(true));
-    await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().fireState?.held === true);
+    await page.evaluate(() => window.__BCFV_DEBUG__.setDebugFireHeld(true));
+    await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().fireState?.held === true);
     const origin = (await state()).elapsed;
     const samples = [];
     for (let index = 0; index < count; index += 1) {
@@ -836,6 +836,9 @@ try {
         rapid: fire.rapid,
         jumpPose: fire.jumpPose,
         releaseBlend: fire.releaseBlend,
+        visibleExhaustHardpoint: fire.visibleExhaustHardpoint,
+        exhaustOrigin: fire.exhaustOrigin,
+        exhaustOriginDeltaPx: fire.exhaustOriginDeltaPx,
       });
       await canvasShot(`${prefix}-${String(index).padStart(2, '0')}`);
     }
@@ -851,7 +854,13 @@ try {
         sample.rapid === rapid && numeric(sample.shotsFired) && numeric(sample.recoilOffset) &&
         numeric(sample.anchorX) && numeric(sample.anchorY) && numeric(sample.anchorBaseX) &&
         numeric(sample.anchorBaseY) && numeric(sample.roadBaseline) &&
-        sample.bodyBBox && ['x','y','w','h'].every(key => numeric(sample.bodyBBox[key]))),
+        sample.bodyBBox && ['x','y','w','h'].every(key => numeric(sample.bodyBBox[key])) &&
+        sample.visibleExhaustHardpoint?.sheet === 'sustained' &&
+        numeric(sample.visibleExhaustHardpoint.x) && numeric(sample.visibleExhaustHardpoint.y) &&
+        sample.visibleExhaustHardpoint.sourceX <= 40 && sample.visibleExhaustHardpoint.sourceY >= 138 &&
+        sample.visibleExhaustHardpoint.x <= sample.bodyBBox.x + sample.bodyBBox.w * .34 &&
+        sample.visibleExhaustHardpoint.y >= sample.bodyBBox.y + sample.bodyBBox.h * .62 &&
+        sample.exhaustOrigin && numeric(sample.exhaustOriginDeltaPx) && sample.exhaustOriginDeltaPx <= 8),
       'held/grounded fire-loop schema or no-jump invariant failed', samples);
 
     const elapsedSpanMs = Math.round((samples.at(-1).elapsed - samples[0].elapsed) * 1_000);
@@ -900,7 +909,7 @@ try {
     await page.keyboard.up('KeyZ');
     // Capture the synchronous release boundary before a slow SwiftShader RAF
     // can consume the entire 130 ms recovery during PNG-heavy test runs.
-    const releasedAt = await page.evaluate(() => window.__BMFM_DEBUG__.setDebugFireHeld(false));
+    const releasedAt = await page.evaluate(() => window.__BCFV_DEBUG__.setDebugFireHeld(false));
     const release = [{ elapsed: releasedAt.elapsed, ...releasedAt.fireState }];
     for (const delay of [50, 50, 80, 120, 160]) {
       await page.waitForTimeout(delay);
@@ -937,21 +946,21 @@ try {
     };
   };
 
-  const sustainedThrottle = await captureSustainedFire({ hero: 'throttle', count: 6, durationMs: 3_200, prefix: 'sustain-throttle' });
-  const sustainedModo = await captureSustainedFire({ hero: 'modo', count: 6, durationMs: 3_200, prefix: 'sustain-modo' });
-  const sustainedVinnie = await captureSustainedFire({ hero: 'vinnie', count: 6, durationMs: 3_200, prefix: 'sustain-vinnie' });
-  const sustainedVinnieRapid = await captureSustainedFire({ hero: 'vinnie', rapid: true, count: 14, durationMs: 4_000, prefix: 'sustain-vinnie-rapid' });
-  if (sustainedVinnieRapid.cadenceShotsPerSecond <= sustainedVinnie.cadenceShotsPerSecond * 1.25) {
-    throw new Error(`Vinnie rapid cadence failed to clear normal cadence by 25%: ${JSON.stringify({ normal: sustainedVinnie.cadenceShotsPerSecond, rapid: sustainedVinnieRapid.cadenceShotsPerSecond })}`);
+  const sustainedCassia = await captureSustainedFire({ hero: 'cassia', count: 6, durationMs: 3_200, prefix: 'sustain-cassia' });
+  const sustainedBruna = await captureSustainedFire({ hero: 'bruna', count: 6, durationMs: 3_200, prefix: 'sustain-bruna' });
+  const sustainedNova = await captureSustainedFire({ hero: 'nova', count: 6, durationMs: 3_200, prefix: 'sustain-nova' });
+  const sustainedNovaRapid = await captureSustainedFire({ hero: 'nova', rapid: true, count: 14, durationMs: 4_000, prefix: 'sustain-nova-rapid' });
+  if (sustainedNovaRapid.cadenceShotsPerSecond <= sustainedNova.cadenceShotsPerSecond * 1.25) {
+    throw new Error(`Nova rapid cadence failed to clear normal cadence by 25%: ${JSON.stringify({ normal: sustainedNova.cadenceShotsPerSecond, rapid: sustainedNovaRapid.cadenceShotsPerSecond })}`);
   }
   checkpoints.sustainedFire = {
     contract: { canvas: { width: 960, height: 540 }, grounded: true, normalDurationMinMs: 3_000, rapidDurationMinMs: 4_000, anchorJitterMax: { x: 6, y: 4 }, releasePopMaxPx: 6 },
-    throttle: sustainedThrottle,
-    modo: sustainedModo,
-    vinnie: sustainedVinnie,
-    vinnieRapid: sustainedVinnieRapid,
+    cassia: sustainedCassia,
+    bruna: sustainedBruna,
+    nova: sustainedNova,
+    novaRapid: sustainedNovaRapid,
   };
-  console.log(`[gauntlet] sustained fire: throttle ${sustainedThrottle.cadenceShotsPerSecond}/s, modo ${sustainedModo.cadenceShotsPerSecond}/s, Vinnie ${sustainedVinnie.cadenceShotsPerSecond}/s, rapid ${sustainedVinnieRapid.cadenceShotsPerSecond}/s`);
+  console.log(`[gauntlet] sustained fire: cassia ${sustainedCassia.cadenceShotsPerSecond}/s, bruna ${sustainedBruna.cadenceShotsPerSecond}/s, Nova ${sustainedNova.cadenceShotsPerSecond}/s, rapid ${sustainedNovaRapid.cadenceShotsPerSecond}/s`);
 
   // Wave 14 release bridge.  Each production requestAnimationFrame is copied
   // to a private canvas and only encoded after the motion window is complete.
@@ -964,26 +973,26 @@ try {
     await page.keyboard.up('KeyZ').catch(() => {});
     await page.goto(new URL(`/?scene=game&hero=${hero}`, baseURL).href, { waitUntil: 'networkidle' });
     await page.waitForFunction(({ expectedHero, expectedCount }) => {
-      const snapshot = window.__BMFM_DEBUG__?.snapshot();
+      const snapshot = window.__BCFV_DEBUG__?.snapshot();
       return snapshot?.hero === expectedHero && snapshot.atlas &&
         Object.keys(snapshot.atlas).length === expectedCount &&
         Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
     }, { expectedHero: hero, expectedCount: EXPECTED_ATLAS_COUNT });
-    const staged = await page.evaluate(rapidFlag => window.__BMFM_DEBUG__.gotoScene('sustain', rapidFlag), rapid ? 1 : 0);
+    const staged = await page.evaluate(rapidFlag => window.__BCFV_DEBUG__.gotoScene('sustain', rapidFlag), rapid ? 1 : 0);
     if (staged.state !== 'playing' || staged.hero !== hero || !staged.fireState) {
       throw new Error(`Release bridge scene failed for ${capturePrefix}: ${JSON.stringify(staged)}`);
     }
 
     await page.keyboard.down('KeyZ');
-    await page.evaluate(() => window.__BMFM_DEBUG__.setDebugFireHeld(true));
-    await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().fireState?.held === true, undefined, { polling: 'raf' });
+    await page.evaluate(() => window.__BCFV_DEBUG__.setDebugFireHeld(true));
+    await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().fireState?.held === true, undefined, { polling: 'raf' });
     // Let the authored sustained loop settle before this capture's final hold window.
     await page.waitForTimeout(120);
 
     let rawCapture;
     try {
       rawCapture = await page.evaluate(async ({ holdMs, postReleaseMs }) => {
-        const api = window.__BMFM_DEBUG__;
+        const api = window.__BCFV_DEBUG__;
         const canvas = document.querySelector('canvas');
         if (!api || !(canvas instanceof HTMLCanvasElement)) throw new Error('Release bridge debug API/canvas missing');
         if (canvas.width !== 960 || canvas.height !== 540) {
@@ -997,7 +1006,7 @@ try {
           let rafCount = 0;
           const finish = () => {
             // Encode only after the complete motion window has been copied.
-            // Encoding a 960x540 PNG inside every RAF throttled SwiftShader to
+            // Encoding a 960x540 PNG inside every RAF cassiad SwiftShader to
             // ~30 fps and hid every other recovery pose; lightweight canvas
             // copies preserve the actual production-RAF cadence.
             const serialized = frames.map(({ frozenCanvas, ...metadata }) => ({
@@ -1188,10 +1197,10 @@ try {
     };
   };
 
-  const releaseThrottle = await captureReleaseBridge({ hero: 'throttle' });
-  const releaseModo = await captureReleaseBridge({ hero: 'modo' });
-  const releaseVinnie = await captureReleaseBridge({ hero: 'vinnie' });
-  const releaseVinnieRapid = await captureReleaseBridge({ hero: 'vinnie', rapid: true });
+  const releaseCassia = await captureReleaseBridge({ hero: 'cassia' });
+  const releaseBruna = await captureReleaseBridge({ hero: 'bruna' });
+  const releaseNova = await captureReleaseBridge({ hero: 'nova' });
+  const releaseNovaRapid = await captureReleaseBridge({ hero: 'nova', rapid: true });
   checkpoints.releaseBridge = {
     contract: {
       canvas: { width: 960, height: 540 },
@@ -1205,12 +1214,12 @@ try {
       consecutiveTopEdgeMovementMaxPx: 4,
       exposedSilhouetteChangeMaxPct: 15,
     },
-    throttle: releaseThrottle,
-    modo: releaseModo,
-    vinnie: releaseVinnie,
-    vinnieRapid: releaseVinnieRapid,
+    cassia: releaseCassia,
+    bruna: releaseBruna,
+    nova: releaseNova,
+    novaRapid: releaseNovaRapid,
   };
-  console.log(`[gauntlet] release bridge: ${[releaseThrottle, releaseModo, releaseVinnie, releaseVinnieRapid].map(result => `${result.capturePrefix} ${result.frameCount}f/${result.timing.bridgeDurationMs}ms`).join(', ')}`);
+  console.log(`[gauntlet] release bridge: ${[releaseCassia, releaseBruna, releaseNova, releaseNovaRapid].map(result => `${result.capturePrefix} ${result.frameCount}f/${result.timing.bridgeDurationMs}ms`).join(', ')}`);
 
   // P0 muzzle-origin contract.  The first real projectile created after each
   // latch is captured inside the same production RAF that rendered the muzzle,
@@ -1260,19 +1269,19 @@ try {
     await page.keyboard.up('KeyZ').catch(() => {});
     await page.goto(new URL(`/?scene=game&hero=${hero}`, baseURL).href, { waitUntil: 'networkidle' });
     await page.waitForFunction(({ expectedHero, expectedCount }) => {
-      const snapshot = window.__BMFM_DEBUG__?.snapshot();
+      const snapshot = window.__BCFV_DEBUG__?.snapshot();
       return snapshot?.hero === expectedHero && snapshot.atlas &&
         Object.keys(snapshot.atlas).length === expectedCount &&
         Object.values(snapshot.atlas).every(sheet => sheet.state === 'ready');
     }, { expectedHero: hero, expectedCount: EXPECTED_ATLAS_COUNT });
-    await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('sustain', 0));
-    await page.evaluate(() => window.__BMFM_DEBUG__.setDebugFireHeld(false));
-    await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().fireState?.bodyMode === 'ride', undefined, { polling: 'raf' });
+    await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('sustain', 0));
+    await page.evaluate(() => window.__BCFV_DEBUG__.setDebugFireHeld(false));
+    await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().fireState?.bodyMode === 'ride', undefined, { polling: 'raf' });
     await page.waitForTimeout(280);
 
     await page.keyboard.down('KeyZ');
     const groundRaw = await page.evaluate(async expectedHero => {
-      const api = window.__BMFM_DEBUG__;
+      const api = window.__BCFV_DEBUG__;
       const canvas = document.querySelector('canvas');
       if (!api || !(canvas instanceof HTMLCanvasElement)) throw new Error('Muzzle-origin debug API/canvas missing');
       const baselineShots = api.snapshot().fireState?.shotsFired ?? -1;
@@ -1342,15 +1351,15 @@ try {
     // A clean scene avoids carrying ground-shot cooldown into the airborne
     // sample.  Jump and projectile both still travel through production input,
     // update, spawn and draw code.
-    await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('sustain', 0));
-    await page.evaluate(() => window.__BMFM_DEBUG__.setDebugFireHeld(false));
-    await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().fireState?.bodyMode === 'ride', undefined, { polling: 'raf' });
+    await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('sustain', 0));
+    await page.evaluate(() => window.__BCFV_DEBUG__.setDebugFireHeld(false));
+    await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().fireState?.bodyMode === 'ride', undefined, { polling: 'raf' });
     await page.waitForTimeout(280);
     await page.keyboard.press('KeyX');
-    await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().fireState?.bodyMode === 'airborne', undefined, { polling: 'raf' });
+    await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().fireState?.bodyMode === 'airborne', undefined, { polling: 'raf' });
     await page.keyboard.down('KeyZ');
     const jumpRaw = await page.evaluate(async expectedHero => {
-      const api = window.__BMFM_DEBUG__;
+      const api = window.__BCFV_DEBUG__;
       const canvas = document.querySelector('canvas');
       if (!api || !(canvas instanceof HTMLCanvasElement)) throw new Error('Jump muzzle debug API/canvas missing');
       const baselineShots = api.snapshot().fireState?.shotsFired ?? -1;
@@ -1413,31 +1422,31 @@ try {
     };
   };
 
-  const muzzleThrottle = await captureMuzzleOrigin('throttle');
-  const muzzleModo = await captureMuzzleOrigin('modo');
-  const muzzleVinnie = await captureMuzzleOrigin('vinnie');
+  const muzzleCassia = await captureMuzzleOrigin('cassia');
+  const muzzleBruna = await captureMuzzleOrigin('bruna');
+  const muzzleNova = await captureMuzzleOrigin('nova');
   checkpoints.projectileOrigin = {
     contract: {
       productionFirstProjectile: true,
-      heroes: ['throttle', 'modo', 'vinnie'],
+      heroes: ['cassia', 'bruna', 'nova'],
       poses: ['sustained', 'release-frame-0', 'airborne'],
       projectileToVisibleBarrelMaxPx: 6,
     },
-    throttle: muzzleThrottle,
-    modo: muzzleModo,
-    vinnie: muzzleVinnie,
+    cassia: muzzleCassia,
+    bruna: muzzleBruna,
+    nova: muzzleNova,
   };
-  console.log(`[gauntlet] projectile origin: ${[muzzleThrottle, muzzleModo, muzzleVinnie].map(result => `${result.hero} ${result.sustained.deltaToVisibleBarrelPx}/${result.release.deltaToVisibleBarrelPx}/${result.jump.deltaToVisibleBarrelPx}px`).join(', ')}`);
+  console.log(`[gauntlet] projectile origin: ${[muzzleCassia, muzzleBruna, muzzleNova].map(result => `${result.hero} ${result.sustained.deltaToVisibleBarrelPx}/${result.release.deltaToVisibleBarrelPx}/${result.jump.deltaToVisibleBarrelPx}px`).join(', ')}`);
 
   // A real aerial-wave integration capture: both authored aerial classes are
   // spawned into the normal update/collision/render loop and fire gameplay shots.
-  await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('aerial'));
+  await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('aerial'));
   await page.waitForTimeout(620);
   await page.keyboard.down('KeyZ');
   await page.waitForTimeout(260);
   checkpoints.aerialCombat = await assertState('playing');
   await page.keyboard.up('KeyZ');
-  if (checkpoints.aerialCombat.hero !== 'throttle' || checkpoints.aerialCombat.enemies < 2 || checkpoints.aerialCombat.boss) {
+  if (checkpoints.aerialCombat.hero !== 'cassia' || checkpoints.aerialCombat.enemies < 2 || checkpoints.aerialCombat.boss) {
     throw new Error(`Aerial integration scene was not live: ${JSON.stringify(checkpoints.aerialCombat)}`);
   }
   await shot('aerial-combat');
@@ -1456,7 +1465,7 @@ try {
 
   await page.keyboard.up('KeyZ').catch(() => {});
   await page.keyboard.up('Numpad1').catch(() => {});
-  const coopSelectStart = await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('coop-select'));
+  const coopSelectStart = await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('coop-select'));
   requireCoop(coopSelectStart.state === 'select' && coopSelectStart.coopEnabled === true &&
       Array.isArray(coopSelectStart.selectedHeroes) && coopSelectStart.selectedHeroes.length === 2,
     'coop select did not expose two independent slots', coopSelectStart);
@@ -1485,7 +1494,7 @@ try {
   requireCoop(p1Ready.selectReady?.[0] === true && p1Ready.selectReady?.[1] === false,
     'P1 confirmation did not wait for P2', p1Ready);
   await page.keyboard.press('Numpad1');
-  await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().state === 'playing', undefined, { polling: 'raf' });
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'playing', undefined, { polling: 'raf' });
   const coopRideStart = await assertState('playing');
   requireCoop(coopRideStart.coopEnabled === true && coopRideStart.players?.length === 2 &&
       coopRideStart.players.every(player => player.alive && !player.downed),
@@ -1536,7 +1545,7 @@ try {
   // projectiles remain in the production projectile list, but player vitals
   // must be byte-for-byte stable because players are not valid friendly targets.
   const friendlyBefore = await state();
-  const friendlyProbe = await page.evaluate(() => window.__BMFM_DEBUG__.friendlyFireProbe());
+  const friendlyProbe = await page.evaluate(() => window.__BCFV_DEBUG__.friendlyFireProbe());
   await page.waitForTimeout(260);
   const friendlyAfter = await assertState('playing');
   const friendlyP1Before = playerById(friendlyBefore, 1), friendlyP2Before = playerById(friendlyBefore, 2);
@@ -1559,7 +1568,7 @@ try {
   // A deterministic enemy projectile is arranged on P2 and resolved by the
   // production collision/damage routine.  Only the struck rider may change.
   const enemyBefore = await state();
-  const enemyProbe = await page.evaluate(() => window.__BMFM_DEBUG__.damagePlayer(2, 18));
+  const enemyProbe = await page.evaluate(() => window.__BCFV_DEBUG__.damagePlayer(2, 18));
   await page.waitForTimeout(80);
   const enemyAfter = await assertState('playing');
   const enemyP1Before = playerById(enemyBefore, 1), enemyP2Before = playerById(enemyBefore, 2);
@@ -1577,15 +1586,15 @@ try {
 
   // Downing is team-aware: one rider down keeps the run alive; the second
   // down transitions through the normal lose state.
-  const downP2Probe = await page.evaluate(() => window.__BMFM_DEBUG__.damagePlayer(2, 99_999));
+  const downP2Probe = await page.evaluate(() => window.__BCFV_DEBUG__.damagePlayer(2, 99_999));
   await page.waitForTimeout(100);
   checkpoints.coopOneDown = await assertState('playing');
   requireCoop(downP2Probe?.productionCollision === true && playerById(checkpoints.coopOneDown, 2)?.downed === true &&
       playerById(checkpoints.coopOneDown, 1)?.alive === true,
     'one downed rider incorrectly ended the shared run', { probe: downP2Probe, state: checkpoints.coopOneDown });
   await canvasShot('coop-one-down');
-  const downP1Probe = await page.evaluate(() => window.__BMFM_DEBUG__.damagePlayer(1, 99_999));
-  await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().state === 'lose', undefined, { polling: 'raf' });
+  const downP1Probe = await page.evaluate(() => window.__BCFV_DEBUG__.damagePlayer(1, 99_999));
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'lose', undefined, { polling: 'raf' });
   checkpoints.coopBothDown = await assertState('lose');
   requireCoop(downP1Probe?.productionCollision === true && checkpoints.coopBothDown.players?.every(player => player.downed),
     'both downed riders did not enter defeat', { probe: downP1Probe, state: checkpoints.coopBothDown });
@@ -1599,7 +1608,7 @@ try {
   // Two real held triggers finish the dedicated co-op boss setup.  The debug
   // scene may shorten the boss health bar, but does not apply scripted damage:
   // owner-tagged production projectiles must be observed before victory.
-  const coopBossStart = await page.evaluate(() => window.__BMFM_DEBUG__.gotoScene('coop-boss'));
+  const coopBossStart = await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('coop-boss'));
   requireCoop(coopBossStart.state === 'playing' && coopBossStart.coopEnabled === true &&
       coopBossStart.players?.length === 2 && coopBossStart.boss?.kind === 'boss',
     'co-op boss scene did not contain two riders and the final boss', coopBossStart);
@@ -1615,7 +1624,7 @@ try {
       new Set((checkpoints.coopBossExchange.friendlyProjectiles ?? []).map(projectile => projectile.ownerId)).size === 2,
     'boss exchange did not contain an intact boss and real fire from both owners', checkpoints.coopBossExchange);
   await canvasShot('coop-boss-exchange');
-  await page.waitForFunction(() => window.__BMFM_DEBUG__.snapshot().state === 'win', undefined, { timeout: 45_000, polling: 'raf' });
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'win', undefined, { timeout: 45_000, polling: 'raf' });
   await page.keyboard.up('KeyZ');
   await page.keyboard.up('Numpad1');
   checkpoints.coopVictory = await assertState('win');

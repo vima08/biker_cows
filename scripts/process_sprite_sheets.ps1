@@ -11,7 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 
-public static class RedlineSpriteTools {
+public static class VenusSpriteTools {
   private static bool IsKey(Color c) {
     bool flatKey = c.R > 155 && c.B > 155 && c.R - c.G > 90 && c.B - c.G > 90;
     bool darkKeyFringe = c.R > 120 && c.B > 120 && c.G < 85
@@ -109,15 +109,14 @@ public static class RedlineSpriteTools {
 '@
 
 $definitions = @(
-  @{ Name = 'throttle'; Source = 'throttle-chroma.png'; Output = 'throttle-sheet.png'; Columns = 4; Rows = 2; SingleComponent = $true },
-  @{ Name = 'modo'; Source = 'modo-chroma.png'; Output = 'modo-sheet.png'; Columns = 4; Rows = 2; SingleComponent = $true },
-  @{ Name = 'vinnie'; Source = 'vinnie-chroma.png'; Output = 'vinnie-sheet.png'; Columns = 4; Rows = 2; SingleComponent = $true },
-  @{ Name = 'sustainedFire'; Source = 'sustained-fire-chroma.png'; Output = 'sustained-fire-sheet.png'; Columns = 4; Rows = 3; SingleComponent = $true },
-  @{ Name = 'fireRelease'; Source = 'fire-release-chroma.png'; Output = 'fire-release-sheet.png'; Columns = 3; Rows = 3; SingleComponent = $true },
-  @{ Name = 'heroPortraits'; Source = 'hero-portraits-chroma.png'; Output = 'hero-portraits-sheet.png'; Columns = 3; Rows = 1; Centered = $true },
+  @{ Name = 'cassia'; Source = 'cassia-base-chroma.png'; Output = 'cassia-sheet.png'; Columns = 4; Rows = 2; SingleComponent = $true },
+  @{ Name = 'bruna'; Source = 'bruna-base-chroma.png'; Output = 'bruna-sheet.png'; Columns = 4; Rows = 2; SingleComponent = $true },
+  @{ Name = 'nova'; Source = 'nova-base-chroma.png'; Output = 'nova-sheet.png'; Columns = 4; Rows = 2; SingleComponent = $true },
+  @{ Name = 'cowSustainedFire'; Source = 'cow-sustained-fire-chroma.png'; Output = 'cow-sustained-fire-sheet.png'; Columns = 4; Rows = 3; SingleComponent = $true },
+  @{ Name = 'cowFireRelease'; Source = 'cow-fire-release-chroma.png'; Output = 'cow-fire-release-sheet.png'; Columns = 3; Rows = 3; SingleComponent = $true },
+  @{ Name = 'cowPortraits'; Source = 'cow-portraits-chroma.png'; Output = 'cow-portraits-sheet.png'; Columns = 3; Rows = 1; Centered = $true; SingleComponent = $true },
   @{ Name = 'enemyRoster'; Source = 'enemy-roster-chroma.png'; Output = 'enemy-roster-sheet.png'; Columns = 4; Rows = 3; Centered = $true; SingleComponent = $true },
   @{ Name = 'roadsideProps'; Source = 'roadside-props-chroma.png'; Output = 'roadside-props-sheet.png'; Columns = 4; Rows = 2; Centered = $true; SingleComponent = $true },
-  @{ Name = 'vinniePortrait'; Source = 'vinnie-portrait-chroma.png'; Output = 'vinnie-portrait-cell.png'; Columns = 1; Rows = 1; Centered = $true; SingleComponent = $true },
   @{ Name = 'rider'; Source = 'rider-chroma.png'; Output = 'rider-sheet.png'; Columns = 3; Rows = 2 },
   @{ Name = 'riderImpact'; Source = 'rider-impact-chroma.png'; Output = 'rider-impact-sheet.png'; Columns = 4; Rows = 3 },
   @{ Name = 'impactMaterial'; Source = 'impact-material-chroma.png'; Output = 'impact-material-sheet.png'; Columns = 4; Rows = 2; Centered = $true },
@@ -149,7 +148,7 @@ foreach ($definition in $definitions) {
     for ($row = 0; $row -lt $definition.Rows; $row++) {
       for ($column = 0; $column -lt $definition.Columns; $column++) {
         $cell = [System.Drawing.Rectangle]::new($column * $cellWidth, $row * $cellHeight, $cellWidth, $cellHeight)
-        $content = [RedlineSpriteTools]::ContentBounds($source, $cell)
+        $content = [VenusSpriteTools]::ContentBounds($source, $cell)
         $bounds.Add($content)
         $maxWidth = [Math]::Max($maxWidth, $content.Width)
         $maxHeight = [Math]::Max($maxHeight, $content.Height)
@@ -186,12 +185,12 @@ foreach ($definition in $definitions) {
         $graphics.Dispose()
       }
 
-      [RedlineSpriteTools]::RemoveMagentaMatte($atlas)
+      [VenusSpriteTools]::RemoveMagentaMatte($atlas)
       if ($definition.SingleComponent) {
         for ($row = 0; $row -lt $definition.Rows; $row++) {
           for ($column = 0; $column -lt $definition.Columns; $column++) {
             $frame = [System.Drawing.Rectangle]::new($column * $frameWidth, $row * $frameHeight, $frameWidth, $frameHeight)
-            [RedlineSpriteTools]::KeepLargestComponent($atlas, $frame)
+            [VenusSpriteTools]::KeepLargestComponent($atlas, $frame)
           }
         }
       }

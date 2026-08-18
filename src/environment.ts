@@ -1,5 +1,5 @@
 /**
- * Procedural 16-bit stage environment for Mars Redline.
+ * Procedural 16-bit stage environment for Venus Neon Stampede.
  *
  * The renderer is intentionally stateless: every decoration is derived from
  * scroll/time, so captures and debug scene jumps remain deterministic.
@@ -12,7 +12,7 @@ export const ENVIRONMENT_ROAD_BOTTOM = 506;
 export const ENVIRONMENT_DURATION = 465;
 
 export type EnvironmentSection =
-  | 'mars-outskirts'
+  | 'venus-outskirts'
   | 'neon-refinery'
   | 'lava-foundry'
   | 'fortress-approach';
@@ -55,7 +55,7 @@ interface Palette {
 }
 
 const SECTIONS: readonly EnvironmentSection[] = [
-  'mars-outskirts',
+  'venus-outskirts',
   'neon-refinery',
   'lava-foundry',
   'fortress-approach',
@@ -66,7 +66,7 @@ const SECTIONS: readonly EnvironmentSection[] = [
  * the loader here (rather than in game state) means a slow/missing local asset
  * simply reveals the procedural world that is already drawn underneath it.
  */
-const PANORAMA_URL = '/assets/world/mars-highway-panorama.png';
+const PANORAMA_URL = '/assets/world/venus-highway-panorama.png';
 let panorama: HTMLImageElement | null = null;
 let panoramaState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
 
@@ -135,7 +135,7 @@ function getRoadProps(): HTMLImageElement | null {
 }
 
 const PALETTES: Record<EnvironmentSection, Palette> = {
-  'mars-outskirts': {
+  'venus-outskirts': {
     sky0: '#070a25', sky1: '#31204d', sky2: '#913e58', horizon: '#f58a5b', glow: '#ffc16c',
     far0: '#2b2145', far1: '#422640', mid0: '#17172c', mid1: '#302039', metal: '#5c4652',
     accent: '#69d5d2', hot: '#ffb43d', road0: '#11131c', road1: '#1a1b25', road2: '#282631', shoulder: '#3f2835',
@@ -348,7 +348,7 @@ function drawMoons(ctx: CanvasRenderingContext2D, palette: Palette, scroll: numb
   ctx.fillRect(moonX - radius - 12, moonY + radius + 7, radius * 2 + 24, 2);
   ctx.globalAlpha = 1;
 
-  if (section === 'mars-outskirts') {
+  if (section === 'venus-outskirts') {
     const x = Math.round(wrap(214 - scroll * .006, 1130) - 70);
     ctx.fillStyle = '#9ab7d0';
     ctx.beginPath(); ctx.arc(x, 65, 12, 0, Math.PI * 2); ctx.fill();
@@ -584,7 +584,7 @@ function drawSectionFeatures(ctx: CanvasRenderingContext2D, section: Environment
   if (alpha <= .001) return;
   ctx.save();
   ctx.globalAlpha = alpha;
-  if (section === 'mars-outskirts') drawOutskirts(ctx, palette, scroll, time);
+  if (section === 'venus-outskirts') drawOutskirts(ctx, palette, scroll, time);
   else if (section === 'neon-refinery') drawRefinery(ctx, palette, scroll, time);
   else if (section === 'lava-foundry') drawFoundry(ctx, palette, scroll, time);
   else drawFortress(ctx, palette, scroll, time);

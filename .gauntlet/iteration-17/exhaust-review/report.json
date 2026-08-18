@@ -1,0 +1,108 @@
+{
+  "ok": true,
+  "errors": [],
+  "evidence": {
+    "cassia": {
+      "sustained": {
+        "x": 87.66,
+        "y": 447.19,
+        "sourceX": 24,
+        "sourceY": 146,
+        "sheet": "sustained",
+        "frame": 2
+      },
+      "release": {
+        "x": 86.85,
+        "y": 447.19,
+        "sourceX": 23,
+        "sourceY": 146,
+        "sheet": "release",
+        "frame": 0
+      },
+      "ride": {
+        "x": 85.22,
+        "y": 446.37,
+        "sourceX": 21,
+        "sourceY": 145,
+        "sheet": "authored",
+        "frame": 0
+      },
+      "jump": {
+        "x": 82.78,
+        "y": 399.31,
+        "sourceX": 18,
+        "sourceY": 143,
+        "sheet": "authored",
+        "frame": 4
+      }
+    },
+    "bruna": {
+      "sustained": {
+        "x": 69.17,
+        "y": 452.54,
+        "sourceX": 13,
+        "sourceY": 154,
+        "sheet": "sustained",
+        "frame": 0
+      },
+      "release": {
+        "x": 69.17,
+        "y": 452.54,
+        "sourceX": 13,
+        "sourceY": 154,
+        "sheet": "release",
+        "frame": 0
+      },
+      "ride": {
+        "x": 69.17,
+        "y": 452.54,
+        "sourceX": 13,
+        "sourceY": 154,
+        "sheet": "authored",
+        "frame": 7
+      },
+      "jump": {
+        "x": 68.31,
+        "y": 410.58,
+        "sourceX": 12,
+        "sourceY": 158,
+        "sheet": "authored",
+        "frame": 4
+      }
+    },
+    "nova": {
+      "sustained": {
+        "x": 92.34,
+        "y": 450.21,
+        "sourceX": 27,
+        "sourceY": 148,
+        "sheet": "sustained",
+        "frame": 0
+      },
+      "release": {
+        "x": 92.34,
+        "y": 450.21,
+        "sourceX": 27,
+        "sourceY": 148,
+        "sheet": "release",
+        "frame": 0
+      },
+      "ride": {
+        "x": 92.34,
+        "y": 449.42,
+        "sourceX": 27,
+        "sourceY": 147,
+        "sheet": "authored",
+        "frame": 0
+      },
+      "jump": {
+        "x": 90.77,
+        "y": 411.24,
+        "sourceX": 25,
+        "sourceY": 150,
+        "sheet": "authored",
+        "frame": 4
+      }
+    }
+  }
+}

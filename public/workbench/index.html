@@ -2,291 +2,51 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Redline Rampage — Gauntlet Workbench</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Biker Cows from Venus — Gauntlet Workbench</title>
   <style>
-    :root { color-scheme: dark; font-family: ui-monospace, "Cascadia Code", monospace; color: #f7edf5; background: #07040c; }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: radial-gradient(circle at 50% 0, #351247 0, #100617 42rem, #050308 100%); }
-    header, main { width: min(1500px, 94vw); margin: auto; }
-    header { padding: 52px 0 26px; border-bottom: 1px solid #66345f; }
-    h1, h2, p { margin-top: 0; }
-    h1 { color: #ffd94a; text-transform: uppercase; letter-spacing: .08em; font-size: clamp(2rem, 5vw, 5rem); margin-bottom: 10px; }
-    h2 { color: #ff5a87; text-transform: uppercase; letter-spacing: .06em; }
-    .lede { color: #c9b3cb; max-width: 80ch; line-height: 1.6; }
-    .iteration { margin: 36px 0 64px; padding: 24px; background: #0d0913dd; border: 1px solid #4d294e; box-shadow: 0 18px 60px #0008; }
-    .meta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
-    .tag { padding: 7px 10px; color: #120716; background: #5be0dd; font-weight: 800; text-transform: uppercase; }
-    .tag.warn { background: #ffcf45; }
-    .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
-    figure { margin: 0; background: #050408; border: 1px solid #302238; overflow: hidden; }
-    img { width: 100%; display: block; aspect-ratio: 16 / 9; object-fit: cover; image-rendering: pixelated; }
-    figcaption { padding: 9px 12px; color: #a995ad; font-size: .78rem; text-transform: uppercase; }
-    .finding { margin-top: 22px; padding: 18px 20px; border-left: 5px solid #ff4b72; background: #1a0e1c; line-height: 1.55; }
-    .finding strong { color: #ffd94a; }
-    footer { color: #876f89; padding: 0 0 52px; }
+    :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#090713;color:#f4e8d2}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#34214a,#090713 58%);line-height:1.5}
+    main{max-width:1280px;margin:auto;padding:32px 20px 64px}h1{color:#fff36b;margin-bottom:4px}h2{color:#5de4e0;margin-top:38px}
+    .lede,.finding{max-width:900px;color:#cdbed3}.finding{border-left:4px solid #ff5270;background:#160e20;padding:14px 18px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px}
+    figure{margin:0;background:#0c0912;border:2px solid #382848;box-shadow:0 8px 28px #0008}
+    img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;image-rendering:pixelated}
+    figcaption{padding:10px 12px;color:#d8cadf}.tag{display:inline-block;margin:4px 6px 0 0;padding:3px 8px;border:1px solid #5de4e0;color:#5de4e0;font-size:12px}
+    code{color:#fff36b}footer{margin-top:42px;color:#80738a}
   </style>
 </head>
-<body>
-  <header>
-    <h1>Gauntlet Workbench</h1>
-    <p class="lede">Только реальные кадры запущенной игры. Страница фиксирует визуальные итерации, крупнейший найденный разрыв и результат следующего прохода; она не заменяет разработку и тестирование.</p>
-  </header>
-  <main>
-    <section class="iteration">
-      <h2>Iteration 0 — playable spine</h2>
-      <div class="meta"><span class="tag warn">Build pass</span><span class="tag">5 required scenes</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-0/menu.png" alt="Title menu"><figcaption>Menu</figcaption></figure>
-        <figure><img src="captures/iteration-0/select.png" alt="Hero select"><figcaption>Hero select</figcaption></figure>
-        <figure><img src="captures/iteration-0/ride.png" alt="Normal ride"><figcaption>Normal movement</figcaption></figure>
-        <figure><img src="captures/iteration-0/combat.png" alt="Combat"><figcaption>Combat</figcaption></figure>
-        <figure><img src="captures/iteration-0/boss.png" alt="Final boss"><figcaption>Final boss</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Крупнейший разрыв:</strong> gameplay-поле заметно беднее сильной заставки — плоский skyline, пустая дорога и схематичные фигуры не создают плотности и глубины лучших 16-битных шутеров.</div>
-    </section>
+<body><main>
+  <h1>Biker Cows from Venus: Neon Stampede</h1>
+  <p class="lede">Wave 17 · реальные production-кадры браузерного Gauntlet. Новый самостоятельный состав, Venus key art, три полных набора анимаций и сохранённый solo/co-op маршрут.</p>
+  <p><span class="tag">13/13 atlas ready</span><span class="tag">runtimeErrors=[]</span><span class="tag">solo + co-op PASS</span></p>
 
-    <section class="iteration">
-      <h2>Iteration 1 — integration &amp; smoothing</h2>
-      <div class="meta"><span class="tag">Audio bridge</span><span class="tag">Crisp ×2 sprites</span><span class="tag">Smoke pass</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-1/menu.png" alt="Integrated menu"><figcaption>Menu retained</figcaption></figure>
-        <figure><img src="captures/iteration-1/select.png" alt="Integrated hero select"><figcaption>Hero select retained</figcaption></figure>
-        <figure><img src="captures/iteration-1/ride.png" alt="Integrated ride"><figcaption>Hero / bike integration</figcaption></figure>
-        <figure><img src="captures/iteration-1/combat.png" alt="Integrated combat"><figcaption>Enemy scale pass</figcaption></figure>
-        <figure><img src="captures/iteration-1/boss-exchange.png" alt="Boss bullet exchange"><figcaption>Boss exchange + effects</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Сделано:</strong> единая pixel grid, новые персонажи/транспорт/враги/боссы, процедурный рок и SFX, исправленные boss/debug paths. Build и Playwright smoke проходят без runtime errors. Следующий арт-проход должен уплотнить окружение и разделить секции уровня.</div>
-    </section>
+  <h2>Идентичность и выбор</h2>
+  <div class="grid">
+    <figure><img src="captures/iteration-17/menu.png" alt="Biker Cows from Venus start screen"><figcaption>Start screen · новая Venus-панорама</figcaption></figure>
+    <figure><img src="captures/iteration-17/select.png" alt="Cassia Bruna Nova select"><figcaption>Select · Cassia, Bruna и Nova</figcaption></figure>
+    <figure><img src="captures/iteration-17/select-nova.png" alt="Nova selected"><figcaption>Nova · speed ace</figcaption></figure>
+  </div>
 
-    <section class="iteration">
-      <h2>Iteration 2 — production gameplay pass</h2>
-      <div class="meta"><span class="tag">4 visual zones</span><span class="tag">5+ parallax planes</span><span class="tag">Boss rebuild</span><span class="tag">Runtime clean</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-2/menu.png" alt="Iteration 2 menu"><figcaption>Menu</figcaption></figure>
-        <figure><img src="captures/iteration-2/select.png" alt="Iteration 2 hero select"><figcaption>Hero select</figcaption></figure>
-        <figure><img src="captures/iteration-2/ride.png" alt="Detailed Mars highway"><figcaption>Mars outskirts</figcaption></figure>
-        <figure><img src="captures/iteration-2/combat.png" alt="Refinery miniboss combat"><figcaption>Neon refinery miniboss</figcaption></figure>
-        <figure><img src="captures/iteration-2/boss-exchange.png" alt="Fortress boss exchange"><figcaption>Fortress boss exchange</figcaption></figure>
-      </div>
-      <div class="shots" style="margin-top:14px">
-        <figure><img src="captures/iteration-2/ride-sequence-a.png" alt="Motion frame A"><figcaption>Motion A</figcaption></figure>
-        <figure><img src="captures/iteration-2/ride-sequence-b.png" alt="Motion frame B"><figcaption>Motion B</figcaption></figure>
-        <figure><img src="captures/iteration-2/ride-sequence-c.png" alt="Motion frame C"><figcaption>Motion C</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Вердикт critic 2:</strong> environment, композиция и читаемость приняты, но premium-планка ещё не достигнута: в motion A/B/C мир убедительно движется на разных скоростях, тогда как подвеска, корпус и поза героя меняются слишком слабо. Следующая итерация сфокусирована только на authored sprite animation и impact choreography.</div>
-    </section>
+  <h2>Bruna continuity gate</h2>
+  <div class="grid">
+    <figure><img src="captures/iteration-17/bruna-base.png" alt="Bruna base ride"><figcaption>Base ride · левая киберрука видна</figcaption></figure>
+    <figure><img src="captures/iteration-17/sustain-bruna-03.png" alt="Bruna sustained fire"><figcaption>Sustained fire · рука не превращается в fur</figcaption></figure>
+    <figure><img src="captures/iteration-17/release-bruna-10.png" alt="Bruna release bridge"><figcaption>Release bridge · сторона и сегменты сохранены</figcaption></figure>
+    <figure><img src="captures/iteration-17/bruna-exhaust.png" alt="Bruna exhaust origin"><figcaption>Exhaust hardpoint · дым выходит из тройных труб</figcaption></figure>
+  </div>
+  <div class="finding"><strong>Принято:</strong> отклонённый первый Bruna-лист заменён точечной правкой. Base, sustained, release, jump и portrait используют одну левую серебряную киберруку с cyan-joint. Отдельный exhaust hardpoint теперь следует за конкретным atlas/frame и расположен на видимом выпускном патрубке.</div>
 
-    <section class="iteration">
-      <h2>Iteration 3 — motion &amp; impact</h2>
-      <div class="meta"><span class="tag">6-phase ride</span><span class="tag">Recoil states</span><span class="tag">Staged impacts</span><span class="tag">Smoke PASS</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-3/ride.png" alt="Final ride gameplay"><figcaption>Authored ride frame</figcaption></figure>
-        <figure><img src="captures/iteration-3/combat.png" alt="Final miniboss combat"><figcaption>Muzzle / projectile / reaction</figcaption></figure>
-        <figure><img src="captures/iteration-3/boss-exchange.png" alt="Final boss impact"><figcaption>Boss impact choreography</figcaption></figure>
-      </div>
-      <div class="shots" style="margin-top:14px">
-        <figure><img src="captures/iteration-3/ride-sequence-a.png" alt="Ride animation A"><figcaption>Loaded suspension</figcaption></figure>
-        <figure><img src="captures/iteration-3/ride-sequence-b.png" alt="Ride animation B"><figcaption>Rebound / shifted frame</figcaption></figure>
-        <figure><img src="captures/iteration-3/ride-sequence-c.png" alt="Ride animation C"><figcaption>Compression / contact</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Сделано:</strong> шеститактовый цикл меняет колёса, высоту подвески, раму, корпус, уши/хвост и дорожный контакт; fire/recoil/hit/jump получили отдельные состояния. Снаряды теперь различаются ядром и хвостом, попадания развиваются от white-hot core через осколки к дыму, boss hit добавляет локальную вспышку и ограниченный shake.</div>
-    </section>
+  <h2>Бой и кооператив</h2>
+  <div class="grid">
+    <figure><img src="captures/iteration-17/boss-exchange.png" alt="Sulfur Dreadnought boss exchange"><figcaption>Sulfur Dreadnought · solo exchange</figcaption></figure>
+    <figure><img src="captures/iteration-17/coop-select.png" alt="Local co-op select"><figcaption>Local co-op · независимый выбор</figcaption></figure>
+    <figure><img src="captures/iteration-17/coop-boss-exchange.png" alt="Local co-op boss exchange"><figcaption>Co-op boss · no friendly fire</figcaption></figure>
+    <figure><img src="captures/iteration-17/victory.png" alt="Venus victory"><figcaption>Victory → restart</figcaption></figure>
+  </div>
 
-    <section class="iteration">
-      <h2>Iteration 4 — causal combat beat</h2>
-      <div class="meta"><span class="tag">Real collision</span><span class="tag">6 causal frames</span><span class="tag">3 target poses</span><span class="tag">Build + smoke PASS</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-4/ride.png" alt="Final ride"><figcaption>Final ride</figcaption></figure>
-        <figure><img src="captures/iteration-4/combat.png" alt="Final miniboss"><figcaption>Final miniboss</figcaption></figure>
-        <figure><img src="captures/iteration-4/boss-exchange.png" alt="Final boss exchange"><figcaption>Final boss exchange</figcaption></figure>
-        <figure><img src="captures/iteration-4/victory.png" alt="Victory screen"><figcaption>Verified victory</figcaption></figure>
-      </div>
-      <div class="shots" style="margin-top:14px">
-        <figure><img src="captures/iteration-4/combat-beat-0.png" alt="Muzzle frame"><figcaption>0 · muzzle / anticipation</figcaption></figure>
-        <figure><img src="captures/iteration-4/combat-beat-1.png" alt="Projectile travel"><figcaption>1 · projectile travel</figcaption></figure>
-        <figure><img src="captures/iteration-4/combat-beat-2.png" alt="Contact and crush"><figcaption>2 · contact / crushed pose</figcaption></figure>
-        <figure><img src="captures/iteration-4/combat-beat-3.png" alt="Deformation hold"><figcaption>3 · deformation hold</figcaption></figure>
-        <figure><img src="captures/iteration-4/combat-beat-4.png" alt="Recoil"><figcaption>4 · recoil</figcaption></figure>
-        <figure><img src="captures/iteration-4/combat-beat-5.png" alt="Recovery and debris"><figcaption>5 · debris / recovery</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Финальный verdict:</strong> сильный, стильный и технически законченный fan prototype, но не premium/AAA-16-bit. Muzzle и полёт снаряда читаются; contact слаб, recoil-деформация не проходит строгий DoD, debris/recovery проходит частично. После четырёх волн это потолок code-generated polygon art; следующий качественный скачок требует art-directed sprite sheets с вручную заданными contact/recoil/recovery frames.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 5 — PNG atlas pipeline</h2>
-      <div class="meta"><span class="tag">Throttle atlas</span><span class="tag">Enemy reactions</span><span class="tag">Boss core</span><span class="tag">8-frame beat</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-5/ride.png" alt="Throttle atlas in gameplay"><figcaption>First authored hero atlas</figcaption></figure>
-        <figure><img src="captures/iteration-5/combat-beat-3.png" alt="Real projectile contact"><figcaption>Real collision / contact</figcaption></figure>
-        <figure><img src="captures/iteration-5/combat-beat-5.png" alt="Enemy recoil pose"><figcaption>Authored recoil pose</figcaption></figure>
-        <figure><img src="captures/iteration-5/boss-exchange.png" alt="Atlas boss core"><figcaption>Boss weak-core atlas</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Pipeline shift завершён:</strong> runtime-полигоны перестали быть главным источником acting: Throttle, rider и boss core рисуются из локальных PNG sheets с безопасным procedural fallback. Свежий critic принял причинную цепочку лучше, но увидел «острова» raster-art внутри процедурного мира.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 6 — authored cast &amp; full boss</h2>
-      <div class="meta"><span class="tag">3 hero atlases</span><span class="tag">Full boss body</span><span class="tag">6/6 ready</span><span class="tag">Victory + restart</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-6/ride.png" alt="Modo gameplay"><figcaption>Modo · heavy silhouette</figcaption></figure>
-        <figure><img src="captures/iteration-6/vinnie-ride.png" alt="Vinnie gameplay"><figcaption>Vinnie · agile silhouette</figcaption></figure>
-        <figure><img src="captures/iteration-6/combat-beat-6.png" alt="Throttle debris beat"><figcaption>Throttle / rider reaction</figcaption></figure>
-        <figure><img src="captures/iteration-6/boss.png" alt="Full authored boss"><figcaption>Full boss-body atlas</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Сделано:</strong> три героя получили отдельные массу, размер и восемь semantic frames; финальный boss теперь цельный authored body, а не procedural shell вокруг raster core. Главный разрыв переместился с персонажей на окружение и оставшийся roster.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 7 — world &amp; roster</h2>
-      <div class="meta"><span class="tag">Mars panorama</span><span class="tag">Road Ripper</span><span class="tag">Aerial roster</span><span class="tag">8/8 ready</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-7/ride.png" alt="Authored Mars panorama"><figcaption>Mars highway panorama</figcaption></figure>
-        <figure><img src="captures/iteration-7/combat.png" alt="Road Ripper miniboss"><figcaption>Road Ripper miniboss</figcaption></figure>
-        <figure><img src="captures/iteration-7/aerial-combat.png" alt="Authored aerial roster"><figcaption>Drone + manta skimmer</figcaption></figure>
-        <figure><img src="captures/iteration-7/boss-exchange.png" alt="Iteration 7 boss"><figcaption>Integrated boss exchange</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Critic 7: 7.4/10.</strong> Panorama и authored roster приняты, однако поверх сильного дальнего плана оставались процедурные midground-слои и мягкие FX с другим material/pixel contract. Следующая волна замораживает контент и занимается только цельностью composite.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 8 — unified material contract</h2>
-      <div class="meta"><span class="tag">Sole panorama</span><span class="tag">Hard 2px FX</span><span class="tag">7 debris pieces</span><span class="tag">Full smoke PASS</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-8/ride.png" alt="Unified world composite"><figcaption>Single authored horizon</figcaption></figure>
-        <figure><img src="captures/iteration-8/aerial-combat.png" alt="Unified aerial combat"><figcaption>World + aerial roster</figcaption></figure>
-        <figure><img src="captures/iteration-8/combat-beat-3.png" alt="Hard contact core"><figcaption>Hard-edged contact</figcaption></figure>
-        <figure><img src="captures/iteration-8/combat-beat-6.png" alt="Seven debris fragments"><figcaption>Seven separated fragments</figcaption></figure>
-        <figure><img src="captures/iteration-8/wobble-a.png" alt="Recovery wobble positive"><figcaption>Recovery wobble +8</figcaption></figure>
-        <figure><img src="captures/iteration-8/wobble-b.png" alt="Recovery wobble negative"><figcaption>Recovery wobble −6</figcaption></figure>
-        <figure><img src="captures/iteration-8/boss.png" alt="Final boss"><figcaption>Boss scale / hierarchy</figcaption></figure>
-        <figure><img src="captures/iteration-8/victory.png" alt="Verified real victory"><figcaption>Real boss kill / victory</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Production verification:</strong> `ok=true`, 8/8 atlases ready, `runtimeErrors=[]`; 2100 ms combat beat, real contact at 830 ms, full menu-to-victory-to-restart route. Здесь фиксируется результат integration pass; независимый verdict хранится рядом с iteration-8 captures в `.gauntlet`.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 9 — material impact chain</h2>
-      <div class="meta"><span class="tag">12 authored poses</span><span class="tag">84×56 contact</span><span class="tag">12 debris pieces</span><span class="tag">9/9 ready</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-9/impact-00-pre.png" alt="Impact pre-hit"><figcaption>00 · pre-hit staging</figcaption></figure>
-        <figure><img src="captures/iteration-9/impact-01-muzzle.png" alt="Impact muzzle"><figcaption>01 · muzzle / shooter recoil</figcaption></figure>
-        <figure><img src="captures/iteration-9/impact-03-travel-75.png" alt="Late projectile travel"><figcaption>03 · late travel</figcaption></figure>
-        <figure><img src="captures/iteration-9/impact-04-contact.png" alt="Large contact core"><figcaption>04 · 84×56 contact</figcaption></figure>
-        <figure><img src="captures/iteration-9/impact-06-recoil-1.png" alt="Target recoil one"><figcaption>06 · recoil / 10° pitch</figcaption></figure>
-        <figure><img src="captures/iteration-9/impact-07-recoil-2.png" alt="Target recoil two"><figcaption>07 · recoil overshoot</figcaption></figure>
-        <figure><img src="captures/iteration-9/impact-08-debris-1.png" alt="Material debris"><figcaption>08 · 3-material debris</figcaption></figure>
-        <figure><img src="captures/iteration-9/impact-10-damage-hold.png" alt="Persistent damage"><figcaption>10 · 550ms damage hold</figcaption></figure>
-        <figure><img src="captures/iteration-9/impact-11-recover.png" alt="Damaged recovery"><figcaption>11 · damaged recovery</figcaption></figure>
-        <figure><img src="captures/iteration-9/boss.png" alt="Wave 9 boss"><figcaption>Full-route boss regression</figcaption></figure>
-        <figure><img src="captures/iteration-9/victory.png" alt="Wave 9 victory"><figcaption>Real kill → victory</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Строгий verdict wave 9: NO, но большой pass.</strong> Новый authored sheet однозначно выигрывает wave 8 по contact scale, target acting и recoil silhouette; полный smoke сообщает `ok=true`, 9/9 atlases и ноль runtime errors. Оставшийся единый blocker — spatial/material registration: contact-star ещё отделён от вилки, shooter recoil временно сбрасывается, а debris и persistent scar недостаточно ясно происходят из одной конкретной панели.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 10 — registered material hit</h2>
-      <div class="meta"><span class="tag">10/10 atlases</span><span class="tag">96×72 layered contact</span><span class="tag">Attached scar</span><span class="tag">Blind A/B 3:0</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-10/impact-01-muzzle.png" alt="Continuous muzzle recoil"><figcaption>01 · continuous shooter recoil</figcaption></figure>
-        <figure><img src="captures/iteration-10/impact-04-contact.png" alt="Registered contact"><figcaption>04 · fork-registered contact</figcaption></figure>
-        <figure><img src="captures/iteration-10/impact-08-debris-1.png" alt="Authored debris"><figcaption>08 · panels / sparks / smoke</figcaption></figure>
-        <figure><img src="captures/iteration-10/impact-10-damage-hold.png" alt="Attached scar"><figcaption>10 · attached scar / soot</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Wave 10:</strong> contact, mass и aftermath выиграли главный blind A/B 3:0; spatial registration, material triad и attached damage приняты. AAA verdict всё ещё NO: неподписанные поздние кадры не складывались в безошибочный temporal order.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 11 — monotonic recoil</h2>
-      <div class="meta"><span class="tag">0px reverse</span><span class="tag">Early panel + sparks</span><span class="tag">34×16 / 14° peak</span><span class="tag">Integration PASS</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-11/impact-04-contact.png" alt="Wave 11 contact"><figcaption>04 · contact family</figcaption></figure>
-        <figure><img src="captures/iteration-11/impact-06-recoil-1.png" alt="Early material recoil"><figcaption>06 · early panel / sparks</figcaption></figure>
-        <figure><img src="captures/iteration-11/impact-07-recoil-2.png" alt="Monotonic recoil peak"><figcaption>07 · monotonic peak</figcaption></figure>
-        <figure><img src="captures/iteration-11/impact-09-debris-2.png" alt="Continuous material path"><figcaption>09 · continued trajectories</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Wave 11 jury:</strong> blind adjacent score вырос до 7/11 у главного critic, но material naming и exact order остались ниже gate. Новая версия выиграла его A/B 3:0, однако пять viewers не достигли требуемого согласия.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 12 — phase readability audit</h2>
-      <div class="meta"><span class="tag">40×18 / 14° peak</span><span class="tag">Peak held through debris</span><span class="tag">Growing attached smoke</span><span class="tag">Full smoke PASS</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-12/impact-04-contact.png" alt="Intact contact"><figcaption>04 · first intact overlap</figcaption></figure>
-        <figure><img src="captures/iteration-12/impact-05-hitstop.png" alt="Compressed hitstop"><figcaption>05 · compressed material seed</figcaption></figure>
-        <figure><img src="captures/iteration-12/impact-07-recoil-2.png" alt="Held peak"><figcaption>07 · held recoil peak</figcaption></figure>
-        <figure><img src="captures/iteration-12/impact-08-debris-1.png" alt="Peak debris one"><figcaption>08 · peak / debris growth</figcaption></figure>
-        <figure><img src="captures/iteration-12/impact-10-damage-hold.png" alt="Late damage hold"><figcaption>10 · late damaged hold</figcaption></figure>
-        <figure><img src="captures/iteration-12/impact-11-recover.png" alt="Grounded recovery"><figcaption>11 · grounded scar recovery</figcaption></figure>
-        <figure><img src="captures/iteration-12/boss.png" alt="Boss regression"><figcaption>Full-route boss regression</figcaption></figure>
-        <figure><img src="captures/iteration-12/victory.png" alt="Verified victory"><figcaption>Verified victory / restart</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Последний строгий verdict: NO.</strong> Build, integration и runtime contracts проходят (`ok=true`, 10/10, `runtimeErrors=[]`), а material triad впервые названа 3/3. Но blind adjacency снизилась до 5/11: одинаковый peak transform через recoil/debris и слишком слабый production smoke сплющили направление времени. Следующий pass должен перейти от численных transforms к ещё более различимым authored late-phase silhouettes.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 13 — sustained-fire stability &amp; character select</h2>
-      <div class="meta"><span class="tag">11/11 atlases</span><span class="tag">3.2s held fire × 3</span><span class="tag">4.0s rapid Vinnie</span><span class="tag">Full smoke PASS</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-13/select.png" alt="Authored Throttle select portrait"><figcaption>Authored character select · Throttle</figcaption></figure>
-        <figure><img src="captures/iteration-13/select-modo-integration.png" alt="Authored Modo select portrait"><figcaption>Authored character select · Modo</figcaption></figure>
-        <figure><img src="captures/iteration-13/select-vinnie-integration.png" alt="Authored Vinnie select portrait"><figcaption>Authored character select · Vinnie</figcaption></figure>
-      </div>
-      <div class="shots" style="margin-top:14px">
-        <figure><img src="captures/iteration-13/sustain-throttle-00.png" alt="Throttle held fire start"><figcaption>Throttle · held fire start</figcaption></figure>
-        <figure><img src="captures/iteration-13/sustain-throttle-02.png" alt="Throttle held fire middle"><figcaption>Throttle · stable combat loop</figcaption></figure>
-        <figure><img src="captures/iteration-13/sustain-modo-03.png" alt="Modo sustained fire"><figcaption>Modo · heavy sustained loop</figcaption></figure>
-        <figure><img src="captures/iteration-13/sustain-vinnie-03.png" alt="Vinnie sustained fire"><figcaption>Vinnie · normal cadence</figcaption></figure>
-        <figure><img src="captures/iteration-13/sustain-vinnie-rapid-00.png" alt="Rapid Vinnie start"><figcaption>Rapid Vinnie · 0.0s</figcaption></figure>
-        <figure><img src="captures/iteration-13/sustain-vinnie-rapid-03.png" alt="Rapid Vinnie phase"><figcaption>Rapid Vinnie · loop phase</figcaption></figure>
-        <figure><img src="captures/iteration-13/sustain-vinnie-rapid-06.png" alt="Rapid Vinnie continued"><figcaption>Rapid Vinnie · continuous fire</figcaption></figure>
-        <figure><img src="captures/iteration-13/sustain-vinnie-rapid-09.png" alt="Rapid Vinnie four seconds"><figcaption>Rapid Vinnie · 4.01s</figcaption></figure>
-        <figure><img src="captures/iteration-13/sustain-vinnie-rapid-release.png" alt="Rapid Vinnie release"><figcaption>Release · smooth return</figcaption></figure>
-        <figure><img src="captures/iteration-13/boss-exchange.png" alt="Boss regression"><figcaption>Full-route boss regression</figcaption></figure>
-      </div>
-      <div class="finding"><strong>User-corrected priority:</strong> долгий зажатый огонь теперь является отдельным authored combat loop, а не повторением одноразового recoil с провалом в ride. Production capture подтверждает нулевой drift опоры, bbox и дорожной базы у всех трёх героев; release pop не превышает 1 px. Rapid Vinnie выдерживает 4.01 секунды при 13.97 выстр./с без neutral-frame snap. Select заменён тремя крупными характерными пиксельными портретами. Полный маршрут, победа и рестарт проходят с `runtimeErrors=[]`.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 14 — release bridge &amp; bike hardpoints</h2>
-      <div class="meta"><span class="tag">12/12 atlases</span><span class="tag">3-pose release bridge</span><span class="tag">Bike muzzle origins</span><span class="tag">Corrected gates PASS</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-14/muzzle-all.png" alt="All hero muzzle hardpoints" style="object-fit:contain"><figcaption>Sustained / release / jump muzzle hardpoints</figcaption></figure>
-        <figure><img src="captures/iteration-14/release-throttle.png" alt="Throttle release sequence" style="object-fit:contain"><figcaption>Throttle · authored release bridge</figcaption></figure>
-        <figure><img src="captures/iteration-14/release-modo.png" alt="Modo release sequence" style="object-fit:contain"><figcaption>Modo · heavy damped release</figcaption></figure>
-        <figure><img src="captures/iteration-14/release-vinnie-rapid.png" alt="Rapid Vinnie release sequence" style="object-fit:contain"><figcaption>Rapid Vinnie · stable release</figcaption></figure>
-        <figure><img src="captures/iteration-14/sustain-vinnie-rapid.png" alt="Rapid Vinnie sustained sequence" style="object-fit:contain"><figcaption>4s rapid hold · no ride snap</figcaption></figure>
-        <figure><img src="captures/iteration-14/select.png" alt="Final character select"><figcaption>Character select retained</figcaption></figure>
-        <figure><img src="captures/iteration-14/boss-exchange.png" alt="Boss exchange"><figcaption>Next gap · peak boss readability</figcaption></figure>
-        <figure><img src="captures/iteration-14/victory.png" alt="Verified victory"><figcaption>Real boss kill / victory / restart</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Independent critic: corrected gates PASS.</strong> Длительный grounded fire, rapid Vinnie, происхождение projectile/muzzle из пушек/носа, release bridge и новый select приняты. Canonical smoke: `ok=true`, 12/12, `runtimeErrors=[]`; hardpoint delta равен 0 px в sustained/jump и 1.720–2.291 px на release. Следующий единый gap перемещён на уровень полного боя: в peak boss exchange friendly rocket/smoke иногда перекрывает boss/core и incoming telegraphs.</div>
-    </section>
-    <section class="iteration">
-      <h2>Iteration 15 — authored world roster &amp; character correction</h2>
-      <div class="meta"><span class="tag">13/13 atlases</span><span class="tag">Tank / mine / pod</span><span class="tag">Authored roadside props</span><span class="tag">Corrective scope PASS</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-15/select-vinnie.png" alt="Adult male Vinnie select portrait"><figcaption>Vinnie · corrected adult male portrait</figcaption></figure>
-        <figure><img src="captures/iteration-15/modo-runtime.png" alt="Modo gameplay eyepatch"><figcaption>Modo · stable gameplay eyepatch</figcaption></figure>
-        <figure><img src="captures/iteration-15/enemy-roster.png" alt="Authored enemy roster"><figcaption>Tank / mine / boss pod</figcaption></figure>
-        <figure><img src="captures/iteration-15/world-props.png" alt="Authored roadside props"><figcaption>Rail / posts / rocks / debris</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Fresh corrective critic: scope PASS.</strong> Последние процедурные враги и дорожные объекты заменены согласованным pixel art; выбранный портрет Винни однозначно взрослый мужской, select-композиция очищена, а повязка Модо остаётся на viewer-left/rear глазу во всех фактических ride/sustained/release кадрах.</div>
-    </section>
-
-    <section class="iteration">
-      <h2>Iteration 16 — local two-player co-op</h2>
-      <div class="meta"><span class="tag">2 independent riders</span><span class="tag">No friendly fire</span><span class="tag">2 gamepads</span><span class="tag">Co-op scope PASS</span></div>
-      <div class="shots">
-        <figure><img src="captures/iteration-16/coop-select.png" alt="Independent co-op hero select"><figcaption>P1/P2 independent select</figcaption></figure>
-        <figure><img src="captures/iteration-16/coop-combat.png" alt="Two-player sustained combat"><figcaption>Independent held fire</figcaption></figure>
-        <figure><img src="captures/iteration-16/coop-one-down.png" alt="One rider down"><figcaption>One down · team continues</figcaption></figure>
-        <figure><img src="captures/iteration-16/coop-boss-exchange.png" alt="Two-player boss battle"><figcaption>Joint final-boss assault</figcaption></figure>
-        <figure><img src="captures/iteration-16/coop-victory.png" alt="Co-op victory"><figcaption>Modo + Vinnie victory</figcaption></figure>
-      </div>
-      <div class="finding"><strong>Independent critic: requested co-op scope PASS.</strong> Owner-tagged projectiles cannot damage either player; enemy damage is targeted, pickups are per rider, one downed biker leaves a readable wreck while play continues, both down lose, and the boss victory/restart path preserves two players. Canonical smoke: `ok=true`, 13/13 ready, `runtimeErrors=[]`. Next gap: player/weapon ownership readability when riders overlap under dual max-rank rocket fire.</div>
-    </section>
-  </main>
-  <footer>Redline Rampage · local noncommercial fan prototype · captures produced by automated browser runs</footer>
-</body>
+  <h2>Проверка</h2>
+  <p class="lede"><code>.gauntlet/iteration-17/report.json</code>: <code>ok=true</code>, 13/13 ready, <code>runtimeErrors=[]</code>. Полный production run прошёл title, select, ride, sustained/release/muzzle, impact, aerial, mini-boss, boss, victory/restart и co-op.</p>
+  <footer>Neon Stampede · original local browser game · captures produced by automated production runs</footer>
+</main></body>
 </html>
