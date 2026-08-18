@@ -7,9 +7,9 @@
  */
 
 export type SpriteSheetId =
-  | "throttle"
-  | "modo"
-  | "vinnie"
+  | "cassia"
+  | "bruna"
+  | "nova"
   | "sustainedFire"
   | "fireRelease"
   | "rider"
@@ -48,9 +48,9 @@ export interface SpriteSheetStatus {
 }
 
 const SHEET_ORDER = [
-  "throttle",
-  "modo",
-  "vinnie",
+  "cassia",
+  "bruna",
+  "nova",
   "sustainedFire",
   "fireRelease",
   "rider",
@@ -69,32 +69,32 @@ const SHEET_DEFINITIONS: Readonly<Record<SpriteSheetId, {
   readonly rows: number;
   readonly frames: number;
 }>> = Object.freeze({
-  throttle: Object.freeze({
-    path: "/assets/sprites/throttle-sheet.png",
+  cassia: Object.freeze({
+    path: "/assets/sprites/cassia-sheet.png",
     columns: 4,
     rows: 2,
     frames: 8,
   }),
-  modo: Object.freeze({
-    path: "/assets/sprites/modo-sheet.png",
+  bruna: Object.freeze({
+    path: "/assets/sprites/bruna-sheet.png",
     columns: 4,
     rows: 2,
     frames: 8,
   }),
-  vinnie: Object.freeze({
-    path: "/assets/sprites/vinnie-sheet.png",
+  nova: Object.freeze({
+    path: "/assets/sprites/nova-sheet.png",
     columns: 4,
     rows: 2,
     frames: 8,
   }),
   sustainedFire: Object.freeze({
-    path: "/assets/sprites/sustained-fire-sheet.png",
+    path: "/assets/sprites/cow-sustained-fire-sheet.png",
     columns: 4,
     rows: 3,
     frames: 12,
   }),
   fireRelease: Object.freeze({
-    path: "/assets/sprites/fire-release-sheet.png",
+    path: "/assets/sprites/cow-fire-release-sheet.png",
     columns: 3,
     rows: 3,
     frames: 9,
@@ -158,9 +158,9 @@ interface RuntimeSheet {
 }
 
 const runtime: Record<SpriteSheetId, RuntimeSheet> = {
-  throttle: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
-  modo: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
-  vinnie: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
+  cassia: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
+  bruna: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
+  nova: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   sustainedFire: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   fireRelease: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   rider: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },

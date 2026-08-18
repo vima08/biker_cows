@@ -1,5 +1,5 @@
 /**
- * Procedural 16-bit inspired artwork for the Biker Mice fan prototype.
+ * Procedural 16-bit inspired artwork for Biker Cows from Venus.
  *
  * Everything in this module is drawn directly to Canvas 2D.  Coordinates are
  * authored for a 480x270 logical canvas; upscale the canvas with CSS and keep
@@ -38,9 +38,9 @@ export const Palette = Object.freeze({
   smoke: "#746879",
 });
 
-export type HeroId = "throttle" | "modo" | "vinnie";
+export type HeroId = "cassia" | "bruna" | "nova";
 export type EnemyKind = "crawler" | "raider" | "turret" | "drone" | "wasp" | "bomber";
-export type BossKind = "roadReaper" | "plutarkianDreadnought";
+export type BossKind = "roadReaper" | "sulfurDreadnought";
 export type PickupKind = "health" | "armor" | "spread" | "plasma" | "rocket" | "overdrive" | "score";
 export type BulletKind = "hero" | "spread" | "plasma" | "rocket" | "enemy" | "boss";
 export type ParticleKind = "spark" | "smoke" | "dust" | "debris" | "flame" | "star";
@@ -175,7 +175,7 @@ function drawMoon(ctx: Ctx, x: number, y: number, r: number, color: string): voi
 }
 
 /** Draw all distant scenery, including the track. Call before entities. */
-export function drawMartianParallax(ctx: Ctx, options: BackgroundOptions = {}): void {
+export function drawVenusianParallax(ctx: Ctx, options: BackgroundOptions = {}): void {
   const cameraX = options.cameraX ?? 0;
   const time = options.time ?? 0;
   const speed = options.speed ?? 1;
@@ -343,7 +343,7 @@ function drawExhaust(ctx: Ctx, frame: number, x: number, y: number, power: numbe
   dot(ctx, accent, x - length - 6 - frame % 2 * 3, y + 2, 3, 2);
 }
 
-function drawThrottleBike(ctx: Ctx, frame: number, power: number, airborne: boolean): void {
+function drawCassiaBike(ctx: Ctx, frame: number, power: number, airborne: boolean): void {
   const phase = frame % 6; const lift = airborne ? -3 : rideLift[phase]; const pitch = airborne ? -3 : ridePitch[phase];
   const rearY = airborne ? 6 : 8; const frontY = airborne ? 3 : 8;
   drawRoadContact(ctx, frame, -23, 27, 8, 13, airborne, power);
@@ -374,7 +374,7 @@ function drawThrottleBike(ctx: Ctx, frame: number, power: number, airborne: bool
   ctx.restore();
 }
 
-function drawModoBike(ctx: Ctx, frame: number, power: number, airborne: boolean): void {
+function drawBrunaBike(ctx: Ctx, frame: number, power: number, airborne: boolean): void {
   const phase = frame % 6; const lift = airborne ? -2 : px(rideLift[phase] * .65); const pitch = airborne ? -1 : ridePitch[phase];
   const rearY = airborne ? 6 : 8; const frontY = airborne ? 5 : 8;
   drawRoadContact(ctx, frame, -25, 26, 8, 14, airborne, power);
@@ -403,7 +403,7 @@ function drawModoBike(ctx: Ctx, frame: number, power: number, airborne: boolean)
   ctx.restore();
 }
 
-function drawVinnieBike(ctx: Ctx, frame: number, power: number, airborne: boolean): void {
+function drawNovaBike(ctx: Ctx, frame: number, power: number, airborne: boolean): void {
   const phase = frame % 6; const lift = airborne ? -5 : rideLift[phase]; const pitch = airborne ? -5 : ridePitch[phase] * 2;
   const rearY = airborne ? 7 : 8; const frontY = airborne ? 1 : 8;
   drawRoadContact(ctx, frame, -19, 24, 8, 12, airborne, power);
@@ -430,26 +430,25 @@ function drawVinnieBike(ctx: Ctx, frame: number, power: number, airborne: boolea
   ctx.restore();
 }
 
-function drawMouseHead(ctx: Ctx, fur: string, shade: string, ear: string, visor: string, mohawk = false, phase = 0): void {
-  // Separate ear/head/muzzle masses keep the face readable at gameplay scale.
+function drawCowHead(ctx: Ctx, fur: string, shade: string, ear: string, visor: string, swept = false, phase = 0): void {
   const earLag = [0, 1, 2, 1, -1, -2][phase % 6];
-  ctx.fillStyle = P.ink; ctx.beginPath(); ctx.arc(-2 - earLag, -43, 7, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = shade; ctx.beginPath(); ctx.arc(-2 - earLag, -43, 4, 0, Math.PI * 2); ctx.fill();
-  polygon(ctx, P.ink, [[-10, -29], [-10, -38], [-7, -44], [-1, -47], [7, -44], [12, -39], [15, -32], [11, -27], [4, -24], [-4, -25]]);
-  ctx.fillStyle = P.ink; ctx.beginPath(); ctx.arc(-6 + earLag, -42, 7, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = ear; ctx.beginPath(); ctx.arc(-6 + earLag, -42, 4, 0, Math.PI * 2); ctx.fill();
-  polygon(ctx, fur, [[-7, -30], [-7, -38], [-3, -43], [5, -42], [10, -38], [12, -32], [8, -28], [2, -25], [-3, -27]]);
-  polygon(ctx, shade, [[-7, -30], [-5, -36], [-1, -39], [0, -27], [-3, -27]]);
-  dot(ctx, P.white, 1, -42, 5, 1); dot(ctx, shade, -5, -29, 4, 2);
-  polygon(ctx, P.cream, [[7, -34], [15, -32], [12, -28], [6, -28]]);
-  dot(ctx, P.ink, 13, -31, 4, 3); dot(ctx, P.white, 14, -31, 1, 1);
-  polygon(ctx, P.ink, [[-5, -39], [9, -39], [12, -34], [8, -31], [-4, -32], [-7, -35]]);
-  polygon(ctx, visor, [[-4, -37], [8, -37], [10, -34], [7, -33], [-3, -34]]);
-  dot(ctx, P.white, -2, -37, 5, 1);
-  if (mohawk) {
-    polygon(ctx, P.ink, [[-1, -43], [1, -52], [5, -47], [8, -54], [11, -43]]);
-    polygon(ctx, P.hotRed, [[1, -43], [2, -49], [5, -45], [8, -51], [9, -42]]);
-    dot(ctx, P.orange, 3, -47, 2, 4);
+  polygon(ctx, P.ink, [[-8-earLag,-42],[-18-earLag,-46],[-16-earLag,-39],[-8,-36]]);
+  polygon(ctx, ear, [[-9-earLag,-41],[-15-earLag,-44],[-14-earLag,-40],[-8,-38]]);
+  polygon(ctx, P.ink, [[4,-44],[8,-53],[12,-45],[10,-39]]);
+  polygon(ctx, P.cream, [[6,-44],[8,-50],[10,-45],[9,-41]]);
+  polygon(ctx, P.ink, [[-5,-43],[-2,-52],[2,-44],[1,-39]]);
+  polygon(ctx, P.cream, [[-3,-43],[-2,-49],[0,-44],[0,-41]]);
+  polygon(ctx, P.ink, [[-9,-29],[-10,-38],[-5,-45],[5,-46],[13,-40],[15,-31],[10,-25],[1,-23],[-5,-25]]);
+  polygon(ctx, fur, [[-7,-30],[-7,-37],[-3,-42],[5,-43],[10,-39],[12,-32],[8,-27],[1,-25],[-4,-27]]);
+  polygon(ctx, shade, [[-7,-30],[-5,-37],[-1,-40],[0,-27],[-4,-27]]);
+  polygon(ctx, P.cream, [[6,-34],[16,-33],[18,-29],[13,-25],[5,-27]]);
+  dot(ctx, P.ink, 16, -29, 3, 2); dot(ctx, P.white, 16, -30, 1, 1);
+  polygon(ctx, P.ink, [[-3,-40],[9,-40],[12,-36],[9,-32],[-2,-33],[-5,-36]]);
+  polygon(ctx, visor, [[-2,-38],[8,-38],[10,-36],[8,-34],[-1,-35]]);
+  dot(ctx, P.white, 0, -38, 4, 1);
+  if (swept) {
+    polygon(ctx, P.ink, [[-2,-43],[2,-52],[6,-48],[10,-54],[12,-43]]);
+    polygon(ctx, P.hotRed, [[0,-43],[3,-49],[6,-46],[9,-51],[10,-42]]);
   }
 }
 
@@ -469,8 +468,8 @@ export function drawHero(ctx: Ctx, hero: HeroId, x: number, y: number, options: 
   const bodyX = (hit ? -5 : 0) + riderReach[phase];
   const bodyY = crouch + (airborne ? -2 : riderLag[phase]);
   withSprite(ctx, x, y, options, () => {
-    if (hero === "throttle") {
-      drawThrottleBike(ctx, frame, power, airborne);
+    if (hero === "cassia") {
+      drawCassiaBike(ctx, frame, power, airborne);
       ctx.save(); ctx.translate(bodyX, bodyY); if (!airborne) ctx.rotate(torsoCounter[phase]);
       // Long scarf, upright gunfighter torso and forward-reaching shooting arm.
       const scarfWave = [0, 2, 5, 7, 4, 1][(phase + 4) % 6] + (accelerating ? 5 : 0);
@@ -486,16 +485,16 @@ export function drawHero(ctx: Ctx, hero: HeroId, x: number, y: number, options: 
       polygon(ctx, P.darkSteel, [[20 - gunRecoil, -20], [28 - gunRecoil, -20], [29 - gunRecoil, -19], [27 - gunRecoil, -18], [20 - gunRecoil, -18]]);
       dot(ctx, P.paleSteel, 20 - gunRecoil, -21, 7, 1); dot(ctx, P.yellow, 25 - gunRecoil, -19, 3, 1);
       if (firing && firePhase !== 0) { polygon(ctx, firePhase === 1 ? P.white : P.yellow, [[31 - gunRecoil, -24], [42 - gunRecoil, -19], [31 - gunRecoil, -14]]); dot(ctx, P.orange, 32 - gunRecoil, -20, 7, 3); }
-      drawMouseHead(ctx, P.bone, P.brown, P.sand, P.acid, false, phase);
+      drawCowHead(ctx, P.bone, P.brown, P.sand, P.acid, false, phase);
       dot(ctx, P.darkSteel, -7, -19, 6, 7); dot(ctx, P.paleSteel, -6, -18, 4, 2);
       // Tail follows two beats behind the sprung frame.
       line(ctx, P.ink, 4, [[-10, -18], [-20, -15 + ridePitch[(phase + 4) % 6]], [-25, -19]]);
       line(ctx, P.bone, 2, [[-10, -18], [-20, -15 + ridePitch[(phase + 4) % 6]], [-25, -19]]);
       ctx.restore();
-    } else if (hero === "modo") {
-      drawModoBike(ctx, frame, power, airborne);
+    } else if (hero === "bruna") {
+      drawBrunaBike(ctx, frame, power, airborne);
       ctx.save(); ctx.translate(bodyX, bodyY); if (!airborne) ctx.rotate(torsoCounter[phase]);
-      // A low, broad triangle and the enormous prosthetic arm make Modo unmistakable.
+      // A low, broad triangle and the enormous cybernetic arm make Bruna unmistakable.
       polygon(ctx, P.ink, [[-16, -33 + crouch], [-7, -41 + crouch], [8, -40 + crouch], [18, -30], [16, -14], [7, -10], [-15, -14], [-21, -24]]);
       polygon(ctx, P.blue, [[-13, -32 + crouch], [-6, -37 + crouch], [7, -37 + crouch], [14, -29], [12, -17], [5, -13], [-12, -16], [-17, -24]]);
       polygon(ctx, P.cyan, [[-8, -34 + crouch], [6, -35 + crouch], [10, -29], [-10, -29]]);
@@ -507,16 +506,16 @@ export function drawHero(ctx: Ctx, hero: HeroId, x: number, y: number, options: 
       polygon(ctx, P.paleSteel, [[24, -19], [30, -18], [32, -16], [29, -13], [25, -14]]);
       dot(ctx, firing && firePhase === 1 ? P.white : P.cyan, 29 - gunRecoil, -17, firing ? 6 : 3, 3);
       if (firing && firePhase === 1) polygon(ctx, P.yellow, [[32 - gunRecoil, -21], [42 - gunRecoil, -16], [32 - gunRecoil, -11]]);
-      drawMouseHead(ctx, P.steel, P.darkSteel, P.paleSteel, P.red, false, phase);
+      drawCowHead(ctx, P.steel, P.darkSteel, P.paleSteel, P.cyan, false, phase);
       // Heavy boot/braced leg.
       line(ctx, P.ink, 7, [[-8, -18], [-16, -10], [-10, -7]]); line(ctx, P.steel, 3, [[-8, -18], [-16, -10], [-10, -7]]);
       line(ctx, P.ink, 5, [[-13, -19], [-24, -17 + ridePitch[(phase + 4) % 6]], [-28, -13]]);
       line(ctx, P.steel, 2, [[-13, -19], [-24, -17 + ridePitch[(phase + 4) % 6]], [-28, -13]]);
       ctx.restore();
     } else {
-      drawVinnieBike(ctx, frame, power, airborne);
+      drawNovaBike(ctx, frame, power, airborne);
       ctx.save(); ctx.translate(bodyX, bodyY); if (!airborne) ctx.rotate(torsoCounter[phase]);
-      // Vinnie's narrow S-curve, mohawk and dual guns read as agile and reckless.
+      // Nova's narrow S-curve, swept quiff and dual guns read as agile and reckless.
       const stunt = airborne ? -4 : 0;
       polygon(ctx, P.ink, [[-12, -33 + crouch + stunt], [-5, -40 + crouch], [7, -39 + crouch], [16, -29], [11, -13], [-10, -13], [-18, -23]]);
       polygon(ctx, P.white, [[-9, -32 + crouch + stunt], [-4, -36 + crouch], [6, -36 + crouch], [12, -28], [8, -17], [-8, -16], [-14, -23]]);
@@ -528,7 +527,7 @@ export function drawHero(ctx: Ctx, hero: HeroId, x: number, y: number, options: 
       polygon(ctx, P.ink, [[18, -19], [28, -18], [30, -15], [26, -13], [18, -14]]);
       dot(ctx, P.cyan, 23 - gunRecoil, -23, 7, 2); dot(ctx, P.cyan, 21 - gunRecoil, -17, 7, 2);
       if (firing && firePhase !== 0) { polygon(ctx, P.white, [[31 - gunRecoil, -26], [41 - gunRecoil, -22], [31 - gunRecoil, -18]]); polygon(ctx, firePhase === 1 ? P.yellow : P.orange, [[29 - gunRecoil, -20], [38 - gunRecoil, -16], [29 - gunRecoil, -12]]); }
-      drawMouseHead(ctx, P.white, P.steel, P.cream, P.blue, true, phase);
+      drawCowHead(ctx, P.white, P.steel, P.cream, P.orange, true, phase);
       dot(ctx, P.ink2, -9, -18, 8, 4); dot(ctx, P.cyan, -7, -17, 4, 1);
       line(ctx, P.ink, 4, [[-11, -17], [-22, -21 + ridePitch[(phase + 3) % 6]], [-28, -17]]);
       line(ctx, P.white, 2, [[-11, -17], [-22, -21 + ridePitch[(phase + 3) % 6]], [-28, -17]]);
@@ -926,7 +925,7 @@ export function drawHudOrnaments(ctx: Ctx, hud: HudOptions): void {
   }
 }
 
-/** Draw the original ROAD MICE: RED DUST title treatment and chrome wings. */
+/** Draw the original BIKER COWS: NEON STAMPEDE title treatment. */
 export function drawTitleLogo(ctx: Ctx, x = 240, y = 78, scale = 1): void {
   ctx.save(); ctx.translate(px(x), px(y)); ctx.scale(scale, scale);
   // Winged wheel insignia.
@@ -944,13 +943,13 @@ export function drawTitleLogo(ctx: Ctx, x = 240, y = 78, scale = 1): void {
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.font = "900 italic 30px Impact, sans-serif";
   ctx.lineJoin = "miter";
-  ctx.strokeStyle = P.ink; ctx.lineWidth = 9; ctx.strokeText("ROAD MICE", 0, -5);
-  ctx.strokeStyle = P.cream; ctx.lineWidth = 5; ctx.strokeText("ROAD MICE", 0, -5);
-  ctx.fillStyle = P.hotRed; ctx.fillText("ROAD MICE", 0, -7);
-  ctx.globalAlpha = .7; ctx.fillStyle = P.orange; ctx.fillText("ROAD MICE", 0, -3); ctx.globalAlpha = 1;
+  ctx.strokeStyle = P.ink; ctx.lineWidth = 9; ctx.strokeText("BIKER COWS", 0, -5);
+  ctx.strokeStyle = P.cream; ctx.lineWidth = 5; ctx.strokeText("BIKER COWS", 0, -5);
+  ctx.fillStyle = P.hotRed; ctx.fillText("BIKER COWS", 0, -7);
+  ctx.globalAlpha = .7; ctx.fillStyle = P.orange; ctx.fillText("BIKER COWS", 0, -3); ctx.globalAlpha = 1;
   ctx.font = "900 italic 13px Impact, sans-serif";
-  ctx.strokeStyle = P.ink; ctx.lineWidth = 5; ctx.strokeText("RED DUST REBELLION", 0, 22);
-  ctx.fillStyle = P.yellow; ctx.fillText("RED DUST REBELLION", 0, 22);
+  ctx.strokeStyle = P.ink; ctx.lineWidth = 5; ctx.strokeText("NEON STAMPEDE", 0, 22);
+  ctx.fillStyle = P.yellow; ctx.fillText("NEON STAMPEDE", 0, 22);
   // Tiny highlights restore a pixel-cut metal look.
   dot(ctx, P.white, -80, -15, 14, 2); dot(ctx, P.white, 54, -15, 17, 2);
   ctx.restore();
@@ -968,7 +967,7 @@ export function drawPanel(ctx: Ctx, x: number, y: number, width: number, height:
 /** Convenience façade for games that prefer keeping a renderer instance. */
 export class PixelArtRenderer {
   constructor(public readonly ctx: Ctx) { ctx.imageSmoothingEnabled = false; }
-  background(options?: BackgroundOptions): void { drawMartianParallax(this.ctx, options); }
+  background(options?: BackgroundOptions): void { drawVenusianParallax(this.ctx, options); }
   hero(id: HeroId, x: number, y: number, options?: SpriteOptions): void { drawHero(this.ctx, id, x, y, options); }
   enemy(kind: EnemyKind, x: number, y: number, options?: SpriteOptions): void { drawEnemy(this.ctx, kind, x, y, options); }
   boss(kind: BossKind, x: number, y: number, options?: SpriteOptions): void { drawBoss(this.ctx, kind, x, y, options); }

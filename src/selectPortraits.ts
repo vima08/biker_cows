@@ -6,7 +6,7 @@
  * the existing procedural portrait without delaying the menu.
  */
 
-export type SelectPortraitHeroId = "throttle" | "modo" | "vinnie";
+export type SelectPortraitHeroId = "cassia" | "bruna" | "nova";
 export type SelectPortraitLoadState = "idle" | "loading" | "ready" | "error";
 
 export interface DrawHeroPortraitOptions {
@@ -37,7 +37,7 @@ interface PortraitLayout {
   readonly pivot: readonly [x: number, y: number];
 }
 
-const SHEET_PATH = "/assets/ui/hero-portraits-sheet.png";
+const SHEET_PATH = "/assets/ui/cow-portraits-sheet.png";
 const COLUMNS = 3;
 const ROWS = 1;
 
@@ -45,9 +45,9 @@ const ROWS = 1;
 // Keeping these values authored (rather than scanning alpha at runtime) makes
 // menu composition deterministic across browsers and future asset revisions.
 const PORTRAIT_LAYOUTS = Object.freeze({
-  throttle: Object.freeze({ column: 0, crop: [0, 0, 1, 1] as const, pivot: [.5, .94] as const }),
-  modo: Object.freeze({ column: 1, crop: [0, 0, 1, 1] as const, pivot: [.5, .94] as const }),
-  vinnie: Object.freeze({ column: 2, crop: [0, 0, 1, 1] as const, pivot: [.5, .94] as const }),
+  cassia: Object.freeze({ column: 0, crop: [0, 0, 1, 1] as const, pivot: [.5, .94] as const }),
+  bruna: Object.freeze({ column: 1, crop: [0, 0, 1, 1] as const, pivot: [.5, .94] as const }),
+  nova: Object.freeze({ column: 2, crop: [0, 0, 1, 1] as const, pivot: [.5, .94] as const }),
 } satisfies Record<SelectPortraitHeroId, PortraitLayout>);
 
 let image: HTMLImageElement | null = null;
