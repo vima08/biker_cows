@@ -56,6 +56,7 @@ export interface RiderPlayer {
   specialTime: number;
   lean: number;
   wheel: number;
+  kineticClock: number;
   recoil: number;
   fireHeld: boolean;
   fireLoop: number;
@@ -86,6 +87,10 @@ export interface RiderEnemy {
   flash: number;
   hitReact: number;
   score: number;
+  /** Stage-one boss attack timeline; absent for ordinary enemies. */
+  attackMode?: number;
+  attackTime?: number;
+  attackShot?: number;
 }
 
 export interface RiderProjectile {

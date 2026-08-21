@@ -19,23 +19,41 @@ export const HERO_AUTHORED_SIZE: Readonly<Record<HeroId, { width: number; height
   nova: { width: 202, height: 152, anchorX: .48, anchorY: .73 },
 };
 
+// Authored cells 0 and 1 are the only shared upright ride family on all three
+// hero sheets. Keep the original eight wheel-tick period, but hold each subtle
+// suspension/clothing phase for four ticks. The remaining cells are reserved
+// for explicit fire, crouch and airborne/wheelie actions.
+export const GROUNDED_RIDE_CYCLE = [0, 0, 0, 0, 1, 1, 1, 1] as const;
+
+// The sustained atlas contains several incompatible weapon elevations. These
+// per-hero loops retain only cells whose bike/body silhouette and visible gun
+// stay in one recoil family. Nova has one unambiguous blaster pose, so muzzle
+// flashes and projectiles provide its motion without making the weapon vanish.
+export const HERO_SUSTAINED_FIRE_CYCLE: Readonly<Record<HeroId, readonly number[]>> = {
+  cassia: [0, 0, 2, 2],
+  // Bruna's raised cannon cell is the only held pose that shares the release
+  // sheet's opening silhouette; holding it also removes the old arm jump.
+  bruna: [1, 1, 1, 1],
+  nova: [2, 2, 2, 2],
+};
+
 // Source-cell hardpoints keep projectiles and exhaust attached to the authored
 // sprite even when animation switches between ride, held-fire and release sheets.
 export const HERO_MUZZLE_SOURCE = {
   cassia: {
     authored: [[235, 105], [240, 105], [218, 67], [201, 111], [196, 111], [198, 109], [210, 107], [198, 112]],
-    sustained: [[244, 107], [243, 108], [243, 107], [243, 108]],
-    release: [[246, 109], [247, 110], [246, 109]],
+    sustained: [[218, 89], [243, 108], [220, 91], [243, 108]],
+    release: [[219, 83], [219, 93], [225, 120]],
   },
   bruna: {
     authored: [[231, 112], [239, 111], [220, 68], [230, 110], [228, 110], [232, 110], [222, 106], [231, 108]],
-    sustained: [[244, 111], [244, 112], [244, 111], [244, 112]],
-    release: [[246, 111], [246, 112], [246, 111]],
+    sustained: [[233, 101], [225, 75], [229, 105], [244, 112]],
+    release: [[227, 79], [224, 80], [225, 115]],
   },
   nova: {
     authored: [[221, 104], [222, 105], [220, 63], [220, 106], [223, 108], [220, 110], [219, 105], [223, 111]],
-    sustained: [[219, 106], [220, 106], [219, 107], [220, 107]],
-    release: [[221, 107], [221, 108], [221, 108]],
+    sustained: [[219, 106], [220, 106], [223, 73], [220, 107]],
+    release: [[225, 66], [221, 69], [225, 122]],
   },
 } as const satisfies Readonly<Record<HeroId, HeroSourceMap>>;
 

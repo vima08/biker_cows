@@ -6,7 +6,7 @@ type MusicEventDetail = { cue?: string; intensity?: number };
 const SOUND_EFFECTS: Record<string, SoundEffectName> = {
   menu_move: 'ui', menu_accept: 'ui', menu_back: 'ui', pause: 'ui',
   engine_start: 'jump', shoot: 'shoot', laser: 'shoot', rocket: 'explosion',
-  melee_swing: 'melee', jump: 'jump', land: 'hit', special: 'boss',
+  melee_swing: 'melee', hit: 'hit', jump: 'jump', land: 'hit', special: 'boss',
   enemy_shoot: 'shoot', boss_cannon: 'explosion', warning: 'boss',
   player_hit: 'hurt', explode: 'explosion', boss_explode: 'explosion',
   pickup: 'pickup', stage_clear: 'victory', game_over: 'defeat',

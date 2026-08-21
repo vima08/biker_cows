@@ -20,6 +20,7 @@ import {
   INTRO_PANELS,
 } from './rider/catalog';
 import { RiderPoseResolver } from './rider/RiderPoseResolver';
+import { HERO_WHEEL_GEOMETRY, type RiderKineticPose } from './rider/RiderKinetics';
 import type {
   GameMode,
   HeroBodySheet,
@@ -42,6 +43,9 @@ const H = 540;
 const LEVEL_BOSS_TIME = VENUS_HIGHWAY.bossAtSeconds;
 const PLAYER_Y_MIN = 300;
 const PLAYER_Y_MAX = 454;
+const BOSS_ATTACK_ANTICIPATION = .28;
+const BOSS_ATTACK_CONTACT_END = .36;
+const BOSS_ATTACK_DURATION = .72;
 
 const IMPACT_LABELS = ['pre','muzzle','travel-25','travel-75','contact','hitstop','recoil-1','recoil-2','debris-1','debris-2','damage-hold','recover'] as const;
 const IMPACT_TIMELINE_MS = [0,40,200,520,830,910,1020,1150,1290,1450,1640,2190] as const;
@@ -130,6 +134,7 @@ export class VenusGame {
   private kills = 0;
   private shake = 0;
   private flash = 0;
+  private hitStop = 0;
   private minibossSpawned = false;
   private bossSpawned = false;
   private bossDefeated = false;
@@ -291,7 +296,7 @@ export class VenusGame {
   private makePlayer(id:1|2,heroIndex:number):Player{
     const hero=HEROES[heroIndex];
     const solo=!this.coopEnabled;
-    return {id,heroIndex,alive:true,downed:false,x:solo?168:id===1?156:252,y:solo?406:id===1?390:438,jump:0,jumpV:0,hp:hero.maxHp,armor:hero.maxArmor*.5,invuln:0,cooldown:0,weapon:hero.weapon,weaponRank:1,rapid:0,special:45,specialTime:0,lean:0,wheel:0,recoil:0,fireHeld:false,fireLoop:0,fireReleaseBlend:0,fireReleaseElapsed:-1,shotsFired:0,lastMuzzle:null,lastExhaust:null,exhaustClock:0};
+    return {id,heroIndex,alive:true,downed:false,x:solo?168:id===1?156:252,y:solo?406:id===1?390:438,jump:0,jumpV:0,hp:hero.maxHp,armor:hero.maxArmor*.5,invuln:0,cooldown:0,weapon:hero.weapon,weaponRank:1,rapid:0,special:45,specialTime:0,lean:0,wheel:0,kineticClock:0,recoil:0,fireHeld:false,fireLoop:0,fireReleaseBlend:0,fireReleaseElapsed:-1,shotsFired:0,lastMuzzle:null,lastExhaust:null,exhaustClock:0};
   }
 
   private beginRun() {
@@ -301,7 +306,7 @@ export class VenusGame {
     if(this.coopEnabled)this.players.push(this.makePlayer(2,this.selectedHeroes[1]));
     this.player=this.players[0];
     this.enemies = []; this.shots = []; this.pickups = []; this.particles = []; this.floaters = []; this.lastProjectileOrigin = null;
-    this.elapsed = 0; this.distance = 0; this.worldSpeed = hero.speed; this.score = 0; this.combo = 1; this.comboClock = 0; this.kills = 0;this.lastFriendlyFireProbe=null;
+    this.elapsed = 0; this.distance = 0; this.worldSpeed = hero.speed; this.score = 0; this.combo = 1; this.comboClock = 0; this.kills = 0;this.lastFriendlyFireProbe=null;this.hitStop=0;
     this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = false; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.debugSustainedFire = false; this.debugFireHeld = false; this.riderImpacts=[]; this.finishClock = 0;
     this.brawler = null; this.currentLevelId = campaign.first().id; this.completedStage = 1; this.debugStageOneOnly = false; this.brawlerScoreCommitted = false; this.pausedFrom = 'playing';
     this.mode = 'playing';
@@ -320,6 +325,7 @@ export class VenusGame {
 
   private updatePlaying(dt: number) {
     if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.pausedFrom = 'playing'; this.mode = 'paused'; emitAudio('pause'); emitMusic('pause', .35); return; }
+    if(this.hitStop>0){this.hitStop=Math.max(0,this.hitStop-dt);return;}
     // The twelve production impact frames are frozen authored instants.  They
     // still use the production world/entity/projectile renderer, but do not
     // drift while Playwright encodes a PNG.
@@ -335,7 +341,7 @@ export class VenusGame {
     const mx=(lead.debugInput?.right||this.input.down(lead.id===1?'KeyD':'ArrowRight',`P${lead.id}PadRight`)?1:0)-(lead.debugInput?.left||this.input.down(lead.id===1?'KeyA':'ArrowLeft',`P${lead.id}PadLeft`)?1:0);
     const worldSpeed = (bossAlive ? 105 : leadHero.speed + mx * 45) * (lead.specialTime > 0 && leadHero.id === 'cassia' ? 1.28 : 1);
     this.worldSpeed = worldSpeed;
-    for(const rider of this.players)if(rider.alive)rider.wheel += worldSpeed * dt * .045;
+    for(const rider of this.players)if(rider.alive){rider.wheel+=worldSpeed*dt*.045;rider.kineticClock+=dt;}
     this.distance += worldSpeed * dt;
     if (!this.bossSpawned) this.elapsed += dt;
     this.spawnClock -= dt; this.obstacleClock -= dt;
@@ -526,7 +532,8 @@ export class VenusGame {
       if (e.kind === 'boss') {
         e.x = lerp(e.x, 705 + Math.sin(e.t*.42)*25, dt*.7);
         e.y = 270 + Math.sin(e.t*.7)*38;
-        if (e.fire <= 0) { this.bossPattern(e); e.fire = e.hp/e.maxHp < .45 ? .48 : .75; }
+        if((e.attackTime??-1)>=0)this.updateBossAttack(e,dt);
+        else if(e.fire<=0)this.startBossAttack(e);
         if (Math.random() < dt*.7 && e.hp < e.maxHp*.68) this.spawnEnemy('pod', e.x+80, e.y+rnd(25,150));
       } else if (e.kind === 'miniboss') {
         e.x = Math.max(670 + Math.sin(e.t)*45, e.x - (worldSpeed*.55+e.vx)*dt);
@@ -560,16 +567,28 @@ export class VenusGame {
     emitAudio('enemy_shoot', .25, rnd(.8,1.2));
   }
 
-  private bossPattern(e: Enemy) {
+  private startBossAttack(e:Enemy){
+    e.attackMode=((e.attackMode??-1)+1)%3;e.attackTime=0;e.attackShot=0;
+  }
+
+  private updateBossAttack(e:Enemy,dt:number){
+    e.attackTime=(e.attackTime??0)+dt;
+    const mode=e.attackMode??0,t=e.attackTime;
+    if((e.attackShot??0)===0&&t>=BOSS_ATTACK_ANTICIPATION){this.bossPattern(e,mode);e.attackShot=1;}
+    // The burst pattern keeps its follow-up recoil inside the authored recovery
+    // rather than scheduling callbacks that can survive boss death/scene exit.
+    if(mode===2&&(e.attackShot??0)===1&&t>=.47){this.enemyShot(e,3,.11,310);e.attackShot=2;}
+    if(mode===2&&(e.attackShot??0)===2&&t>=.6){this.enemyShot(e,3,.11,325);e.attackShot=3;}
+    if(t>=BOSS_ATTACK_DURATION){e.attackTime=-1;e.attackShot=0;e.fire=e.hp/e.maxHp<.45?.48:.75;}
+  }
+
+  private bossPattern(e: Enemy,mode=e.attackMode??0) {
     const rage = e.hp/e.maxHp < .45;
-    const mode = Math.floor(e.t/3)%3;
     if (mode===0) this.enemyShot(e,rage?9:7,.16,rage?285:245);
     else if (mode===1) {
       const n=rage?14:10;
       for(let i=0;i<n;i++){const a=-Math.PI*.7+i/(n-1)*Math.PI*1.4;this.shots.push({x:e.x-85,y:e.y+65,vx:Math.cos(a)*205,vy:Math.sin(a)*205,r:6,life:5,damage:13,friendly:false,color:'#bd48ff',kind:'orb',pierce:0,age:0,phase:i*.73});}
-    } else {
-      for(let i=0;i<(rage?4:3);i++) setTimeout(()=>{ if(this.mode==='playing'&&e.hp>0)this.enemyShot(e,3,.11,310); },i*145);
-    }
+    } else this.enemyShot(e,3,.11,rage?345:310);
     emitAudio('boss_cannon', .65);
   }
 
@@ -607,11 +626,18 @@ export class VenusGame {
         for(const e of this.enemies){
           const er={x:e.x-e.w/2,y:e.y-e.h/2,w:e.w,h:e.h};
           if(s.life>0&&hit({x:s.x-s.r,y:s.y-s.r,w:s.r*2,h:s.r*2},er)){
-            e.hp-=s.damage;e.flash=e.kind==='boss'? .14:.09;
+            e.hp-=s.damage;e.flash=e.kind==='boss'?.04:.09;
             if(e.kind==='rider'){
               e.hitReact=this.debugBeat?1.75:1.35;
               this.riderHitFx(e,s);
-            }else this.hitFx(s.x,s.y,s.color,s.kind==='laser'?2:3);
+            }else{
+              // All authored Stage 1 targets get a short physical recoil. The
+              // old flash-only response made confirmed damage readable mostly
+              // through score/HP UI, especially during sustained fire.
+              e.hitReact=Math.max(e.hitReact,e.kind==='boss'?.22:.18);
+              if(e.kind==='boss')this.hitStop=Math.max(this.hitStop,.068);
+              this.hitFx(s.x,s.y,s.color,e.kind==='boss'?7:s.kind==='laser'?2:3);
+            }
             const owner=this.players.find(p=>p.id===s.ownerId)??this.player;
             this.comboClock=1.15;this.combo=clamp(this.combo+.055,1,9.9);this.score+=Math.ceil(3*this.combo);owner.special=clamp(owner.special+.42,0,100);
             if(e.kind==='boss'||e.kind==='miniboss')this.shake=Math.max(this.shake,s.kind==='rockets'?2.1:1.35);
@@ -622,13 +648,13 @@ export class VenusGame {
           }
         }
       } else if(s.life>0){
-        for(const p of this.players){if(!p.alive||p.invuln>0)continue;const pr={x:p.x-29,y:p.y-p.jump-46,w:64,h:48};if(hit({x:s.x-s.r,y:s.y-s.r,w:s.r*2,h:s.r*2},pr)){s.life=0;this.damagePlayer(p,s.damage,s.x,s.y);break;}}
+        for(const p of this.players){if(!p.alive||p.invuln>0)continue;const pr={x:p.x-29,y:p.y-p.jump-46,w:64,h:48};if(hit({x:s.x-s.r,y:s.y-s.r,w:s.r*2,h:s.r*2},pr)){s.life=0;this.damagePlayer(p,s.damage,s.x,s.y);if(s.kind==='orb')this.hitStop=Math.max(this.hitStop,.068);break;}}
       }
     }
     for(const e of this.enemies){
       if(e.hp<=0)continue;
       for(const p of this.players){if(!p.alive)continue;const pr={x:p.x-29,y:p.y-p.jump-46,w:64,h:48};const jumpSafe=!e.aerial&&p.jump>44;
-        if(!jumpSafe&&p.invuln<=0&&hit(pr,{x:e.x-e.w*.42,y:e.y-e.h*.45,w:e.w*.84,h:e.h*.84})){this.damagePlayer(p,e.kind==='boss'?28:e.kind==='mine'?24:16,e.x,e.y);e.hp-=e.kind==='boss'?10:35;if(e.hp<=0)this.killEnemy(e);break;}
+        if(!jumpSafe&&p.invuln<=0&&hit(pr,{x:e.x-e.w*.42,y:e.y-e.h*.45,w:e.w*.84,h:e.h*.84})){this.damagePlayer(p,e.kind==='boss'?28:e.kind==='mine'?24:16,e.x,e.y);if(e.kind==='boss')this.hitStop=Math.max(this.hitStop,.068);e.hp-=e.kind==='boss'?10:35;if(e.hp<=0)this.killEnemy(e);break;}
       }
     }
     for(const q of this.pickups){
@@ -666,6 +692,10 @@ export class VenusGame {
   private finishRun(win:boolean){
     if(this.mode!=='playing'&&this.mode!=='brawler')return;
     if(this.mode==='brawler'&&this.brawler&&!this.brawlerScoreCommitted){this.score+=this.brawler.getScore();this.kills+=this.brawler.getDefeatedCount();this.combo=Math.max(this.combo,this.brawler.getMaxCombo());this.brawlerScoreCommitted=true;}
+    // Terminal screens stop the gameplay update loop.  Clear transient camera
+    // feedback before switching modes or the last damage shake is frozen into
+    // every frame of the defeat screen.
+    this.shake=0;this.flash=0;this.hitStop=0;
     this.mode=win?'win':'lose';this.saveScore();emitMusic(win?'victory':'defeat');emitAudio(win?'stage_clear':'game_over');
   }
 
@@ -868,6 +898,8 @@ export class VenusGame {
     // world-space pivot fixed prevents the wheels from skating across the road.
     const recoilOffset=0;
     const size=HERO_AUTHORED_SIZE[h.id],anchorX=p.x-recoilOffset,anchorY=p.y-p.jump+38;
+    const bodyPose=this.riderPose.bodyPose(p,this.debugImpactStage);
+    const kinetics=this.riderPose.kinetics(p,this.debugImpactStage,bodyPose);
     const muzzle=this.riderPose.muzzle(p,this.debugImpactStage);
     const exhaust=this.riderPose.exhaust(p,this.debugImpactStage);
     const exhaustOriginDeltaPx=p.lastExhaust?Math.hypot(p.lastExhaust.x-exhaust.x,p.lastExhaust.y-exhaust.y):null;
@@ -887,11 +919,15 @@ export class VenusGame {
       projectileOrigin:projectileOrigin?{x:Number(projectileOrigin.x.toFixed(2)),y:Number(projectileOrigin.y.toFixed(2)),hero:projectileOrigin.hero,sheet:projectileOrigin.sheet,frame:projectileOrigin.frame}:null,
       lastProjectileOriginX:projectileOrigin?Number(projectileOrigin.x.toFixed(2)):null,lastProjectileOriginY:projectileOrigin?Number(projectileOrigin.y.toFixed(2)):null,
       projectileOriginDeltaPx:projectileOriginDeltaPx===null?null:Number(projectileOriginDeltaPx.toFixed(3)),
+      kineticPose:{active:kinetics.active,signature:kinetics.signature,cycleIndex:kinetics.cycleIndex,wheelAngleIndex:kinetics.wheelAngleIndex,
+        suspensionY:kinetics.suspensionY,chassisPitch:Number(kinetics.chassisPitch.toFixed(4)),scaleX:kinetics.scaleX,scaleY:kinetics.scaleY,
+        secondaryA:kinetics.secondaryA,secondaryB:kinetics.secondaryB},
     };
   }
 
   snapshot() {
     const boss = this.enemies.find(e => e.kind === 'boss' || e.kind === 'miniboss');
+    const bossVisual=boss?.kind==='boss'?this.bossAttackVisual(boss):null;
     const debugRider=this.enemies.find(e=>e.kind==='rider');
     const wobble=this.debugWobblePose===null?null:WOBBLE_POSES[this.debugWobblePose];
     const impactStage=this.debugImpactStage;
@@ -908,20 +944,32 @@ export class VenusGame {
     const trajectory=impactStage===null?null:{earlyPanel:pathSamples?.earlyPanel??null,sparkA:pathSamples?.sparkA??null,sparkB:pathSamples?.sparkB??null,scar};
     const phaseAnchors=impactStage===null||!debugRider?null:{contact:this.impactAnchors(4,debugRider),hitstop:this.impactAnchors(5,debugRider),recoil1:this.impactAnchors(6,debugRider),recoil2:this.impactAnchors(7,debugRider),debris1:this.impactAnchors(8,debugRider),debris2:this.impactAnchors(9,debugRider),damageHold:this.impactAnchors(10,debugRider),recover:this.impactAnchors(11,debugRider)};
     const fireState=this.player?this.playerFireState(this.player):null;
+    const impactBursts=this.particles.filter(particle=>particle.kind==='impact').map(particle=>{
+      const progress=1-clamp(particle.life/particle.max,0,1);
+      const radius=px(particle.size*(.75+progress*.65));
+      return {x:px(particle.x),y:px(particle.y),diameter:radius*2,lifeMs:Number((particle.life*1000).toFixed(1))};
+    });
     return {
       state: this.mode, stage: this.mode==='brawler'||this.completedStage===2?2:1, hero: HEROES[this.selected].id, score: Math.floor(this.score),
       intro:this.mode==='intro'?{panel:this.introPanel,total:INTRO_PANELS.length,time:Number(this.introClock.toFixed(2)),skippable:true,assetReady:Boolean(this.introArt[this.introPanel]?.complete&&this.introArt[this.introPanel].naturalWidth)}:null,
       coop:this.coopEnabled,coopEnabled:this.coopEnabled,selectedHeroes:this.selectedHeroes.map(index=>HEROES[index].id),selectReady:[...this.selectReady],
       coopControls:{players:this.coopEnabled?2:1,keyboard:{p1:'WASD / Z X C',p2:'ARROWS / NUM1 NUM2 NUM3'},gamepadSlots:this.coopEnabled?2:1},
-      players:this.players.map(p=>({id:p.id,hero:HEROES[p.heroIndex].id,x:Number(p.x.toFixed(2)),y:Number((p.y-p.jump).toFixed(2)),groundY:Number(p.y.toFixed(2)),hp:Number(p.hp.toFixed(2)),armor:Number(p.armor.toFixed(2)),alive:p.alive,downed:p.downed,fireHeld:p.fireHeld,shotsFired:p.shotsFired,weapon:p.weapon,weaponRank:p.weaponRank,lastMuzzle:p.lastMuzzle?{x:Number(p.lastMuzzle.x.toFixed(2)),y:Number(p.lastMuzzle.y.toFixed(2)),sheet:p.lastMuzzle.sheet,frame:p.lastMuzzle.frame}:null})),
+      players:this.players.map(p=>({id:p.id,hero:HEROES[p.heroIndex].id,x:Number(p.x.toFixed(2)),y:Number((p.y-p.jump).toFixed(2)),groundY:Number(p.y.toFixed(2)),hp:Number(p.hp.toFixed(2)),armor:Number(p.armor.toFixed(2)),alive:p.alive,downed:p.downed,fireHeld:p.fireHeld,shotsFired:p.shotsFired,weapon:p.weapon,weaponRank:p.weaponRank,
+        reactionPhase:p.invuln>.875?'contact':p.invuln>.75?'recovery':p.invuln>0?'invulnerable':'neutral',
+        lastMuzzle:p.lastMuzzle?{x:Number(p.lastMuzzle.x.toFixed(2)),y:Number(p.lastMuzzle.y.toFixed(2)),sheet:p.lastMuzzle.sheet,frame:p.lastMuzzle.frame}:null})),
       rideBounds:{minY:PLAYER_Y_MIN,maxY:PLAYER_Y_MAX,roadTop:292,roadBottom:506},
       friendlyProjectiles:this.shots.filter(s=>s.friendly).map(s=>({ownerId:s.ownerId??1,x:Number(s.x.toFixed(2)),y:Number(s.y.toFixed(2)),kind:s.kind})),
       enemyProjectiles:this.shots.filter(s=>!s.friendly).map(s=>({x:Number(s.x.toFixed(2)),y:Number(s.y.toFixed(2)),kind:s.kind})),
       noFriendlyFire:{playerVsPlayerDisabled:true,lastProbe:this.lastFriendlyFireProbe},
       health: this.player?.hp ?? null, armor: this.player?.armor ?? null,
-      enemies: this.enemies.length, boss: boss ? { kind: boss.kind, health: boss.hp, maxHealth: boss.maxHp } : null,
+      enemies: this.enemies.length, boss: boss ? { kind: boss.kind, health: boss.hp, maxHealth: boss.maxHp,
+        attack:bossVisual?{mode:bossVisual.mode,phase:bossVisual.phase,signature:bossVisual.signature,progress:Number(bossVisual.progress.toFixed(3)),
+          attackTime:Number((boss.attackTime??-1).toFixed(3)),hitReaction:Number(boss.hitReact.toFixed(3)),
+          pose:{x:Number(bossVisual.x.toFixed(2)),y:Number(bossVisual.y.toFixed(2)),angle:Number(bossVisual.angle.toFixed(4)),scaleX:Number(bossVisual.scaleX.toFixed(3)),scaleY:Number(bossVisual.scaleY.toFixed(3))}}:null } : null,
       enemyKinds: this.enemies.map(enemy=>enemy.kind),
       elapsed: Number(this.elapsed.toFixed(2)), combo: Number(this.combo.toFixed(1)), weapon: this.player?.weapon ?? null,
+      cameraFeedback: { shake: Number(this.shake.toFixed(3)), flash: Number(this.flash.toFixed(3)), hitStop: Number(this.hitStop.toFixed(3)) },
+      stageOneTemporal:{impactBursts},
       fireState,
       beat: this.debugBeat ? { riderReaction: Number((this.enemies[0]?.hitReact ?? 0).toFixed(2)), shots: this.shots.filter(s=>s.friendly).length, wobbleX:wobble?.x??(this.enemies[0]?this.riderReactionPose(this.enemies[0]).wobbleX:0),wobbleAngle:wobble?.angle??0,forkOffset:wobble?.forkOffset??0,counterphase:wobble?.headCounterphase??0,shadowOffset:wobble?.shadowOffset??0,shadowWidth:wobble?.shadowWidth??74 } : null,
       impact: this.debugImpactStage===null?null:{
@@ -968,9 +1016,12 @@ export class VenusGame {
 
   private dust(x:number,y:number,count:number){for(let i=0;i<count;i++)this.particles.push({x:x+rnd(-8,8),y:y+rnd(-3,3),vx:rnd(-75,-20),vy:rnd(-55,-10),life:rnd(.25,.55),max:.55,size:rnd(3,9),color:Math.random()<.5?'#d08a55':'#8c5a4c',kind:'dust',rot:rnd(0,6)});}
   private hitFx(x:number,y:number,color:string,count:number){
-    // A compact six-frame read: white-hot contact, three directional chips, then residue.
-    this.particles.push({x,y,vx:0,vy:0,life:.105,max:.105,size:10,color:'#fffceb',kind:'impact',rot:rnd(0,Math.PI)});
-    const shards=Math.max(2,Math.min(3,count));
+    // Hold a 36–68 px white-hot contact cross across at least two 60 fps
+    // frames (and normally two 100 ms critique samples). This gives Stage 1 a
+    // local combat locus instead of asking score numbers to communicate hits.
+    const impactSize=count>=7?26:22;
+    this.particles.push({x,y,vx:0,vy:0,life:.21,max:.21,size:impactSize,color:'#fffceb',kind:'impact',rot:rnd(0,Math.PI)});
+    const shards=Math.max(2,Math.min(7,count));
     for(let i=0;i<shards;i++){
       const a=(-.9+i/(Math.max(1,shards-1))*1.8)+rnd(-.25,.25),v=rnd(115,215);
       this.particles.push({x:x+rnd(-2,2),y:y+rnd(-2,2),vx:-Math.abs(Math.cos(a)*v),vy:Math.sin(a)*v,life:rnd(.12,.18),max:.18,size:rnd(3,5),color:i===1?'#fff':color,kind:'shard',rot:a});
@@ -1037,6 +1088,66 @@ export class VenusGame {
     for(const f of this.floaters){c.globalAlpha=clamp(f.life*2,0,1);this.text(f.text,f.x,f.y,17,f.color,'center',true);c.globalAlpha=1;}
   }
 
+  private drawRiderSecondaryMotion(hero:HeroId,size:{width:number;height:number;anchorX:number;anchorY:number},kinetics:RiderKineticPose,bodyX:number,bodyY:number){
+    if(!kinetics.active)return;
+    const c=this.ctx;
+    const colors=hero==='cassia'
+      ?{upper:'#ed413f',upperLight:'#ff9d45',lower:'#6f3128',lowerLight:'#d78b35'}
+      :hero==='bruna'
+        ?{upper:'#151827',upperLight:'#536889',lower:'#16477c',lowerLight:'#4bb9dd'}
+        :{upper:'#a51a69',upperLight:'#ff4fa3',lower:'#ddd7cf',lowerLight:'#fff8e6'};
+    const ribbon=(points:Array<readonly [number,number]>,outer:string,inner:string,outerWidth:number,innerWidth:number)=>{
+      // Quantised overlapping blocks preserve the two-pixel raster used by the
+      // authored sprites. Canvas strokes introduced a conspicuous smooth edge
+      // and inconsistent line weight as the secondary pieces changed angle.
+      const blocks=(color:string,width:number,step:number)=>{
+        const size=Math.max(2,Math.floor(width/2)*2),half=size/2;
+        c.fillStyle=color;
+        for(let segment=1;segment<points.length;segment++){
+          const from=points[segment-1],to=points[segment];
+          const distance=Math.hypot(to[0]-from[0],to[1]-from[1]);
+          const count=Math.max(1,Math.ceil(distance/step));
+          for(let index=0;index<=count;index++){
+            const t=index/count;
+            const x=Math.round((from[0]+(to[0]-from[0])*t)/2)*2;
+            const y=Math.round((from[1]+(to[1]-from[1])*t)/2)*2;
+            c.fillRect(x-half,y-half,size,size);
+          }
+        }
+      };
+      blocks(outer,outerWidth,4);
+      blocks(inner,innerWidth,4);
+      const tip=points.at(-1)!;c.fillStyle=outer;c.fillRect(Math.round(tip[0]/2)*2-3,Math.round(tip[1]/2)*2-3,6,6);
+    };
+    c.save();c.translate(bodyX,bodyY+kinetics.suspensionY);c.rotate(kinetics.chassisPitch);c.scale(kinetics.scaleX,kinetics.scaleY);
+    c.globalAlpha=.92;
+    const a=kinetics.secondaryA,b=kinetics.secondaryB;
+    ribbon([[-27,-72],[-48,-73+a],[-66,-68-a*.45],[-82,-64+a*.35]],colors.upper,colors.upperLight,8,4);
+    ribbon([[-39,-39],[-55,-33+b],[-70,-25-b*.45],[-79,-20+b*.3]],colors.lower,colors.lowerLight,7,3);
+    c.restore();
+  }
+
+  private drawRiderWheelMotion(hero:HeroId,size:{width:number;height:number;anchorX:number;anchorY:number},kinetics:RiderKineticPose,bodyX:number,bodyY:number){
+    if(!kinetics.active)return;
+    const c=this.ctx,geometry=HERO_WHEEL_GEOMETRY[hero],sx=size.width/256,sy=size.height/192;
+    const radius=geometry.radius*(sx+sy)*.5,accent=hero==='cassia'?'#ffbe39':hero==='bruna'?'#61ddff':'#ff5d9f';
+    c.save();c.translate(bodyX,bodyY);c.globalCompositeOperation='screen';c.globalAlpha=.78;
+    for(const source of [geometry.rear,geometry.front]){
+      const x=-size.width*size.anchorX+source[0]*sx,y=-size.height*size.anchorY+source[1]*sy;
+      c.save();c.translate(Math.round(x),Math.round(y));c.rotate(kinetics.wheelAngle);
+      c.strokeStyle='#d8d2d8';c.lineWidth=1.5;
+      for(let spoke=0;spoke<3;spoke++){const angle=spoke*Math.PI*2/3;c.beginPath();c.moveTo(Math.cos(angle)*4,Math.sin(angle)*4);c.lineTo(Math.cos(angle)*radius*.66,Math.sin(angle)*radius*.66);c.stroke();}
+      c.fillStyle=accent;c.fillRect(Math.round(radius*.6)-2,-2,5,4);
+      c.strokeStyle=accent;c.lineWidth=2;c.beginPath();c.arc(0,0,5,0,Math.PI*2);c.stroke();
+      c.fillStyle='#f3edf1';c.fillRect(-2,-2,4,4);c.restore();
+      // The wheel hub stays road-anchored while the chassis attachment follows
+      // the authored body transform, making the two-pixel compression legible.
+      c.strokeStyle=accent;c.globalAlpha=.38;c.lineWidth=2;c.beginPath();c.moveTo(Math.round(x),Math.round(y)-5);
+      c.lineTo(Math.round(x+(source===geometry.front?6:-5)),Math.round(y-radius*.62+kinetics.suspensionY));c.stroke();c.globalAlpha=.78;
+    }
+    c.restore();
+  }
+
   private drawPlayer(p=this.player){
     const c=this.ctx,h=HEROES[p.heroIndex],x=p.x,y=p.y-p.jump;
     const rideFrame=((Math.floor(p.wheel)%6)+6)%6;
@@ -1051,18 +1162,32 @@ export class VenusGame {
     // trigger holds use a dedicated four-frame row per hero, so projectile
     // cadence can never bounce the body back to a ride frame.
     const pose=this.riderPose.bodyPose(p,this.debugImpactStage);
+    const kinetics=this.riderPose.kinetics(p,this.debugImpactStage,pose);
     const authoredFrame=pose.sheet==='authored'?pose.frame:2;
     const size=HERO_AUTHORED_SIZE[h.id];
     const playerKick=this.debugImpactStage===null?0:this.impactShooterPose(this.debugImpactStage).shoulderRecoil;
     const sustained=pose.sheet==='sustained';
     const recovering=pose.sheet==='release';
-    const bodyX=x-playerKick-fireState.recoilOffset;
-    const bodyY=y+38+(playerKick>0?2:0);
-    let usedAtlas=sustained&&drawSpriteFrame(c,'sustainedFire',p.heroIndex*4+pose.frame,bodyX,bodyY,{...size,alpha:hitFlash>0?.62:1});
-    if(!usedAtlas&&recovering)usedAtlas=drawSpriteFrame(c,'fireRelease',p.heroIndex*3+pose.frame,bodyX,bodyY,{...size,alpha:hitFlash>0?.62:1});
-    if(!usedAtlas)usedAtlas=drawSpriteFrame(c,h.id,authoredFrame,bodyX,bodyY,{
-      ...size,alpha:hitFlash>0?.62:1,
-    });
+    const reactionAge=.95-p.invuln,reactionActive=p.invuln>0&&reactionAge<.2;
+    const reactionEnvelope=!reactionActive?0:reactionAge<.075?1:1-clamp((reactionAge-.075)/.125,0,1);
+    const reactionAngle=-.035*reactionEnvelope;
+    const reactionScaleX=1-.025*reactionEnvelope,reactionScaleY=1+.028*reactionEnvelope;
+    const bodyX=x-playerKick-fireState.recoilOffset-6*reactionEnvelope;
+    const bodyY=y+38+(playerKick>0?2:0)-2*reactionEnvelope;
+    this.drawRiderSecondaryMotion(h.id,size,kinetics,bodyX,bodyY);
+    let usedAtlas=false;
+    if(kinetics.active){
+      c.save();c.translate(bodyX,bodyY+kinetics.suspensionY);c.rotate(kinetics.chassisPitch+reactionAngle);c.scale(kinetics.scaleX*reactionScaleX,kinetics.scaleY*reactionScaleY);
+      usedAtlas=drawSpriteFrame(c,h.id,authoredFrame,0,0,{...size,alpha:hitFlash>0?.62:1});c.restore();
+      if(usedAtlas)this.drawRiderWheelMotion(h.id,size,kinetics,bodyX,bodyY);
+    }else{
+      if(reactionActive){c.save();c.translate(bodyX,bodyY);c.rotate(reactionAngle);c.scale(reactionScaleX,reactionScaleY);}
+      const drawX=reactionActive?0:bodyX,drawY=reactionActive?0:bodyY;
+      usedAtlas=sustained&&drawSpriteFrame(c,'sustainedFire',p.heroIndex*4+pose.frame,drawX,drawY,{...size,alpha:hitFlash>0?.62:1});
+      if(!usedAtlas&&recovering)usedAtlas=drawSpriteFrame(c,'fireRelease',p.heroIndex*3+pose.frame,drawX,drawY,{...size,alpha:hitFlash>0?.62:1});
+      if(!usedAtlas)usedAtlas=drawSpriteFrame(c,h.id,authoredFrame,drawX,drawY,{...size,alpha:hitFlash>0?.62:1});
+      if(reactionActive)c.restore();
+    }
     if(!usedAtlas){
       c.scale(2,2);
       drawPixelHero(c,h.id,bodyX/2,y/2,{frame:rideFrame,angle:p.lean*.055-p.jumpV*.00008,power:p.specialTime>0?1:clamp(.76+this.worldSpeed/h.speed*.18,.76,.96),firing:sustained||recovering||firing,airborne:p.jump>1,flash:hitFlash,recoil:sustained?1:recovering?p.fireReleaseBlend:recoil});
@@ -1237,6 +1362,67 @@ export class VenusGame {
     return 11;
   }
 
+  private bossAttackVisual(e:Enemy){
+    const power=clamp(1-e.hp/e.maxHp,0,1),attackTime=e.attackTime??-1,mode=e.attackMode??0;
+    if(e.hitReact>0){
+      const age=.22-e.hitReact,contact=age<.075;
+      // Hit-stop holds the compressed contact pose; the following sample then
+      // releases into an unmistakable 12–18 px recoil away from the player.
+      const recoilX=age<.16?lerp(18,14,clamp((age-.075)/.085,0,1)):lerp(14,0,clamp((age-.16)/.06,0,1));
+      return {phase:contact?'reaction-contact':'reaction-recovery',mode,signature:contact?10:11,frame:contact?2:3,
+        x:contact?7:recoilX,y:contact?-6:-4*(1-clamp((age-.075)/.145,0,1)),angle:contact?.035:.022*(1-clamp((age-.075)/.145,0,1)),
+        scaleX:contact?.94:1.018,scaleY:contact?1.065:.986,progress:clamp(age/.22,0,1)};
+    }
+    if(attackTime<0){
+      const frame=power>.68?5:power>.3?4:0;
+      return {phase:'idle',mode,signature:0,frame,x:0,y:0,angle:0,scaleX:1,scaleY:1,progress:0};
+    }
+    if(attackTime<BOSS_ATTACK_ANTICIPATION){
+      const progress=attackTime/BOSS_ATTACK_ANTICIPATION;
+      if(mode===0)return {phase:'anticipation',mode,signature:1,frame:1,x:8*progress,y:-2*progress,angle:-.012*progress,scaleX:1-.045*progress,scaleY:1+.035*progress,progress};
+      if(mode===1)return {phase:'anticipation',mode,signature:4,frame:1,x:2*progress,y:-10*progress,angle:.008*progress,scaleX:1-.018*progress,scaleY:1+.06*progress,progress};
+      return {phase:'anticipation',mode,signature:7,frame:1,x:10*progress,y:-4*progress,angle:.026*progress,scaleX:1-.035*progress,scaleY:1+.025*progress,progress};
+    }
+    if(attackTime<BOSS_ATTACK_CONTACT_END){
+      const progress=(attackTime-BOSS_ATTACK_ANTICIPATION)/(BOSS_ATTACK_CONTACT_END-BOSS_ATTACK_ANTICIPATION);
+      if(mode===0)return {phase:'contact',mode,signature:2,frame:2,x:-12,y:3,angle:.018,scaleX:1.055,scaleY:.955,progress};
+      if(mode===1)return {phase:'contact',mode,signature:5,frame:2,x:-5,y:8,angle:-.012,scaleX:1.035,scaleY:.94,progress};
+      return {phase:'contact',mode,signature:8,frame:2,x:-14,y:5,angle:-.034,scaleX:1.06,scaleY:.95,progress};
+    }
+    const progress=clamp((attackTime-BOSS_ATTACK_CONTACT_END)/(BOSS_ATTACK_DURATION-BOSS_ATTACK_CONTACT_END),0,1);
+    const settle=1-progress;
+    if(mode===0)return {phase:'recovery',mode,signature:3,frame:1,x:-5*settle,y:2*settle,angle:.009*settle,scaleX:1+.022*settle,scaleY:1-.018*settle,progress};
+    if(mode===1)return {phase:'recovery',mode,signature:6,frame:1,x:-2*settle,y:5*settle,angle:-.006*settle,scaleX:1+.014*settle,scaleY:1-.025*settle,progress};
+    const burstKick=(e.attackShot??0)>1?1:.55;
+    return {phase:'recovery',mode,signature:9,frame:1,x:-7*settle*burstKick,y:3*settle,angle:-.018*settle*burstKick,scaleX:1+.03*settle,scaleY:1-.022*settle,progress};
+  }
+
+  private stageOneTargetReaction(e:Enemy){
+    if(e.hitReact<=0||e.kind==='rider'||e.kind==='boss')return null;
+    const age=.18-e.hitReact,contact=age<.06;
+    const recoilX=age<.14?lerp(14,12,clamp((age-.06)/.08,0,1)):lerp(12,0,clamp((age-.14)/.04,0,1));
+    return contact
+      ?{x:5,y:-3,angle:.025,scaleX:.94,scaleY:1.06}
+      :{x:recoilX,y:-2,angle:.016,scaleX:1.025,scaleY:.98};
+  }
+
+  private drawBossAttackCue(e:Enemy,visual:ReturnType<VenusGame['bossAttackVisual']>){
+    if(visual.phase==='idle'||visual.phase.startsWith('reaction'))return;
+    const c=this.ctx,pulse=.55+.45*Math.sin(this.time*34),contact=visual.phase==='contact';
+    c.save();c.globalCompositeOperation='screen';c.translate(e.x+visual.x,e.y+12+visual.y);c.rotate(visual.angle);
+    if(visual.mode===0){
+      c.translate(-142,-48);c.fillStyle=contact?'#fffbd0':'#ff7b38';c.globalAlpha=contact?1:.3+.45*visual.progress;
+      c.fillRect(-18,-8,contact?42:18,16);c.fillStyle='#ffcc4f';c.fillRect(-7,-3,contact?54:25,6);
+    }else if(visual.mode===1){
+      c.translate(-8,-18);c.strokeStyle=contact?'#fff5ff':'#cf5cff';c.lineWidth=contact?7:3;c.globalAlpha=contact?1:.35+.4*visual.progress;
+      for(let ring=0;ring<3;ring++){const radius=24+ring*13+(contact?10:visual.progress*5);c.beginPath();c.arc(0,0,radius,0,Math.PI*2);c.stroke();}
+    }else{
+      c.translate(-130,-36);c.globalAlpha=contact?1:.3+.4*pulse;
+      for(let muzzle=0;muzzle<3;muzzle++){const yy=muzzle*18-18;c.fillStyle=contact?'#fff':'#e169ff';c.fillRect(-12,yy-5,contact?36:18,10);c.fillStyle='#ffbc52';c.fillRect(contact?10:2,yy-2,contact?32:13,4);}
+    }
+    c.restore();
+  }
+
   private drawEnemy(e:Enemy){
     const c=this.ctx;
     // The small boss pod and road mine share the authored enemy-roster sheet.
@@ -1262,6 +1448,11 @@ export class VenusGame {
         c.save();c.globalAlpha=.3;c.fillStyle='#080811';c.beginPath();c.ellipse(px(shadowX),px(e.y+22),px(shadowWidth*.5),9,0,0,Math.PI*2);c.fill();c.restore();
       }
       if(e.kind==='miniboss'||e.kind==='boss'){c.globalAlpha=.28;c.fillStyle=e.kind==='boss'?'#c339ff':'#000';c.beginPath();c.ellipse(e.x,e.y+(e.kind==='boss'?70:48),e.kind==='boss'?150:105,e.kind==='boss'?34:18,0,0,Math.PI*2);c.fill();c.globalAlpha=1;}
+      const targetReaction=this.stageOneTargetReaction(e);
+      if(targetReaction){
+        c.translate(e.x+targetReaction.x,e.y+targetReaction.y);c.rotate(targetReaction.angle);
+        c.scale(targetReaction.scaleX,targetReaction.scaleY);c.translate(-e.x,-e.y);
+      }
       c.scale(2,2);
       const reaction=e.kind==='rider'?(e.hitReact>.48?1:e.hitReact>0?2:0):0;
       const options={frame:Math.floor(e.t*8),flipX:true,flash:clamp(e.flash*8,0,1),power:1-e.hp/e.maxHp,reaction};
@@ -1279,10 +1470,12 @@ export class VenusGame {
       else if(e.kind==='boss'){
         c.scale(.5,.5);
         const power=clamp(1-e.hp/e.maxHp,0,1);
-        const bossBodyFrame=e.flash>.105?2:e.flash>0?3:power>.68?5:power>.3?4:e.fire>0&&e.fire<.14?1:0;
-        const usedBossBody=drawSpriteFrame(c,'bossBody',bossBodyFrame,e.x,e.y+12,{
+        const visual=this.bossAttackVisual(e);
+        c.save();c.translate(e.x+visual.x,e.y+12+visual.y);c.rotate(visual.angle);c.scale(visual.scaleX,visual.scaleY);
+        const usedBossBody=drawSpriteFrame(c,'bossBody',visual.frame,0,0,{
           width:360,height:270,anchorX:.5,anchorY:.54,
         });
+        c.restore();
         if(!usedBossBody){
           c.scale(2,2);
           drawPixelBoss(c,'sulfurDreadnought',e.x/2,e.y/2,options);
@@ -1292,6 +1485,7 @@ export class VenusGame {
             width:116,height:88,anchorX:.5,anchorY:.5,
           });
         }
+        this.drawBossAttackCue(e,visual);
       }
       else {
         let usedAtlas=false;
