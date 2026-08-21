@@ -1,5 +1,6 @@
 import { LevelRegistry } from './LevelRegistry';
 import type { BrawlerLevelDefinition, RiderLevelDefinition } from './types';
+import { assetUrl } from '../assetUrl';
 
 export const VENUS_HIGHWAY: RiderLevelDefinition = {
   id: 'venus-highway',
@@ -24,10 +25,10 @@ export const FURNACE_DISTRICT: BrawlerLevelDefinition = {
   floorNear: 478,
   floorFar: 302,
   assets: {
-    backdrop: '/assets/brawler/furnace-district-panorama.png',
-    floor: '/assets/brawler/furnace-floor.png',
-    enemies: '/assets/brawler/venus-gang-sheet.png',
-    boss: '/assets/brawler/forge-overseer-sheet.png',
+    backdrop: assetUrl('assets/brawler/furnace-district-panorama.png'),
+    floor: assetUrl('assets/brawler/furnace-floor.png'),
+    enemies: assetUrl('assets/brawler/venus-gang-sheet.png'),
+    boss: assetUrl('assets/brawler/forge-overseer-sheet.png'),
   },
   waves: [
     { at: 540, enemies: ['raider', 'raider', 'raider'] },

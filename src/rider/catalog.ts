@@ -1,4 +1,5 @@
 import type { HeroId, HeroSourceMap, HeroSpec, IntroPanel } from './types';
+import { assetUrl } from '../assetUrl';
 
 export const HEROES: readonly HeroSpec[] = [
   { id: 'cassia', name: 'CASSIA', epithet: 'THE SOLAR CAPTAIN', color: '#d99a42', accent: '#ffcf32', maxHp: 110, maxArmor: 45, speed: 330, fireRate: .145, weapon: 'blaster', special: 'SUNBURST FOCUS', stats: [4, 4, 4] },
@@ -7,10 +8,10 @@ export const HEROES: readonly HeroSpec[] = [
 ];
 
 export const INTRO_PANELS: readonly IntroPanel[] = [
-  { src: '/assets/intro/venus-beach-01-rest.png', kicker: 'VENUS BOARDWALK // 18:42 LOCAL', title: 'A PERFECT DAY OFF.', caption: 'CASSIA: "Quiet suits us."   BRUNA: "Last set."   NOVA: "Last wave!"', duration: 5.2, pan: -12 },
-  { src: '/assets/intro/venus-beach-02-blast.png', kicker: 'THEN THE HORIZON BLINKS.', title: 'KRA-KOOM!', caption: 'One blast. Three heads turn. The day off is officially over.', duration: 4.1, pan: 10 },
-  { src: '/assets/intro/venus-beach-03-jackets.png', kicker: 'NO SPEECHES. NO HESITATION.', title: 'JACKETS ON.', caption: 'Leather, engines and a rising column of smoke. Just like old times.', duration: 4.2, pan: -8 },
-  { src: '/assets/intro/venus-beach-04-ride.png', kicker: 'VACATION STATUS: CANCELLED', title: 'GIRLS... RIDE.', caption: 'The Venus skyway is waiting - and trouble never waits politely.', duration: 4.6, pan: 14 },
+  { src: assetUrl('assets/intro/venus-beach-01-rest.png'), kicker: 'VENUS BOARDWALK // 18:42 LOCAL', title: 'A PERFECT DAY OFF.', caption: 'CASSIA: "Quiet suits us."   BRUNA: "Last set."   NOVA: "Last wave!"', duration: 5.2, pan: -12 },
+  { src: assetUrl('assets/intro/venus-beach-02-blast.png'), kicker: 'THEN THE HORIZON BLINKS.', title: 'KRA-KOOM!', caption: 'One blast. Three heads turn. The day off is officially over.', duration: 4.1, pan: 10 },
+  { src: assetUrl('assets/intro/venus-beach-03-jackets.png'), kicker: 'NO SPEECHES. NO HESITATION.', title: 'JACKETS ON.', caption: 'Leather, engines and a rising column of smoke. Just like old times.', duration: 4.2, pan: -8 },
+  { src: assetUrl('assets/intro/venus-beach-04-ride.png'), kicker: 'VACATION STATUS: CANCELLED', title: 'GIRLS... RIDE.', caption: 'The Venus skyway is waiting - and trouble never waits politely.', duration: 4.6, pan: 14 },
 ];
 
 export const HERO_AUTHORED_SIZE: Readonly<Record<HeroId, { width: number; height: number; anchorX: number; anchorY: number }>> = {
