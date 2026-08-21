@@ -5,6 +5,8 @@
  * scroll/time, so captures and debug scene jumps remain deterministic.
  */
 
+import { assetUrl } from './assetUrl';
+
 export const ENVIRONMENT_WIDTH = 960;
 export const ENVIRONMENT_HEIGHT = 540;
 export const ENVIRONMENT_ROAD_TOP = 292;
@@ -66,7 +68,7 @@ const SECTIONS: readonly EnvironmentSection[] = [
  * the loader here (rather than in game state) means a slow/missing local asset
  * simply reveals the procedural world that is already drawn underneath it.
  */
-const PANORAMA_URL = '/assets/world/venus-highway-panorama.png';
+const PANORAMA_URL = assetUrl('assets/world/venus-highway-panorama.png');
 let panorama: HTMLImageElement | null = null;
 let panoramaState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
 
@@ -78,13 +80,13 @@ let panoramaState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
  *   row 0: guardrail, lamp, warning sign, shoulder wreckage
  *   row 1: shoulder rock A/B, foreground rock A/B
  */
-const ROAD_PROPS_URL = '/assets/world/roadside-props-sheet.png';
+const ROAD_PROPS_URL = assetUrl('assets/world/roadside-props-sheet.png');
 const ROAD_PROPS_COLUMNS = 4;
 const ROAD_PROPS_ROWS = 2;
 let roadProps: HTMLImageElement | null = null;
 let roadPropsState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
 
-const SHOULDER_STRIP_URL = '/assets/world/venus-shoulder-strip.png';
+const SHOULDER_STRIP_URL = assetUrl('assets/world/venus-shoulder-strip.png');
 let shoulderStrip: HTMLImageElement | null = null;
 let shoulderStripState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
 

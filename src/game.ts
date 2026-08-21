@@ -10,6 +10,7 @@ import { drawSpriteFrame, getSpriteSheetStatus, preloadSpriteSheets } from './sp
 import { BeatEmUpStage, type BrawlerControls, type BrawlerHeroId } from './beatEmUp';
 import { gameEvents } from './core/GameEvents';
 import { HighScoreStore, type HighScore } from './core/HighScoreStore';
+import { assetUrl } from './assetUrl';
 import { InputController } from './core/InputController';
 import { campaign, FURNACE_DISTRICT, VENUS_HIGHWAY } from './levels/campaign';
 import type { BrawlerLevelDefinition } from './levels/types';
@@ -171,7 +172,7 @@ export class VenusGame {
     // ready, its existing procedural counterpart remains the renderer of record.
     void preloadSpriteSheets();
     void preloadSelectPortraits();
-    this.titleArt.src = '/assets/venus-title-key-art.png';
+    this.titleArt.src = assetUrl('assets/venus-title-key-art.png');
     this.introArt = INTRO_PANELS.map(panel => {
       const image = new Image();
       image.decoding = 'async';

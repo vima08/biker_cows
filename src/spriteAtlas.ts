@@ -6,6 +6,8 @@
  * failed to load.
  */
 
+import { assetUrl } from './assetUrl';
+
 export type SpriteSheetId =
   | "cassia"
   | "bruna"
@@ -70,79 +72,79 @@ const SHEET_DEFINITIONS: Readonly<Record<SpriteSheetId, {
   readonly frames: number;
 }>> = Object.freeze({
   cassia: Object.freeze({
-    path: "/assets/sprites/cassia-sheet.png",
+    path: assetUrl("assets/sprites/cassia-sheet.png"),
     columns: 4,
     rows: 2,
     frames: 8,
   }),
   bruna: Object.freeze({
-    path: "/assets/sprites/bruna-sheet.png",
+    path: assetUrl("assets/sprites/bruna-sheet.png"),
     columns: 4,
     rows: 2,
     frames: 8,
   }),
   nova: Object.freeze({
-    path: "/assets/sprites/nova-sheet.png",
+    path: assetUrl("assets/sprites/nova-sheet.png"),
     columns: 4,
     rows: 2,
     frames: 8,
   }),
   sustainedFire: Object.freeze({
-    path: "/assets/sprites/cow-sustained-fire-sheet.png",
+    path: assetUrl("assets/sprites/cow-sustained-fire-sheet.png"),
     columns: 4,
     rows: 3,
     frames: 12,
   }),
   fireRelease: Object.freeze({
-    path: "/assets/sprites/cow-fire-release-sheet.png",
+    path: assetUrl("assets/sprites/cow-fire-release-sheet.png"),
     columns: 3,
     rows: 3,
     frames: 9,
   }),
   rider: Object.freeze({
-    path: "/assets/sprites/rider-sheet.png",
+    path: assetUrl("assets/sprites/rider-sheet.png"),
     columns: 3,
     rows: 2,
     frames: 6,
   }),
   riderImpact: Object.freeze({
-    path: "/assets/sprites/rider-impact-sheet.png",
+    path: assetUrl("assets/sprites/rider-impact-sheet.png"),
     columns: 4,
     rows: 3,
     frames: 12,
   }),
   impactMaterial: Object.freeze({
-    path: "/assets/sprites/impact-material-sheet.png",
+    path: assetUrl("assets/sprites/impact-material-sheet.png"),
     columns: 4,
     rows: 2,
     frames: 8,
   }),
   bossCore: Object.freeze({
-    path: "/assets/sprites/boss-core-sheet.png",
+    path: assetUrl("assets/sprites/boss-core-sheet.png"),
     columns: 3,
     rows: 2,
     frames: 6,
   }),
   bossBody: Object.freeze({
-    path: "/assets/sprites/boss-body-sheet.png",
+    path: assetUrl("assets/sprites/boss-body-sheet.png"),
     columns: 3,
     rows: 2,
     frames: 6,
   }),
   roadRipper: Object.freeze({
-    path: "/assets/sprites/road-ripper-sheet.png",
+    path: assetUrl("assets/sprites/road-ripper-sheet.png"),
     columns: 3,
     rows: 2,
     frames: 6,
   }),
   aerials: Object.freeze({
-    path: "/assets/sprites/aerials-sheet.png",
+    path: assetUrl("assets/sprites/aerials-sheet.png"),
     columns: 4,
     rows: 2,
     frames: 8,
   }),
   enemyRoster: Object.freeze({
-    path: "/assets/sprites/enemy-roster-sheet.png",
+    path: assetUrl("assets/sprites/enemy-roster-sheet.png"),
     columns: 4,
     rows: 3,
     frames: 12,

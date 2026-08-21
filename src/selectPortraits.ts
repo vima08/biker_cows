@@ -6,6 +6,8 @@
  * the existing procedural portrait without delaying the menu.
  */
 
+import { assetUrl } from './assetUrl';
+
 export type SelectPortraitHeroId = "cassia" | "bruna" | "nova";
 export type SelectPortraitLoadState = "idle" | "loading" | "ready" | "error";
 
@@ -37,7 +39,7 @@ interface PortraitLayout {
   readonly pivot: readonly [x: number, y: number];
 }
 
-const SHEET_PATH = "/assets/ui/cow-portraits-sheet.png";
+const SHEET_PATH = assetUrl("assets/ui/cow-portraits-sheet.png");
 const COLUMNS = 3;
 const ROWS = 1;
 
