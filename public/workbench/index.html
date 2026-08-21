@@ -3,50 +3,55 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Biker Cows from Venus — Gauntlet Workbench</title>
+  <title>Biker Cows from Venus — Workbench</title>
   <style>
     :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#090713;color:#f4e8d2}
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#34214a,#090713 58%);line-height:1.5}
-    main{max-width:1280px;margin:auto;padding:32px 20px 64px}h1{color:#fff36b;margin-bottom:4px}h2{color:#5de4e0;margin-top:38px}
-    .lede,.finding{max-width:900px;color:#cdbed3}.finding{border-left:4px solid #ff5270;background:#160e20;padding:14px 18px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px}
+    main{max-width:1180px;margin:auto;padding:32px 20px 64px}h1{color:#fff36b;margin-bottom:4px}h2{color:#5de4e0;margin-top:38px}
+    .lede{max-width:900px;color:#cdbed3}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px}
     figure{margin:0;background:#0c0912;border:2px solid #382848;box-shadow:0 8px 28px #0008}
     img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;image-rendering:pixelated}
     figcaption{padding:10px 12px;color:#d8cadf}.tag{display:inline-block;margin:4px 6px 0 0;padding:3px 8px;border:1px solid #5de4e0;color:#5de4e0;font-size:12px}
-    code{color:#fff36b}footer{margin-top:42px;color:#80738a}
+    footer{margin-top:42px;color:#80738a}
   </style>
 </head>
 <body><main>
   <h1>Biker Cows from Venus: Neon Stampede</h1>
-  <p class="lede">Wave 17 · реальные production-кадры браузерного Gauntlet. Новый самостоятельный состав, Venus key art, три полных набора анимаций и сохранённый solo/co-op маршрут.</p>
-  <p><span class="tag">13/13 atlas ready</span><span class="tag">runtimeErrors=[]</span><span class="tag">solo + co-op PASS</span></p>
+  <p class="lede">Компактная production-витрина. Здесь остаются только ключевые кадры текущей двухуровневой сборки; полные серии автоматических прогонов хранятся локально в <code>.gauntlet/</code>.</p>
+  <p><span class="tag">Stage 1 + Stage 2</span><span class="tag">solo + local co-op</span><span class="tag">12 showcase captures</span></p>
 
-  <h2>Идентичность и выбор</h2>
+  <h2>Вход в игру</h2>
   <div class="grid">
-    <figure><img src="captures/iteration-17/menu.png" alt="Biker Cows from Venus start screen"><figcaption>Start screen · новая Venus-панорама</figcaption></figure>
-    <figure><img src="captures/iteration-17/select.png" alt="Cassia Bruna Nova select"><figcaption>Select · Cassia, Bruna и Nova</figcaption></figure>
-    <figure><img src="captures/iteration-17/select-nova.png" alt="Nova selected"><figcaption>Nova · speed ace</figcaption></figure>
+    <figure><img src="captures/showcase/menu.png" alt="Start screen"><figcaption>Стартовый экран и Venus key art</figcaption></figure>
+    <figure><img src="captures/showcase/hero-select.png" alt="Hero select"><figcaption>Выбор Cassia, Bruna и Nova</figcaption></figure>
   </div>
 
-  <h2>Bruna continuity gate</h2>
+  <h2>Stage 1 · Venus Highway</h2>
   <div class="grid">
-    <figure><img src="captures/iteration-17/bruna-base.png" alt="Bruna base ride"><figcaption>Base ride · левая киберрука видна</figcaption></figure>
-    <figure><img src="captures/iteration-17/sustain-bruna-03.png" alt="Bruna sustained fire"><figcaption>Sustained fire · рука не превращается в fur</figcaption></figure>
-    <figure><img src="captures/iteration-17/release-bruna-10.png" alt="Bruna release bridge"><figcaption>Release bridge · сторона и сегменты сохранены</figcaption></figure>
-    <figure><img src="captures/iteration-17/bruna-exhaust.png" alt="Bruna exhaust origin"><figcaption>Exhaust hardpoint · дым выходит из тройных труб</figcaption></figure>
-  </div>
-  <div class="finding"><strong>Принято:</strong> отклонённый первый Bruna-лист заменён точечной правкой. Base, sustained, release, jump и portrait используют одну левую серебряную киберруку с cyan-joint. Отдельный exhaust hardpoint теперь следует за конкретным atlas/frame и расположен на видимом выпускном патрубке.</div>
-
-  <h2>Бой и кооператив</h2>
-  <div class="grid">
-    <figure><img src="captures/iteration-17/boss-exchange.png" alt="Sulfur Dreadnought boss exchange"><figcaption>Sulfur Dreadnought · solo exchange</figcaption></figure>
-    <figure><img src="captures/iteration-17/coop-select.png" alt="Local co-op select"><figcaption>Local co-op · независимый выбор</figcaption></figure>
-    <figure><img src="captures/iteration-17/coop-boss-exchange.png" alt="Local co-op boss exchange"><figcaption>Co-op boss · no friendly fire</figcaption></figure>
-    <figure><img src="captures/iteration-17/victory.png" alt="Venus victory"><figcaption>Victory → restart</figcaption></figure>
+    <figure><img src="captures/showcase/venus-highway.png" alt="Venus highway"><figcaption>Authored обочина и глубина дороги</figcaption></figure>
+    <figure><img src="captures/showcase/highway-boss.png" alt="Sulfur Dreadnought"><figcaption>Финальный бой motorcycle shoot ’em up</figcaption></figure>
   </div>
 
-  <h2>Проверка</h2>
-  <p class="lede"><code>.gauntlet/iteration-17/report.json</code>: <code>ok=true</code>, 13/13 ready, <code>runtimeErrors=[]</code>. Полный production run прошёл title, select, ride, sustained/release/muzzle, impact, aerial, mini-boss, boss, victory/restart и co-op.</p>
-  <footer>Neon Stampede · original local browser game · captures produced by automated production runs</footer>
+  <h2>Переход и Stage 2</h2>
+  <div class="grid">
+    <figure><img src="captures/showcase/stage-transition.png" alt="Stage transition"><figcaption>Сквозной переход в Furnace District</figcaption></figure>
+    <figure><img src="captures/showcase/brawler-combat.png" alt="Brawler combat"><figcaption>Арена, combo и специальная атака</figcaption></figure>
+  </div>
+
+  <h2>Героини</h2>
+  <div class="grid">
+    <figure><img src="captures/showcase/cassia-attack.png" alt="Cassia attack"><figcaption>Cassia · balanced sun-fighter</figcaption></figure>
+    <figure><img src="captures/showcase/bruna-attack.png" alt="Bruna attack"><figcaption>Bruna · cyber-arm continuity</figcaption></figure>
+    <figure><img src="captures/showcase/nova-air.png" alt="Nova aerial attack"><figcaption>Nova · authored airborne attack</figcaption></figure>
+    <figure><img src="captures/showcase/enemy-direction.png" alt="Enemies facing left"><figcaption>Все классы противников читаемо меняют направление</figcaption></figure>
+  </div>
+
+  <h2>Финал</h2>
+  <div class="grid">
+    <figure><img src="captures/showcase/furnace-boss.png" alt="Forge Overseer"><figcaption>The Forge Overseer и отдельный boss health bar</figcaption></figure>
+    <figure><img src="captures/showcase/victory.png" alt="Furnace District victory"><figcaption>Полное прохождение production-кампании</figcaption></figure>
+  </div>
+
+  <footer>Neon Stampede · curated captures only · generated runs stay in .gauntlet</footer>
 </main></body>
 </html>

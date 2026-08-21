@@ -84,6 +84,10 @@ const ROAD_PROPS_ROWS = 2;
 let roadProps: HTMLImageElement | null = null;
 let roadPropsState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
 
+const SHOULDER_STRIP_URL = '/assets/world/venus-shoulder-strip.png';
+let shoulderStrip: HTMLImageElement | null = null;
+let shoulderStripState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
+
 function getPanorama(): HTMLImageElement | null {
   if (panoramaState === 'ready') return panorama;
   if (panoramaState !== 'idle' || typeof Image === 'undefined') return null;
@@ -130,6 +134,33 @@ function getRoadProps(): HTMLImageElement | null {
     image.src = ROAD_PROPS_URL;
   } catch {
     roadPropsState = 'failed';
+  }
+  return null;
+}
+
+function getShoulderStrip(): HTMLImageElement | null {
+  if (shoulderStripState === 'ready') return shoulderStrip;
+  if (shoulderStripState !== 'idle' || typeof Image === 'undefined') return null;
+  shoulderStripState = 'loading';
+  try {
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => {
+      if (image.naturalWidth >= 256 && image.naturalHeight >= 32) {
+        shoulderStrip = image;
+        shoulderStripState = 'ready';
+      } else {
+        shoulderStrip = null;
+        shoulderStripState = 'failed';
+      }
+    };
+    image.onerror = () => {
+      shoulderStrip = null;
+      shoulderStripState = 'failed';
+    };
+    image.src = SHOULDER_STRIP_URL;
+  } catch {
+    shoulderStripState = 'failed';
   }
   return null;
 }
@@ -921,23 +952,41 @@ function drawRoadsideProps(ctx: CanvasRenderingContext2D, palette: Palette, scro
 }
 
 function drawShoulders(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number) {
+  const strip = getShoulderStrip();
+  const top = 476;
+  const tileWidth = 512;
+  const tileHeight = ENVIRONMENT_HEIGHT - top;
   ctx.fillStyle = palette.shoulder;
-  ctx.fillRect(0, ENVIRONMENT_ROAD_BOTTOM, ENVIRONMENT_WIDTH, ENVIRONMENT_HEIGHT - ENVIRONMENT_ROAD_BOTTOM);
-  ctx.fillStyle = '#08090e';
-  ctx.fillRect(0, ENVIRONMENT_ROAD_BOTTOM, ENVIRONMENT_WIDTH, 7);
-  const props = getRoadProps();
-  for (const item of repeatedPositions(scroll, 1.85, props ? 104 : 67, 2)) {
-    const x = Math.floor(item.x);
-    if (props) {
-      const cell = item.index % 2 === 0 ? RoadPropCell.ShoulderRockA : RoadPropCell.ShoulderRockB;
-      drawRoadPropCell(ctx, props, cell, x + 28, 544, 98, 74, item.index % 4 === 1, .94);
-    } else {
-      ctx.fillStyle = item.index % 3 === 0 ? palette.metal : palette.road0;
-      polygon(ctx, [[x - 18, 540], [x + 4, 509], [x + 31, 506], [x + 56, 540]]);
-      ctx.fillStyle = '#07080d';
-      polygon(ctx, [[x + 14, 540], [x + 35, 511], [x + 57, 540]]);
+  ctx.fillRect(0, top, ENVIRONMENT_WIDTH, tileHeight);
+  if (strip) {
+    const travel = scroll * 1.72;
+    const firstTile = Math.floor(travel / tileWidth);
+    const offset = wrap(travel, tileWidth);
+    for (let tile = -1; tile <= 2; tile++) {
+      const x = Math.floor(tile * tileWidth - offset);
+      const mirrored = (firstTile + tile) % 2 !== 0;
+      ctx.save();
+      ctx.translate(mirrored ? x + tileWidth : x, top);
+      if (mirrored) ctx.scale(-1, 1);
+      ctx.drawImage(strip, 0, 0, strip.naturalWidth, strip.naturalHeight, 0, 0, tileWidth, tileHeight);
+      ctx.restore();
+    }
+    ctx.globalAlpha = .28;
+    ctx.fillStyle = palette.shoulder;
+    ctx.fillRect(0, top, ENVIRONMENT_WIDTH, 4);
+    ctx.globalAlpha = 1;
+  } else {
+    // Complete fallback: stepped slabs and gravel replace the old flat band.
+    ctx.fillStyle = palette.road2;
+    for (const item of repeatedPositions(scroll, 1.72, 96, 2)) {
+      const x = pixel2(item.x);
+      polygon(ctx, [[x - 24, 540], [x - 10, 492], [x + 36, 486], [x + 72, 540]]);
+      ctx.fillStyle = item.index % 2 === 0 ? palette.shoulder : palette.road0;
+      ctx.fillRect(x + 6, 510, 18, 6);
     }
   }
+  ctx.fillStyle = '#08090e';
+  ctx.fillRect(0, top, ENVIRONMENT_WIDTH, 3);
 }
 
 function drawSpeedLines(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number, speed: number, time: number, intensity: number) {
@@ -1033,6 +1082,21 @@ export function drawEnvironmentForeground(ctx: CanvasRenderingContext2D, options
   withLogicalCanvas(ctx, options, () => {
     ctx.save();
     const props = getRoadProps();
+    // Shoulder rocks share the same foreground pass as the large near-camera
+    // formations. At the lowest ride line every rock now crosses in front of
+    // wheels instead of slipping behind a heroine drawn later.
+    for (const item of repeatedPositions(options.scroll, 1.85, props ? 104 : 67, 2)) {
+      const x = Math.floor(item.x);
+      if (props) {
+        const cell = item.index % 2 === 0 ? RoadPropCell.ShoulderRockA : RoadPropCell.ShoulderRockB;
+        drawRoadPropCell(ctx, props, cell, x + 28, 544, 98, 74, item.index % 4 === 1, .94);
+      } else {
+        ctx.fillStyle = item.index % 3 === 0 ? palette.metal : palette.road0;
+        polygon(ctx, [[x - 18, 540], [x + 4, 509], [x + 31, 506], [x + 56, 540]]);
+        ctx.fillStyle = '#07080d';
+        polygon(ctx, [[x + 14, 540], [x + 35, 511], [x + 57, 540]]);
+      }
+    }
     for (const item of repeatedPositions(options.scroll, 2.46, 296, 2)) {
       if (item.index % 3 === 1) continue;
       const x = Math.floor(item.x);

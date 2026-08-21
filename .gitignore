@@ -1,7 +1,8 @@
 node_modules/
 dist/
 *.tsbuildinfo
-.gauntlet/chrome-*/
-.gauntlet/edge-*/
-.gauntlet/vite.log
+.gauntlet/
+public/workbench/captures/*
+!public/workbench/captures/showcase/
+!public/workbench/captures/showcase/*.png
 *.log

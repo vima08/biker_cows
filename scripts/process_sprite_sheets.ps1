@@ -124,6 +124,20 @@ $definitions = @(
   @{ Name = 'bossBody'; Source = 'boss-body-chroma.png'; Output = 'boss-body-sheet.png'; Columns = 3; Rows = 2 },
   @{ Name = 'roadRipper'; Source = 'road-ripper-chroma.png'; Output = 'road-ripper-sheet.png'; Columns = 3; Rows = 2 },
   @{ Name = 'aerials'; Source = 'aerials-chroma.png'; Output = 'aerials-sheet.png'; Columns = 4; Rows = 2 }
+  @{ Name = 'cassiaBrawlerDirectional'; Source = 'cassia-brawler-directional-chroma.png'; Output = 'cassia-brawler-directional-sheet.png'; Columns = 4; Rows = 4; SingleComponent = $true }
+  @{ Name = 'brunaBrawlerDirectional'; Source = 'bruna-brawler-directional-chroma.png'; Output = 'bruna-brawler-directional-sheet.png'; Columns = 4; Rows = 4; SingleComponent = $true }
+  @{ Name = 'novaBrawlerDirectional'; Source = 'nova-brawler-directional-chroma.png'; Output = 'nova-brawler-directional-sheet.png'; Columns = 4; Rows = 4; SingleComponent = $true }
+  @{ Name = 'venusGangDirectional'; Source = 'venus-gang-directional-chroma.png'; Output = 'venus-gang-directional-sheet.png'; Columns = 4; Rows = 6; SingleComponent = $true }
+  @{ Name = 'raiderDirectional'; Source = 'raider-directional-chroma.png'; Output = 'raider-directional-sheet.png'; Columns = 4; Rows = 2; SingleComponent = $true }
+  @{ Name = 'bruiserDirectional'; Source = 'bruiser-directional-chroma.png'; Output = 'bruiser-directional-sheet.png'; Columns = 4; Rows = 2; SingleComponent = $true }
+  @{ Name = 'shockerDirectional'; Source = 'shocker-directional-chroma.png'; Output = 'shocker-directional-sheet.png'; Columns = 4; Rows = 2; SingleComponent = $true }
+  @{ Name = 'brunaPoseCorrection'; Source = 'bruna-pose-correction-chroma.png'; Output = 'bruna-pose-correction-sheet.png'; Columns = 3; Rows = 2; SingleComponent = $true }
+  @{ Name = 'cassiaOppositeRight'; Source = 'cassia-opposite-right-chroma.png'; Output = 'cassia-opposite-right-sheet.png'; Columns = 1; Rows = 1; SingleComponent = $true }
+  @{ Name = 'cassiaOppositeLeft'; Source = 'cassia-opposite-left-chroma.png'; Output = 'cassia-opposite-left-sheet.png'; Columns = 1; Rows = 1; SingleComponent = $true }
+  @{ Name = 'brunaOppositeRight'; Source = 'bruna-opposite-right-chroma.png'; Output = 'bruna-opposite-right-sheet.png'; Columns = 1; Rows = 1; SingleComponent = $true }
+  @{ Name = 'brunaOppositeLeft'; Source = 'bruna-opposite-left-chroma.png'; Output = 'bruna-opposite-left-sheet.png'; Columns = 1; Rows = 1; SingleComponent = $true }
+  @{ Name = 'novaOppositeRight'; Source = 'nova-opposite-right-chroma.png'; Output = 'nova-opposite-right-sheet.png'; Columns = 1; Rows = 1; SingleComponent = $true }
+  @{ Name = 'novaOppositeLeft'; Source = 'nova-opposite-left-chroma.png'; Output = 'nova-opposite-left-sheet.png'; Columns = 1; Rows = 1; SingleComponent = $true }
 )
 
 $frameWidth = 256

@@ -8,6 +8,7 @@
 
 export type SoundEffectName =
   | "shoot"
+  | "melee"
   | "hit"
   | "explosion"
   | "pickup"
@@ -18,7 +19,7 @@ export type SoundEffectName =
   | "victory"
   | "defeat";
 
-export type MusicMode = "ride" | "boss";
+export type MusicMode = "ride" | "brawler" | "boss";
 
 export interface AudioSystemOptions {
   masterVolume?: number;
@@ -208,6 +209,10 @@ export class AudioSystem {
         this.tone(now, 0.095, 760 + amount * 160, 165, "square", 0.11 * amount, output, false);
         this.noise(now, 0.035, 0.025 * amount, 4200, "highpass", output, false);
         break;
+      case "melee":
+        this.noise(now, 0.055, 0.07 * amount, 1700, "bandpass", output, false);
+        this.tone(now, 0.075, 155 + amount * 24, 72, "triangle", 0.075 * amount, output, false);
+        break;
       case "hit":
         this.noise(now, 0.075, 0.115 * amount, 2400, "bandpass", output, false);
         this.tone(now, 0.055, 190, 105, "square", 0.065 * amount, output, false);
@@ -335,11 +340,12 @@ export class AudioSystem {
     const bar = Math.floor(absoluteStep / 16);
     const intro = bar < 2;
     const boss = this.mode === "boss";
+    const brawler = this.mode === "brawler";
     const energy = boss ? Math.min(1, this.bossEnergy + 0.012) : this.rideIntensity;
     if (boss) this.bossEnergy = energy;
 
     // Drums: the boss adds double-kicks and constant hats as its energy rises.
-    const kickSteps = boss && energy > 0.42 ? [0, 3, 6, 8, 10, 14] : [0, 6, 8, 14];
+    const kickSteps = boss && energy > 0.42 ? [0, 3, 6, 8, 10, 14] : brawler ? [0, 3, 7, 8, 11, 14] : [0, 6, 8, 14];
     if (kickSteps.includes(step)) this.kick(time, boss ? 0.18 : 0.145, output);
     if (step === 4 || step === 12) this.snare(time, boss ? 0.15 : 0.125, output);
     if (step % (boss && energy > 0.68 ? 1 : 2) === 0) {
@@ -348,10 +354,11 @@ export class AudioSystem {
 
     const roadRoots = [40, 40, 36, 38, 40, 43, 38, 35]; // E, C, D, E, G, D, B
     const bossRoots = [40, 41, 38, 35];
-    const root = boss ? bossRoots[bar % bossRoots.length] : roadRoots[bar % roadRoots.length];
+    const brawlerRoots = [38, 38, 41, 43, 36, 38, 34, 36];
+    const root = boss ? bossRoots[bar % bossRoots.length] : brawler ? brawlerRoots[bar % brawlerRoots.length] : roadRoots[bar % roadRoots.length];
 
     if (step % 2 === 0) {
-      const bassPattern = boss ? [0, 0, 12, 0, 3, 0, 10, 0] : [0, 0, 7, 0, 12, 7, 3, 0];
+      const bassPattern = boss ? [0, 0, 12, 0, 3, 0, 10, 0] : brawler ? [0, 3, 5, 3, 7, 5, 3, 0] : [0, 0, 7, 0, 12, 7, 3, 0];
       const note = root - 12 + bassPattern[(step / 2) % bassPattern.length];
       this.bass(time, stepDuration * 1.7, midi(note), boss ? 0.105 : 0.085, output);
     }
@@ -365,7 +372,7 @@ export class AudioSystem {
 
     // Alternating lead phrases make the ride feel like distinct A/B sections.
     if (!intro && !boss && bar % 4 >= 2) {
-      const lead = [64, -1, 67, 69, -1, 71, 69, 67, 64, -1, 62, 64, 67, 64, 62, -1];
+      const lead = brawler ? [62, -1, 65, -1, 67, 65, -1, 60, 62, -1, 58, 60, -1, 62, 65, -1] : [64, -1, 67, 69, -1, 71, 69, 67, 64, -1, 62, 64, 67, 64, 62, -1];
       const note = lead[step];
       if (note >= 0 && (this.rideIntensity > 0.45 || step % 2 === 0)) {
         this.lead(time, stepDuration * 0.82, midi(note + (bar % 8 >= 4 ? 3 : 0)), 0.037, output);

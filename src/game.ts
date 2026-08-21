@@ -7,130 +7,41 @@ import {
 import { drawEnvironment, drawEnvironmentForeground } from './environment';
 import { drawHeroPortrait, preloadSelectPortraits } from './selectPortraits';
 import { drawSpriteFrame, getSpriteSheetStatus, preloadSpriteSheets } from './spriteAtlas';
+import { BeatEmUpStage, type BrawlerControls, type BrawlerHeroId } from './beatEmUp';
+import { gameEvents } from './core/GameEvents';
+import { HighScoreStore, type HighScore } from './core/HighScoreStore';
+import { InputController } from './core/InputController';
+import { campaign, FURNACE_DISTRICT, VENUS_HIGHWAY } from './levels/campaign';
+import type { BrawlerLevelDefinition } from './levels/types';
+import {
+  FIRE_RELEASE_DURATION,
+  HERO_AUTHORED_SIZE,
+  HEROES,
+  INTRO_PANELS,
+} from './rider/catalog';
+import { RiderPoseResolver } from './rider/RiderPoseResolver';
+import type {
+  GameMode,
+  HeroBodySheet,
+  HeroId,
+  HeroSpec,
+  RiderEnemy as Enemy,
+  RiderEnemyKind as EnemyKind,
+  RiderFloater as Floater,
+  RiderImpactEvent,
+  RiderParticle as Particle,
+  RiderPickup as Pickup,
+  RiderPickupKind as PickupKind,
+  RiderPlayer as Player,
+  RiderProjectile as Projectile,
+  Weapon,
+} from './rider/types';
 
 const W = 960;
 const H = 540;
-const LEVEL_BOSS_TIME = 465;
-
-type GameMode = 'title' | 'select' | 'playing' | 'paused' | 'win' | 'lose';
-type HeroId = 'cassia' | 'bruna' | 'nova';
-type Weapon = 'blaster' | 'spread' | 'laser' | 'rockets';
-type EnemyKind = 'rider' | 'tank' | 'drone' | 'skimmer' | 'mine' | 'miniboss' | 'boss' | 'pod';
-type PickupKind = 'health' | 'armor' | 'weapon' | 'rapid' | 'score';
-
-interface HeroSpec {
-  id: HeroId;
-  name: string;
-  epithet: string;
-  color: string;
-  accent: string;
-  maxHp: number;
-  maxArmor: number;
-  speed: number;
-  fireRate: number;
-  weapon: Weapon;
-  special: string;
-  stats: [number, number, number];
-}
-
-const HEROES: HeroSpec[] = [
-  { id: 'cassia', name: 'CASSIA', epithet: 'THE SOLAR CAPTAIN', color: '#d99a42', accent: '#ffcf32', maxHp: 110, maxArmor: 45, speed: 330, fireRate: .145, weapon: 'blaster', special: 'SUNBURST FOCUS', stats: [4, 4, 4] },
-  { id: 'bruna', name: 'BRUNA', epithet: 'THE IRON HORN', color: '#aab2c1', accent: '#55d6ff', maxHp: 150, maxArmor: 80, speed: 285, fireRate: .24, weapon: 'spread', special: 'GRAVITY STOMP', stats: [5, 2, 5] },
-  { id: 'nova', name: 'NOVA', epithet: 'THE WILD COMET', color: '#f1e6d3', accent: '#ff4b72', maxHp: 90, maxArmor: 30, speed: 375, fireRate: .105, weapon: 'laser', special: 'VENUS RUSH', stats: [3, 5, 2] },
-];
-
-const HERO_AUTHORED_SIZE: Record<HeroId,{width:number;height:number;anchorX:number;anchorY:number}> = {
-  cassia:{width:208,height:156,anchorX:.48,anchorY:.74},
-  bruna:{width:220,height:164,anchorX:.5,anchorY:.75},
-  nova:{width:202,height:152,anchorX:.48,anchorY:.73},
-};
-type HeroBodySheet = 'authored'|'sustained'|'release';
-type MuzzleSourcePoint = readonly [number,number];
-interface HeroMuzzleMap {
-  readonly authored: readonly MuzzleSourcePoint[];
-  readonly sustained: readonly MuzzleSourcePoint[];
-  readonly release: readonly MuzzleSourcePoint[];
-}
-interface HeroExhaustMap {
-  readonly authored: readonly MuzzleSourcePoint[];
-  readonly sustained: readonly MuzzleSourcePoint[];
-  readonly release: readonly MuzzleSourcePoint[];
-}
-
-// Barrel/nose hardpoints are measured in the 256x192 source cells.  They are
-// transformed through the same destination size and pivot as the body atlas,
-// keeping gunfire attached to the machine through ride, jump, held-fire and
-// release poses instead of drifting up to the rider's head line.
-const HERO_MUZZLE_SOURCE = {
-  cassia:{
-    authored:[[235,105],[240,105],[218,67],[201,111],[196,111],[198,109],[210,107],[198,112]],
-    sustained:[[244,107],[243,108],[243,107],[243,108]],
-    release:[[246,109],[247,110],[246,109]],
-  },
-  bruna:{
-    authored:[[231,112],[239,111],[220,68],[230,110],[228,110],[232,110],[222,106],[231,108]],
-    sustained:[[244,111],[244,112],[244,111],[244,112]],
-    release:[[246,111],[246,112],[246,111]],
-  },
-  nova:{
-    authored:[[221,104],[222,105],[220,63],[220,106],[223,108],[220,110],[219,105],[223,111]],
-    sustained:[[219,106],[220,106],[219,107],[220,107]],
-    release:[[221,107],[221,108],[221,108]],
-  },
-} as const satisfies Readonly<Record<HeroId,HeroMuzzleMap>>;
-
-// Exhaust outlets are authored separately from the body pivot. The old
-// generic rear-bike point sat near the rider's hip on the new silhouettes;
-// these source-cell coordinates keep every puff attached to a visible pipe.
-const HERO_EXHAUST_SOURCE = {
-  cassia:{
-    authored:[[21,145],[22,145],[23,147],[25,145],[18,143],[30,147],[25,146],[23,146]],
-    sustained:[[24,146],[25,146],[24,146],[24,146]],
-    release:[[23,146],[24,146],[24,146]],
-  },
-  bruna:{
-    authored:[[13,153],[14,154],[14,155],[15,154],[12,158],[18,154],[15,154],[13,154]],
-    sustained:[[13,154],[14,154],[13,154],[14,154]],
-    release:[[13,154],[14,154],[14,154]],
-  },
-  nova:{
-    authored:[[27,147],[27,147],[28,148],[29,148],[25,150],[29,148],[28,148],[27,148]],
-    sustained:[[27,148],[28,148],[27,148],[28,148]],
-    release:[[27,148],[28,148],[28,148]],
-  },
-} as const satisfies Readonly<Record<HeroId,HeroExhaustMap>>;
-const FIRE_RELEASE_DURATION = .15;
-
-interface Player {
-  id: 1 | 2; heroIndex: number; alive: boolean; downed: boolean;
-  x: number; y: number; jump: number; jumpV: number;
-  hp: number; armor: number; invuln: number; cooldown: number;
-  weapon: Weapon; weaponRank: number; rapid: number; special: number;
-  specialTime: number; lean: number; wheel: number; recoil: number;
-  fireHeld: boolean; fireLoop: number; fireReleaseBlend: number; fireReleaseElapsed: number; shotsFired: number;
-  lastMuzzle: {x:number;y:number;sheet:HeroBodySheet;frame:number} | null;
-  lastExhaust: {x:number;y:number;sheet:HeroBodySheet;frame:number} | null;
-  exhaustClock: number;
-  debugInput?: {left?:boolean;right?:boolean;up?:boolean;down?:boolean;fire?:boolean;jump?:boolean;special?:boolean};
-}
-
-interface Enemy {
-  id: number; kind: EnemyKind; x: number; y: number; w: number; h: number;
-  hp: number; maxHp: number; vx: number; vy: number; t: number; fire: number;
-  aerial: boolean; phase: number; flash: number; hitReact: number; score: number;
-}
-
-interface Projectile {
-  x: number; y: number; vx: number; vy: number; r: number; life: number;
-  damage: number; friendly: boolean; color: string; kind: Weapon | 'enemy' | 'orb';
-  pierce: number; homing?: boolean; age?: number; phase?: number;
-  ownerId?: 1 | 2;
-}
-
-interface Pickup { x: number; y: number; kind: PickupKind; t: number; }
-interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; color: string; kind: 'spark'|'smoke'|'fire'|'dust'|'debris'|'ring'|'star'|'impact'|'shard'|'blast'; rot: number; }
-interface Floater { x: number; y: number; text: string; color: string; life: number; }
-interface RiderImpactEvent { enemyId:number; age:number; localX:number; localY:number; }
+const LEVEL_BOSS_TIME = VENUS_HIGHWAY.bossAtSeconds;
+const PLAYER_Y_MIN = 300;
+const PLAYER_Y_MAX = 454;
 
 const IMPACT_LABELS = ['pre','muzzle','travel-25','travel-75','contact','hitstop','recoil-1','recoil-2','debris-1','debris-2','damage-hold','recover'] as const;
 const IMPACT_TIMELINE_MS = [0,40,200,520,830,910,1020,1150,1290,1450,1640,2190] as const;
@@ -171,42 +82,6 @@ const WOBBLE_POSES = Object.freeze([
   {x:4,y:1,angle:2,forkOffset:4,headCounterphase:-4,shadowOffset:3,shadowWidth:68},
 ]);
 
-class Input {
-  held = new Set<string>();
-  pressed = new Set<string>();
-  private padPrev: boolean[][] = [[],[]];
-
-  constructor(private canvas: HTMLCanvasElement) {
-    const block = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']);
-    addEventListener('keydown', (event) => {
-      if (block.has(event.code)) event.preventDefault();
-      if (!this.held.has(event.code)) this.pressed.add(event.code);
-      this.held.add(event.code);
-    });
-    addEventListener('keyup', (event) => this.held.delete(event.code));
-    addEventListener('blur', () => this.held.clear());
-    canvas.addEventListener('pointerdown', () => { canvas.focus(); this.pressed.add('Enter'); });
-    canvas.tabIndex = 0;
-  }
-
-  pollGamepad() {
-    const pads = navigator.getGamepads?.() ?? [];
-    for(let player=0;player<2;player++){
-      const pad=pads[player],prefix=`P${player+1}Pad`;if(!pad)continue;
-      const buttons=pad.buttons.map((b)=>b.pressed),prev=this.padPrev[player];
-      const map:Array<[number,string]>=[[0,`${prefix}Fire`],[1,`${prefix}Jump`],[2,`${prefix}Special`],[9,`${prefix}Start`],[8,'Escape'],[12,`${prefix}Up`],[13,`${prefix}Down`],[14,`${prefix}Left`],[15,`${prefix}Right`]];
-      for(const [i,key] of map){if(buttons[i])this.held.add(key);else if(prev[i])this.held.delete(key);if(buttons[i]&&!prev[i])this.pressed.add(key);}
-      const [ax=0,ay=0]=pad.axes;this.axis(`${prefix}Left`,ax<-.28);this.axis(`${prefix}Right`,ax>.28);this.axis(`${prefix}Up`,ay<-.28);this.axis(`${prefix}Down`,ay>.28);
-      this.padPrev[player]=buttons;
-    }
-  }
-
-  private axis(key: string, on: boolean) { if (on) this.held.add(key); else this.held.delete(key); }
-  down(...codes: string[]) { return codes.some((code) => this.held.has(code)); }
-  tap(...codes: string[]) { return codes.some((code) => this.pressed.has(code)); }
-  endFrame() { this.pressed.clear(); }
-}
-
 function clamp(v: number, min: number, max: number) { return Math.max(min, Math.min(max, v)); }
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 function rnd(min: number, max: number) { return min + Math.random() * (max - min); }
@@ -216,15 +91,17 @@ function hit(a: {x:number;y:number;w:number;h:number}, b: {x:number;y:number;w:n
 }
 
 function emitAudio(name: string, volume = 1, pitch = 1) {
-  window.dispatchEvent(new CustomEvent('venus:sfx', { detail: { name, volume, pitch } }));
+  gameEvents.sound(name, volume, pitch);
 }
 function emitMusic(cue: string, intensity = 1) {
-  window.dispatchEvent(new CustomEvent('venus:music', { detail: { cue, intensity } }));
+  gameEvents.music(cue, intensity);
 }
 
 export class VenusGame {
   private ctx: CanvasRenderingContext2D;
-  private input: Input;
+  private readonly input: InputController;
+  private readonly highScoreStore = new HighScoreStore();
+  private readonly riderPose = new RiderPoseResolver();
   private mode: GameMode = 'title';
   private last = 0;
   private time = 0;
@@ -256,6 +133,12 @@ export class VenusGame {
   private minibossSpawned = false;
   private bossSpawned = false;
   private bossDefeated = false;
+  private brawler: BeatEmUpStage | null = null;
+  private pausedFrom: 'playing' | 'brawler' = 'playing';
+  private currentLevelId = VENUS_HIGHWAY.id;
+  private completedStage = 1;
+  private debugStageOneOnly = false;
+  private brawlerScoreCommitted = false;
   private debugBeat = false;
   private debugWobblePose: number | null = null;
   private debugImpactStage: number | null = null;
@@ -263,9 +146,12 @@ export class VenusGame {
   private debugFireHeld = false;
   private finishClock = 0;
   private titleChoice = 0;
-  private highScores: Array<{name:string;score:number}> = [];
+  private highScores: HighScore[] = [];
   private lastFriendlyFireProbe: {ownerId:number;targetId:number;crossedTarget:boolean;before:Array<{id:number;hp:number;armor:number}>;after:Array<{id:number;hp:number;armor:number}>} | null = null;
   private titleArt = new Image();
+  private introArt: HTMLImageElement[] = [];
+  private introPanel = 0;
+  private introClock = 0;
 
   constructor(private canvas: HTMLCanvasElement) {
     canvas.width = W;
@@ -275,22 +161,37 @@ export class VenusGame {
     if (!ctx) throw new Error('2D canvas is unavailable');
     this.ctx = ctx;
     ctx.imageSmoothingEnabled = false;
-    this.input = new Input(canvas);
+    this.input = new InputController(canvas);
     // Atlas loading is deliberately non-blocking. Until every individual PNG is
     // ready, its existing procedural counterpart remains the renderer of record.
     void preloadSpriteSheets();
     void preloadSelectPortraits();
     this.titleArt.src = '/assets/venus-title-key-art.png';
-    this.loadScores();
+    this.introArt = INTRO_PANELS.map(panel => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = panel.src;
+      return image;
+    });
+    this.highScores = this.highScoreStore.load();
     const query = new URLSearchParams(location.search);
     const hero = query.get('hero') as HeroId | null;
     if (hero && HEROES.some(h => h.id === hero)) this.selected = this.selectedHeroes[0] = HEROES.findIndex(h => h.id === hero);
     const scene = query.get('scene');
     if (scene === 'select') this.mode = 'select';
     else if(scene==='coop-select'){this.coopEnabled=true;this.mode='select';}
+    else if(scene==='intro'){
+      this.beginIntro();
+      this.introPanel=clamp(Math.floor(Number(query.get('panel'))||0),0,INTRO_PANELS.length-1);
+    }
     else if(scene==='coop'||scene==='coop-ride'||scene==='coop-boss'){
       this.coopEnabled=true;this.beginRun();if(scene==='coop-boss')this.debugCoopBoss();
     }
+    else if (scene === 'brawler' || scene === 'brawler-boss' || scene === 'brawler-coop' || scene === 'brawler-coop-boss') {
+      this.coopEnabled = scene.includes('coop');
+      this.beginBrawler(scene.endsWith('boss'));
+    }
+    else if (scene === 'stage-transition') this.debugStageTransition();
     else if (scene === 'game' || scene === 'boss' || scene === 'sustain') {
       this.beginRun();
       if (scene === 'boss') this.debugBoss();
@@ -300,7 +201,7 @@ export class VenusGame {
   }
 
   start() {
-    emitMusic('title', .65);
+    emitMusic(this.mode === 'title' ? 'title' : this.mode === 'select' ? 'select' : this.mode === 'intro' ? 'intro' : this.mode === 'brawler' ? 'brawler' : 'stage', this.mode === 'title' ? .65 : this.mode === 'intro' ? .36 : .86);
     requestAnimationFrame(this.loop);
   }
 
@@ -308,7 +209,7 @@ export class VenusGame {
     const dt = Math.min(.034, (now - this.last) / 1000 || .016);
     this.last = now;
     this.time += dt;
-    this.input.pollGamepad();
+    this.input.pollGamepads();
     this.update(dt);
     this.draw();
     this.input.endFrame();
@@ -318,7 +219,9 @@ export class VenusGame {
   private update(dt: number) {
     if (this.mode === 'title') this.updateTitle();
     else if (this.mode === 'select') this.updateSelect();
+    else if (this.mode === 'intro') this.updateIntro(dt);
     else if (this.mode === 'playing') this.updatePlaying(dt);
+    else if (this.mode === 'brawler') this.updateBrawler(dt);
     else if (this.mode === 'paused') this.updatePause();
     else this.updateEnd();
   }
@@ -343,12 +246,46 @@ export class VenusGame {
       if(this.input.tap('ArrowRight','P2PadRight')){this.selectedHeroes[1]=(this.selectedHeroes[1]+1)%3;this.selectReady[1]=false;emitAudio('menu_move');}
     }
     if (this.input.tap('Escape','Backspace')) { this.mode = 'title'; emitMusic('title'); }
-    if(!this.coopEnabled&&this.input.tap('Enter','Space','KeyZ','P1PadFire','P1PadStart'))this.beginRun();
+    if(!this.coopEnabled&&this.input.tap('Enter','Space','KeyZ','P1PadFire','P1PadStart'))this.beginIntro();
     else if(this.coopEnabled){
       if(this.input.tap('KeyZ','P1PadFire','P1PadStart')){this.selectReady[0]=true;emitAudio('menu_accept');}
       if(this.input.tap('Numpad1','NumpadDivide','Slash','P2PadFire','P2PadStart')){this.selectReady[1]=true;emitAudio('menu_accept');}
-      if(this.selectReady[0]&&this.selectReady[1])this.beginRun();
+      if(this.selectReady[0]&&this.selectReady[1])this.beginIntro();
     }
+  }
+
+  private beginIntro() {
+    this.selected = this.selectedHeroes[0];
+    this.introPanel = 0;
+    this.introClock = 0;
+    this.mode = 'intro';
+    emitAudio('menu_accept');
+    emitMusic('intro', .36);
+  }
+
+  private advanceIntro() {
+    if (this.introPanel >= INTRO_PANELS.length - 1) {
+      this.beginRun();
+      return;
+    }
+    this.introPanel += 1;
+    this.introClock = 0;
+    if (this.introPanel === 1) emitAudio('explode', .82);
+    else emitAudio('menu_move', .5);
+  }
+
+  private updateIntro(dt: number) {
+    if (this.input.tap('Escape','Backspace','P1PadStart','P2PadStart')) {
+      this.beginRun();
+      return;
+    }
+    if (this.input.tap('Enter','Space','KeyZ','Numpad1','NumpadDivide','Slash','P1PadFire','P2PadFire')) {
+      this.advanceIntro();
+      return;
+    }
+    const image = this.introArt[this.introPanel];
+    if (image?.complete && image.naturalWidth > 0) this.introClock += dt;
+    if (this.introClock >= INTRO_PANELS[this.introPanel].duration) this.advanceIntro();
   }
 
   private makePlayer(id:1|2,heroIndex:number):Player{
@@ -366,13 +303,14 @@ export class VenusGame {
     this.enemies = []; this.shots = []; this.pickups = []; this.particles = []; this.floaters = []; this.lastProjectileOrigin = null;
     this.elapsed = 0; this.distance = 0; this.worldSpeed = hero.speed; this.score = 0; this.combo = 1; this.comboClock = 0; this.kills = 0;this.lastFriendlyFireProbe=null;
     this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = false; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.debugSustainedFire = false; this.debugFireHeld = false; this.riderImpacts=[]; this.finishClock = 0;
+    this.brawler = null; this.currentLevelId = campaign.first().id; this.completedStage = 1; this.debugStageOneOnly = false; this.brawlerScoreCommitted = false; this.pausedFrom = 'playing';
     this.mode = 'playing';
     emitAudio('engine_start'); emitMusic('stage', .86);
   }
 
   private updatePause() {
-    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.mode = 'playing'; emitAudio('menu_accept'); emitMusic(this.bossSpawned ? 'boss' : 'stage'); }
-    if (this.input.tap('KeyR')) this.beginRun();
+    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.mode = this.pausedFrom; emitAudio('menu_accept'); emitMusic(this.pausedFrom === 'brawler' ? (this.brawler?.snapshot().boss ? 'boss' : 'brawler') : this.bossSpawned ? 'boss' : 'stage'); }
+    if (this.input.tap('KeyR')) this.pausedFrom === 'brawler' ? this.beginBrawler(false) : this.beginRun();
   }
 
   private updateEnd() {
@@ -381,7 +319,7 @@ export class VenusGame {
   }
 
   private updatePlaying(dt: number) {
-    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.mode = 'paused'; emitAudio('pause'); emitMusic('pause', .35); return; }
+    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.pausedFrom = 'playing'; this.mode = 'paused'; emitAudio('pause'); emitMusic('pause', .35); return; }
     // The twelve production impact frames are frozen authored instants.  They
     // still use the production world/entity/projectile renderer, but do not
     // drift while Playwright encodes a PNG.
@@ -403,7 +341,7 @@ export class VenusGame {
     this.spawnClock -= dt; this.obstacleClock -= dt;
     if (!this.debugBeat && !this.debugSustainedFire && !bossAlive && !this.bossSpawned && this.spawnClock <= 0) this.spawnWave();
     if (!this.debugBeat && !this.debugSustainedFire && !bossAlive && this.obstacleClock <= 0) this.spawnObstacle();
-    if (!this.debugBeat && !this.debugSustainedFire && !this.minibossSpawned && this.elapsed >= 145) { this.minibossSpawned = true; this.spawnEnemy('miniboss', 1010, 393); emitMusic('miniboss'); }
+    if (!this.debugBeat && !this.debugSustainedFire && !this.minibossSpawned && this.elapsed >= VENUS_HIGHWAY.minibossAtSeconds) { this.minibossSpawned = true; this.spawnEnemy('miniboss', 1010, 393); emitMusic('miniboss'); }
     if (!this.debugBeat && !this.debugSustainedFire && !this.bossSpawned && this.elapsed >= LEVEL_BOSS_TIME) { this.bossSpawned = true; this.enemies = this.enemies.filter(e => e.x > 0); this.spawnEnemy('boss', 1110, 295); emitMusic('boss'); emitAudio('warning'); }
 
     this.updateEnemies(dt, worldSpeed);
@@ -416,7 +354,58 @@ export class VenusGame {
     for(const rider of this.players)if(rider.alive&&!this.debugBeat){rider.exhaustClock-=dt;if(rider.exhaustClock<=0){this.emitBikeExhaust(rider);rider.exhaustClock=rider.specialTime>0?.055:.095;}}
     if (this.bossDefeated) {
       this.finishClock += dt;
-      if (this.finishClock > 4.8) this.finishRun(true);
+      if (this.finishClock > 4.8) {
+        if (this.debugStageOneOnly) this.finishRun(true);
+        else this.beginBrawler(false);
+      }
+    }
+  }
+
+  private beginBrawler(debugBoss = false, requestedLevel?: BrawlerLevelDefinition) {
+    const heroes = (this.coopEnabled ? this.selectedHeroes : [this.selectedHeroes[0]])
+      .map(index => HEROES[index].id as BrawlerHeroId);
+    const active = campaign.get(this.currentLevelId);
+    const candidate = requestedLevel ?? (active.runtime === 'brawler' ? active : campaign.nextAfter(active.id));
+    const level = candidate?.runtime === 'brawler' ? candidate : FURNACE_DISTRICT;
+    this.brawler = new BeatEmUpStage(this.ctx, { level, heroes, debugBoss });
+    this.mode = 'brawler';
+    this.pausedFrom = 'brawler';
+    this.currentLevelId = level.id;
+    this.completedStage = level.order;
+    this.brawlerScoreCommitted = false;
+    this.finishClock = 0;
+  }
+
+  private brawlerControls(id: 1 | 2): BrawlerControls {
+    const solo = !this.coopEnabled;
+    const p = `P${id}Pad`;
+    const leftKeys = id === 1 ? ['KeyA', `${p}Left`, ...(solo ? ['ArrowLeft'] : [])] : ['ArrowLeft', `${p}Left`];
+    const rightKeys = id === 1 ? ['KeyD', `${p}Right`, ...(solo ? ['ArrowRight'] : [])] : ['ArrowRight', `${p}Right`];
+    const upKeys = id === 1 ? ['KeyW', `${p}Up`, ...(solo ? ['ArrowUp'] : [])] : ['ArrowUp', `${p}Up`];
+    const downKeys = id === 1 ? ['KeyS', `${p}Down`, ...(solo ? ['ArrowDown'] : [])] : ['ArrowDown', `${p}Down`];
+    const attackKeys = id === 1 ? ['KeyZ', `${p}Fire`] : ['Numpad1', 'NumpadDivide', 'Slash', `${p}Fire`];
+    const jumpKeys = id === 1 ? ['KeyX', 'KeyK', 'ShiftLeft', `${p}Jump`] : ['Numpad2', `${p}Jump`];
+    const specialKeys = id === 1 ? ['KeyC', `${p}Special`] : ['Numpad3', `${p}Special`];
+    return {
+      left: this.input.down(...leftKeys), right: this.input.down(...rightKeys),
+      up: this.input.down(...upKeys), down: this.input.down(...downKeys),
+      attack: this.input.down(...attackKeys), attackPressed: this.input.tap(...attackKeys),
+      jumpPressed: this.input.tap(...jumpKeys), specialPressed: this.input.tap(...specialKeys),
+    };
+  }
+
+  private updateBrawler(dt: number) {
+    if (!this.brawler) { this.beginBrawler(false); return; }
+    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) {
+      this.pausedFrom = 'brawler'; this.mode = 'paused'; emitAudio('pause'); emitMusic('pause', .35); return;
+    }
+    const controls = this.coopEnabled ? [this.brawlerControls(1), this.brawlerControls(2)] : [this.brawlerControls(1)];
+    this.brawler.update(dt, controls);
+    const state = this.brawler.snapshot();
+    if (state.finishReady) {
+      const next = state.status === 'victory' ? campaign.nextAfter(this.currentLevelId) : null;
+      if (next?.runtime === 'brawler') this.beginBrawler(false, next);
+      else this.finishRun(state.status === 'victory');
     }
   }
 
@@ -429,7 +418,7 @@ export class VenusGame {
     const down=debug?.down??this.input.down(p.id===1?'KeyS':'ArrowDown',`P${p.id}PadDown`,...(solo?['ArrowDown']:[]));
     const up=debug?.up??this.input.down(p.id===1?'KeyW':'ArrowUp',`P${p.id}PadUp`,...(solo?['ArrowUp']:[]));
     const mx=(right?1:0)-(left?1:0),my=(down?1:0)-(up?1:0),controlSpeed=hero.speed*(p.specialTime>0&&hero.id==='nova'?1.25:1);
-    p.x=clamp(p.x+mx*controlSpeed*dt,72,410);p.y=clamp(p.y+my*controlSpeed*.64*dt,330,454);p.lean=lerp(p.lean,mx,dt*8);
+    p.x=clamp(p.x+mx*controlSpeed*dt,72,410);p.y=clamp(p.y+my*controlSpeed*.64*dt,PLAYER_Y_MIN,PLAYER_Y_MAX);p.lean=lerp(p.lean,mx,dt*8);
     const jump=debug?.jump??this.input.tap(p.id===1?'KeyX':'Numpad2',`P${p.id}PadJump`,...(solo?['KeyK','ShiftLeft']:[]));
     if(jump&&p.jump===0){p.jumpV=390;emitAudio('jump');if(debug)debug.jump=false;}
     if(p.jumpV!==0||p.jump>0){p.jump+=p.jumpV*dt;p.jumpV-=850*dt;if(p.jump<=0){p.jump=0;p.jumpV=0;this.dust(p.x-20,p.y+10,9);emitAudio('land',.55);}}
@@ -442,52 +431,8 @@ export class VenusGame {
     if(special&&p.special>=100)this.useSpecial(p);if(debug)debug.special=false;
   }
 
-  private playerAuthoredFrame(p=this.player){
-    let frame=0;
-    if(p.jump>1){
-      if(p.jump<9&&p.jumpV>0)frame=1;
-      else if(p.jumpV>105)frame=4;
-      else if(p.jumpV>-80)frame=5;
-      else if(p.jumpV<-185)frame=6;
-      else frame=7;
-    }else{
-      frame=[0,0,3,3,6,6,7,7][((Math.floor(p.wheel)%8)+8)%8];
-    }
-    if(this.debugImpactStage!==null)frame=[0,2,2,7,7,7,7,7,0,0,0,7][this.debugImpactStage];
-    return frame;
-  }
-
-  private playerBodySheetFrame(p=this.player){
-    const grounded=p.jump<=1;
-    if(this.debugImpactStage===null&&grounded&&p.fireHeld)return {sheet:'sustained' as const,frame:((Math.floor(p.fireLoop*9)%4)+4)%4};
-    if(this.debugImpactStage===null&&grounded&&p.fireReleaseElapsed>=0&&p.fireReleaseElapsed<FIRE_RELEASE_DURATION){
-      return {sheet:'release' as const,frame:Math.min(2,Math.floor(p.fireReleaseElapsed/(FIRE_RELEASE_DURATION/3)))};
-    }
-    return {sheet:'authored' as const,frame:this.playerAuthoredFrame(p)};
-  }
-
-  private playerMuzzleHardpoint(p=this.player,bodyX=p.x,bodyY=p.y-p.jump+38,pose=this.playerBodySheetFrame(p)){
-    const hero=HEROES[p.heroIndex].id,size=HERO_AUTHORED_SIZE[hero];
-    const points=HERO_MUZZLE_SOURCE[hero][pose.sheet];
-    const source=points[Math.min(points.length-1,Math.max(0,pose.frame))];
-    const left=bodyX-size.width*size.anchorX,top=bodyY-size.height*size.anchorY;
-    return {
-      x:left+source[0]/256*size.width,
-      y:top+source[1]/192*size.height,
-      sourceX:source[0],sourceY:source[1],sheet:pose.sheet,frame:pose.frame,
-    };
-  }
-
-  private playerExhaustHardpoint(p=this.player,bodyX=p.x,bodyY=p.y-p.jump+38,pose=this.playerBodySheetFrame(p)){
-    const hero=HEROES[p.heroIndex].id,size=HERO_AUTHORED_SIZE[hero];
-    const points=HERO_EXHAUST_SOURCE[hero][pose.sheet];
-    const source=points[Math.min(points.length-1,Math.max(0,pose.frame))];
-    const left=bodyX-size.width*size.anchorX,top=bodyY-size.height*size.anchorY;
-    return {x:left+source[0]/256*size.width,y:top+source[1]/192*size.height,sourceX:source[0],sourceY:source[1],sheet:pose.sheet,frame:pose.frame};
-  }
-
   private emitBikeExhaust(p:Player){
-    const outlet=this.playerExhaustHardpoint(p),hero=HEROES[p.heroIndex].id;
+    const outlet=this.riderPose.exhaust(p,this.debugImpactStage),hero=HEROES[p.heroIndex].id;
     const heavy=hero==='bruna',boost=p.specialTime>0;
     p.lastExhaust={x:outlet.x,y:outlet.y,sheet:outlet.sheet,frame:outlet.frame};
     this.particles.push({x:outlet.x-1,y:outlet.y+rnd(heavy?-5:-2,heavy?5:2),vx:rnd(boost?-155:-115,boost?-95:-58),vy:rnd(-13,9),life:rnd(.22,.38),max:.38,size:rnd(heavy?4:3,heavy?7:5.5),color:boost?(hero==='nova'?'#ff68b3':'#67e8ff'):(Math.random()<.58?'#4d4658':'#82717a'),kind:'smoke',rot:0});
@@ -502,7 +447,7 @@ export class VenusGame {
     // A short visual timer drives only the muzzle pulse.  The body animation is
     // intentionally owned by the held-trigger state machine above.
     p.recoil = .072;
-    const muzzle=this.playerMuzzleHardpoint(p),x=muzzle.x,y=muzzle.y;
+    const muzzle=this.riderPose.muzzle(p,this.debugImpactStage),x=muzzle.x,y=muzzle.y;
     p.lastMuzzle={x,y,sheet:muzzle.sheet,frame:muzzle.frame};
     if(p.id===1)this.lastProjectileOrigin={x,y,barrelX:muzzle.x,barrelY:muzzle.y,hero:hero.id,sheet:muzzle.sheet,frame:muzzle.frame};
     // The authored bike guns sit below the old placeholder origin.  Preserve
@@ -719,12 +664,15 @@ export class VenusGame {
   }
 
   private finishRun(win:boolean){
-    if(this.mode!=='playing')return;
+    if(this.mode!=='playing'&&this.mode!=='brawler')return;
+    if(this.mode==='brawler'&&this.brawler&&!this.brawlerScoreCommitted){this.score+=this.brawler.getScore();this.kills+=this.brawler.getDefeatedCount();this.combo=Math.max(this.combo,this.brawler.getMaxCombo());this.brawlerScoreCommitted=true;}
     this.mode=win?'win':'lose';this.saveScore();emitMusic(win?'victory':'defeat');emitAudio(win?'stage_clear':'game_over');
   }
 
-  private saveScore(){const name=this.coopEnabled?`${HEROES[this.selectedHeroes[0]].name}+${HEROES[this.selectedHeroes[1]].name}`:HEROES[this.selected].name;this.highScores.push({name,score:Math.floor(this.score)});this.highScores.sort((a,b)=>b.score-a.score);this.highScores=this.highScores.slice(0,5);try{localStorage.setItem('venus-stampede-highscores',JSON.stringify(this.highScores));}catch{/* private storage */}}
-  private loadScores(){try{const raw=localStorage.getItem('venus-stampede-highscores');if(raw)this.highScores=JSON.parse(raw);}catch{this.highScores=[];}}
+  private saveScore(){
+    const name=this.coopEnabled?`${HEROES[this.selectedHeroes[0]].name}+${HEROES[this.selectedHeroes[1]].name}`:HEROES[this.selected].name;
+    this.highScores=this.highScoreStore.add(this.highScores,{name,score:Math.floor(this.score)});
+  }
 
   debugStart(hero:HeroId='cassia'){this.selected=this.selectedHeroes[0]=Math.max(0,HEROES.findIndex(h=>h.id===hero));this.beginRun();}
   debugSustain(rapid=false){
@@ -743,6 +691,7 @@ export class VenusGame {
   debugMiniboss(){if(this.mode!=='playing')this.debugStart();this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.debugSustainedFire=false;this.debugFireHeld=false;this.elapsed=145;this.enemies=[];this.shots=[];this.particles=[];this.floaters=[];}
   debugBoss(){
     if(this.mode!=='playing')this.debugStart();
+    this.debugStageOneOnly=true;
     this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.debugSustainedFire=false;this.debugFireHeld=false;
     this.elapsed=LEVEL_BOSS_TIME;this.enemies=[];this.minibossSpawned=true;this.bossSpawned=true;this.bossDefeated=false;
     for(const p of this.players){p.weapon='rockets';p.weaponRank=4;p.special=100;p.hp=HEROES[p.heroIndex].maxHp;p.armor=HEROES[p.heroIndex].maxArmor;p.alive=true;p.downed=false;}
@@ -760,6 +709,7 @@ export class VenusGame {
   }
   debugDamagePlayer(id:1|2,amount:number){const p=this.players.find(p=>p.id===id);if(p&&p.alive){p.invuln=0;this.damagePlayer(p,amount,p.x,p.y-p.jump);}return {targetId:id,productionCollision:true,state:this.snapshot()};}
   debugCoopBoss(){this.coopEnabled=true;if(this.players.length<2)this.beginRun();this.debugBoss();const boss=this.enemies.find(e=>e.kind==='boss');if(boss){boss.hp=boss.maxHp=720;boss.x=750;}for(const p of this.players){p.x=140+(p.id-1)*100;p.y=390+(p.id-1)*42;p.debugInput={fire:true};}return this.snapshot();}
+  debugStageTransition(){this.beginRun();this.debugBoss();this.debugStageOneOnly=false;const boss=this.enemies.find(e=>e.kind==='boss');if(boss){boss.hp=1;boss.x=610;}this.player.debugInput={fire:true};return this.snapshot();}
 
   debugCombatBeat(){
     this.debugStart('cassia');this.debugBeat=true;this.elapsed=92;this.spawnClock=999;this.obstacleClock=999;
@@ -918,8 +868,8 @@ export class VenusGame {
     // world-space pivot fixed prevents the wheels from skating across the road.
     const recoilOffset=0;
     const size=HERO_AUTHORED_SIZE[h.id],anchorX=p.x-recoilOffset,anchorY=p.y-p.jump+38;
-    const muzzle=this.playerMuzzleHardpoint(p);
-    const exhaust=this.playerExhaustHardpoint(p);
+    const muzzle=this.riderPose.muzzle(p,this.debugImpactStage);
+    const exhaust=this.riderPose.exhaust(p,this.debugImpactStage);
     const exhaustOriginDeltaPx=p.lastExhaust?Math.hypot(p.lastExhaust.x-exhaust.x,p.lastExhaust.y-exhaust.y):null;
     const projectileOrigin=p.id===1?this.lastProjectileOrigin:p.lastMuzzle?{...p.lastMuzzle,barrelX:p.lastMuzzle.x,barrelY:p.lastMuzzle.y,hero:h.id}:null;
     const projectileOriginDeltaPx=projectileOrigin?Math.hypot(projectileOrigin.x-projectileOrigin.barrelX,projectileOrigin.y-projectileOrigin.barrelY):null;
@@ -959,10 +909,12 @@ export class VenusGame {
     const phaseAnchors=impactStage===null||!debugRider?null:{contact:this.impactAnchors(4,debugRider),hitstop:this.impactAnchors(5,debugRider),recoil1:this.impactAnchors(6,debugRider),recoil2:this.impactAnchors(7,debugRider),debris1:this.impactAnchors(8,debugRider),debris2:this.impactAnchors(9,debugRider),damageHold:this.impactAnchors(10,debugRider),recover:this.impactAnchors(11,debugRider)};
     const fireState=this.player?this.playerFireState(this.player):null;
     return {
-      state: this.mode, hero: HEROES[this.selected].id, score: Math.floor(this.score),
+      state: this.mode, stage: this.mode==='brawler'||this.completedStage===2?2:1, hero: HEROES[this.selected].id, score: Math.floor(this.score),
+      intro:this.mode==='intro'?{panel:this.introPanel,total:INTRO_PANELS.length,time:Number(this.introClock.toFixed(2)),skippable:true,assetReady:Boolean(this.introArt[this.introPanel]?.complete&&this.introArt[this.introPanel].naturalWidth)}:null,
       coop:this.coopEnabled,coopEnabled:this.coopEnabled,selectedHeroes:this.selectedHeroes.map(index=>HEROES[index].id),selectReady:[...this.selectReady],
       coopControls:{players:this.coopEnabled?2:1,keyboard:{p1:'WASD / Z X C',p2:'ARROWS / NUM1 NUM2 NUM3'},gamepadSlots:this.coopEnabled?2:1},
-      players:this.players.map(p=>({id:p.id,hero:HEROES[p.heroIndex].id,x:Number(p.x.toFixed(2)),y:Number((p.y-p.jump).toFixed(2)),hp:Number(p.hp.toFixed(2)),armor:Number(p.armor.toFixed(2)),alive:p.alive,downed:p.downed,fireHeld:p.fireHeld,shotsFired:p.shotsFired,weapon:p.weapon,weaponRank:p.weaponRank,lastMuzzle:p.lastMuzzle?{x:Number(p.lastMuzzle.x.toFixed(2)),y:Number(p.lastMuzzle.y.toFixed(2)),sheet:p.lastMuzzle.sheet,frame:p.lastMuzzle.frame}:null})),
+      players:this.players.map(p=>({id:p.id,hero:HEROES[p.heroIndex].id,x:Number(p.x.toFixed(2)),y:Number((p.y-p.jump).toFixed(2)),groundY:Number(p.y.toFixed(2)),hp:Number(p.hp.toFixed(2)),armor:Number(p.armor.toFixed(2)),alive:p.alive,downed:p.downed,fireHeld:p.fireHeld,shotsFired:p.shotsFired,weapon:p.weapon,weaponRank:p.weaponRank,lastMuzzle:p.lastMuzzle?{x:Number(p.lastMuzzle.x.toFixed(2)),y:Number(p.lastMuzzle.y.toFixed(2)),sheet:p.lastMuzzle.sheet,frame:p.lastMuzzle.frame}:null})),
+      rideBounds:{minY:PLAYER_Y_MIN,maxY:PLAYER_Y_MAX,roadTop:292,roadBottom:506},
       friendlyProjectiles:this.shots.filter(s=>s.friendly).map(s=>({ownerId:s.ownerId??1,x:Number(s.x.toFixed(2)),y:Number(s.y.toFixed(2)),kind:s.kind})),
       enemyProjectiles:this.shots.filter(s=>!s.friendly).map(s=>({x:Number(s.x.toFixed(2)),y:Number(s.y.toFixed(2)),kind:s.kind})),
       noFriendlyFire:{playerVsPlayerDisabled:true,lastProbe:this.lastFriendlyFireProbe},
@@ -985,6 +937,7 @@ export class VenusGame {
         damage:{holdMs:550,missingPanelW:18,missingPanelH:16,smokeBaseDistance:Number(Math.hypot(2,4).toFixed(2)),contourChangedPct:this.debugImpactStage>=6?7:0,particleCount:material?.particleCount??0,node:'frontHardpoint',recoverGrounded:this.impactTargetPose(11).wheelLift===0,holdRecoverProjectionPx:debugRider?this.impactPhaseMetrics(debugRider).holdRecover.projectionGapPx:0,holdRecoverAngleDeg:this.impactTargetPose(10).angle-this.impactTargetPose(11).angle},
         damageHoldMs:550,
       },
+      brawler:this.brawler?.snapshot()??null,
       atlas: getSpriteSheetStatus()
     };
   }
@@ -992,6 +945,11 @@ export class VenusGame {
   gotoScene(scene: string, time = 0) {
     if (scene === 'title') { this.mode = 'title'; emitMusic('title'); }
     else if (scene === 'select') { this.mode = 'select'; emitMusic('select'); }
+    else if (scene === 'intro') { this.beginIntro(); this.introPanel=clamp(Math.floor(time),0,INTRO_PANELS.length-1); }
+    else if (scene === 'brawler') this.beginBrawler(false);
+    else if (scene === 'brawler-boss') this.beginBrawler(true);
+    else if (scene === 'brawler-coop') { this.coopEnabled=true; this.beginBrawler(false); }
+    else if (scene === 'brawler-coop-boss') { this.coopEnabled=true; this.beginBrawler(true); }
     else if (scene === 'boss') this.debugBoss();
     else if (scene === 'miniboss') this.debugMiniboss();
     else if (scene === 'beat') this.debugCombatBeat();
@@ -1002,6 +960,7 @@ export class VenusGame {
     else if(scene==='coop-select'){this.coopEnabled=true;this.selectReady=[false,false];this.mode='select';emitMusic('select');}
     else if(scene==='coop'||scene==='coop-ride'){this.coopEnabled=true;this.beginRun();}
     else if(scene==='coop-boss')this.debugCoopBoss();
+    else if(scene==='stage-transition')this.debugStageTransition();
     else if (scene === 'sustain') this.debugSustain(time > 0);
     else { this.beginRun(); this.elapsed = clamp(time, 0, LEVEL_BOSS_TIME); }
     return this.snapshot();
@@ -1040,15 +999,18 @@ export class VenusGame {
   }
 
   private draw(){
-    const c=this.ctx;c.save();
+    const c=this.ctx;
+    const brawlerScene=Boolean(this.brawler)&&(this.mode==='brawler'||(this.mode==='paused'&&this.pausedFrom==='brawler')||((this.mode==='win'||this.mode==='lose')&&this.completedStage===2));
+    c.save();
     const sx=this.shake>0?rnd(-this.shake,this.shake):0,sy=this.shake>0?rnd(-this.shake*.55,this.shake*.55):0;c.translate(Math.round(sx),Math.round(sy));
     if(this.mode==='title')this.drawTitle();
     else if(this.mode==='select')this.drawSelect();
+    else if(this.mode==='intro')this.drawIntro();
+    else if(brawlerScene)this.brawler?.draw(!(this.mode==='win'||this.mode==='lose'));
     else this.drawWorld();
     c.restore();
-    if(this.mode!=='title'&&this.mode!=='select'){
-      this.drawHud();
-      if(this.bossSpawned&&!this.bossDefeated&&this.enemies.some(e=>e.kind==='boss'))this.drawWarningEdges();
+    if(this.mode!=='title'&&this.mode!=='select'&&this.mode!=='intro'){
+      if(!brawlerScene){this.drawHud();if(this.bossSpawned&&!this.bossDefeated&&this.enemies.some(e=>e.kind==='boss'))this.drawWarningEdges();}
       if(this.mode==='paused')this.drawPause();else if(this.mode==='win'||this.mode==='lose')this.drawEnding();
     }
     if(this.flash>0){c.fillStyle=`rgba(255,245,210,${this.flash})`;c.fillRect(0,0,W,H);}
@@ -1088,7 +1050,7 @@ export class VenusGame {
     // The regular hero sheets still own ride and airborne acting.  Grounded
     // trigger holds use a dedicated four-frame row per hero, so projectile
     // cadence can never bounce the body back to a ride frame.
-    const pose=this.playerBodySheetFrame(p);
+    const pose=this.riderPose.bodyPose(p,this.debugImpactStage);
     const authoredFrame=pose.sheet==='authored'?pose.frame:2;
     const size=HERO_AUTHORED_SIZE[h.id];
     const playerKick=this.debugImpactStage===null?0:this.impactShooterPose(this.debugImpactStage).shoulderRecoil;
@@ -1106,7 +1068,7 @@ export class VenusGame {
       drawPixelHero(c,h.id,bodyX/2,y/2,{frame:rideFrame,angle:p.lean*.055-p.jumpV*.00008,power:p.specialTime>0?1:clamp(.76+this.worldSpeed/h.speed*.18,.76,.96),firing:sustained||recovering||firing,airborne:p.jump>1,flash:hitFlash,recoil:sustained?1:recovering?p.fireReleaseBlend:recoil});
     }
     c.restore();
-    if(this.debugImpactStage===1&&p.id===1||this.debugImpactStage===null&&firing){const muzzle=this.playerMuzzleHardpoint(p,bodyX,bodyY,pose);this.drawMuzzle(muzzle.x,muzzle.y,p.weapon,recoil>.72?0:1);}
+    if(this.debugImpactStage===1&&p.id===1||this.debugImpactStage===null&&firing){const muzzle=this.riderPose.muzzle(p,this.debugImpactStage,bodyX,bodyY,pose);this.drawMuzzle(muzzle.x,muzzle.y,p.weapon,recoil>.72?0:1);}
   }
 
   private drawDownedPlayer(p:Player){
@@ -1473,6 +1435,37 @@ export class VenusGame {
 
   private drawWarningEdges(){const c=this.ctx,a=.16+.1*Math.sin(this.time*7);c.fillStyle=`rgba(255,35,88,${a})`;c.fillRect(0,0,8,H);c.fillRect(W-8,0,8,H);}
 
+  private drawIntro(){
+    const c=this.ctx,panel=INTRO_PANELS[this.introPanel],image=this.introArt[this.introPanel];
+    const phase=clamp(this.introClock/panel.duration,0,1),ease=phase*phase*(3-2*phase);
+    const fade=clamp(Math.min(this.introClock/.36,(panel.duration-this.introClock)/.34),0,1);
+    c.fillStyle='#03020a';c.fillRect(0,0,W,H);c.save();c.globalAlpha=fade;
+    const blastShake=this.introPanel===1&&this.introClock<.55?(1-this.introClock/.55)*7:0;
+    if(blastShake)c.translate(Math.sin(this.introClock*91)*blastShake,Math.cos(this.introClock*73)*blastShake*.45);
+    if(image?.complete&&image.naturalWidth>0){
+      c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
+      const zoom=1.018+.035*ease,scale=Math.max(W/image.naturalWidth,H/image.naturalHeight)*zoom;
+      const dw=image.naturalWidth*scale,dh=image.naturalHeight*scale;
+      c.drawImage(image,(W-dw)/2+(ease-.5)*panel.pan,(H-dh)/2,dw,dh);
+    }else{
+      const loading=c.createLinearGradient(0,0,W,H);loading.addColorStop(0,'#63283b');loading.addColorStop(.5,'#e18b54');loading.addColorStop(1,'#163b52');c.fillStyle=loading;c.fillRect(0,0,W,H);
+      this.text('LOADING COMIC PANEL...',480,266,21,'#fff4c2','center',true);
+    }
+    const topShade=c.createLinearGradient(0,0,0,118);topShade.addColorStop(0,'rgba(3,2,10,.84)');topShade.addColorStop(1,'rgba(3,2,10,0)');c.fillStyle=topShade;c.fillRect(0,0,W,118);
+    const bottomShade=c.createLinearGradient(0,292,0,H);bottomShade.addColorStop(0,'rgba(3,2,10,0)');bottomShade.addColorStop(.43,'rgba(3,2,10,.68)');bottomShade.addColorStop(1,'rgba(3,2,10,.98)');c.fillStyle=bottomShade;c.fillRect(0,292,W,H-292);
+    c.fillStyle='#0b0715e8';c.beginPath();c.moveTo(0,389);c.lineTo(585,373);c.lineTo(625,540);c.lineTo(0,540);c.closePath();c.fill();
+    c.fillStyle='#ffcf47';c.fillRect(0,389,255,4);c.fillStyle='#ef4268';c.fillRect(255,389,172,4);c.fillStyle='#5de4e0';c.fillRect(427,389,118,4);
+    c.fillStyle='#120a1ee8';c.fillRect(24,18,366,29);c.fillStyle='#ffcf47';c.fillRect(24,18,5,29);this.text(panel.kicker,42,39,12,'#fff3c2','left',true);
+    this.text(`0${this.introPanel+1} / 04`,930,39,13,'#fff','right',true);
+    this.text(panel.title,35,438,33,this.introPanel===1?'#ffcf47':'#fff2b4','left',true);
+    this.text(panel.caption,36,466,14,'#f0dfe9','left');
+    for(let i=0;i<INTRO_PANELS.length;i++){c.fillStyle=i<=this.introPanel?(i===this.introPanel?'#ffcf47':'#ef4268'):'#4b3858';c.fillRect(36+i*62,491,51,4);}
+    const pulse=.62+.38*Math.sin(this.time*5);c.globalAlpha*=pulse;this.text('ENTER / Z  NEXT     ESC / START  SKIP',928,517,11,'#bffcf2','right',true);c.globalAlpha=fade;
+    c.strokeStyle='#fff4cf';c.lineWidth=5;c.strokeRect(6,6,W-12,H-12);c.strokeStyle='#160b22';c.lineWidth=4;c.strokeRect(11,11,W-22,H-22);
+    if(this.introPanel===1&&this.introClock<.18){c.globalAlpha=(.18-this.introClock)/.18*.48;c.fillStyle='#fff5c4';c.fillRect(0,0,W,H);}
+    c.restore();
+  }
+
   private drawTitle(){
     const c=this.ctx;drawEnvironment(c,{scroll:this.time*115,elapsed:24,speed:345,time:this.time,shake:0,intensity:.9});
     if(this.titleArt.complete&&this.titleArt.naturalWidth>0){
@@ -1537,13 +1530,13 @@ export class VenusGame {
     c.restore();
   }
 
-  private drawPause(){const c=this.ctx;c.fillStyle='#07040cbb';c.fillRect(0,0,W,H);c.fillStyle='#160d25ee';c.fillRect(278,166,404,205);c.strokeStyle='#f7cf4e';c.lineWidth=3;c.strokeRect(278,166,404,205);this.text('PAUSED',480,218,41,'#fff071','center',true);this.text('THE RED PLANET CAN WAIT',480,248,13,'#bfacc8','center');this.text('ENTER / P',390,294,15,'#64eadb','right',true);this.text('RESUME',410,294,15,'#fff');this.text('R',390,324,15,'#ff667f','right',true);this.text('RESTART RUN',410,324,15,'#fff');this.text('GAMEPAD: START TO RESUME',480,354,11,'#877b91','center');}
+  private drawPause(){const c=this.ctx;c.fillStyle='#07040cbb';c.fillRect(0,0,W,H);c.fillStyle='#160d25ee';c.fillRect(278,166,404,205);c.strokeStyle='#f7cf4e';c.lineWidth=3;c.strokeRect(278,166,404,205);this.text('PAUSED',480,218,41,'#fff071','center',true);this.text('VENUS CAN WAIT',480,248,13,'#bfacc8','center');this.text('ENTER / P',390,294,15,'#64eadb','right',true);this.text('RESUME',410,294,15,'#fff');this.text('R',390,324,15,'#ff667f','right',true);this.text(this.pausedFrom==='brawler'?'RESTART STAGE':'RESTART RUN',410,324,15,'#fff');this.text('GAMEPAD: START TO RESUME',480,354,11,'#877b91','center');}
 
   private drawEnding(){
-    const c=this.ctx,win=this.mode==='win';c.fillStyle=win?'#09031cbb':'#100309c7';c.fillRect(0,0,W,H);
+    const c=this.ctx,win=this.mode==='win',stageTwo=this.completedStage===2;c.fillStyle=win?'#09031cbb':'#100309c7';c.fillRect(0,0,W,H);
     if(win){for(let i=0;i<9;i++){const x=100+i*95,y=115+Math.sin(this.time*2+i)*25;c.fillStyle=i%2?'#ff4b86':'#65f1df';c.fillRect(x,y,5,18);}}
     c.fillStyle='#100a1eea';c.fillRect(236,109,488,323);c.strokeStyle=win?'#ffe15a':'#ff3f64';c.lineWidth=4;c.strokeRect(236,109,488,323);
-    this.text(win?'VENUS RIDES FREE!':'BIKE WRECKED',480,173,43,win?'#fff16b':'#ff5270','center',true);this.text(win?'THE SULFUR TYRANT’S WAR MACHINE IS SCRAP.':'THE SKYWAY ISN’T DONE WITH YOU.',480,208,14,'#e2d2e7','center');
+    this.text(win?(stageTwo?'DISTRICT LIBERATED!':'VENUS RIDES FREE!'):(stageTwo?'CREW DOWN':'BIKE WRECKED'),480,173,43,win?'#fff16b':'#ff5270','center',true);this.text(win?(stageTwo?'THE FORGE OVERSEER IS FINISHED.':'THE SULFUR TYRANT’S WAR MACHINE IS SCRAP.'):(stageTwo?'THE FURNACE DISTRICT STILL NEEDS YOU.':'THE SKYWAY ISN’T DONE WITH YOU.'),480,208,14,'#e2d2e7','center');
     if(this.coopEnabled){
       const p1=HEROES[this.selectedHeroes[0]],p2=HEROES[this.selectedHeroes[1]];
       this.text(p1.name,462,263,16,p1.accent,'right',true);this.text('+',480,263,15,'#fff','center',true);this.text(p2.name,498,263,16,p2.accent,'left',true);

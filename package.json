@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test:smoke": "node scripts/gauntlet.mjs"
+    "test:smoke": "node scripts/gauntlet.mjs",
+    "test:wave18": "node scripts/gauntlet-iteration18.mjs",
+    "test:brawler": "node scripts/gauntlet-brawler.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.62.1",
