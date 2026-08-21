@@ -1089,7 +1089,10 @@ export function drawEnvironmentForeground(ctx: CanvasRenderingContext2D, options
       const x = Math.floor(item.x);
       if (props) {
         const cell = item.index % 2 === 0 ? RoadPropCell.ShoulderRockA : RoadPropCell.ShoulderRockB;
-        drawRoadPropCell(ctx, props, cell, x + 28, 544, 98, 74, item.index % 4 === 1, .94);
+        // The atlas cells include a broad painted base.  Keep that base below
+        // the canvas so the shoulder silhouettes enter from the near plane
+        // instead of appearing to hover over the bottom road strip.
+        drawRoadPropCell(ctx, props, cell, x + 28, 562, 98, 74, item.index % 4 === 1, .94);
       } else {
         ctx.fillStyle = item.index % 3 === 0 ? palette.metal : palette.road0;
         polygon(ctx, [[x - 18, 540], [x + 4, 509], [x + 31, 506], [x + 56, 540]]);
@@ -1104,7 +1107,7 @@ export function drawEnvironmentForeground(ctx: CanvasRenderingContext2D, options
         const cell = item.index % 2 === 0 ? RoadPropCell.ForegroundRockA : RoadPropCell.ForegroundRockB;
         // Still large enough to establish the fastest parallax plane, but its
         // crest remains beneath rider torsos and projectile silhouettes.
-        drawRoadPropCell(ctx, props, cell, x, 548, 152, 114, item.index % 4 === 2, .82 + velocity * .12);
+        drawRoadPropCell(ctx, props, cell, x, 574, 152, 114, item.index % 4 === 2, .82 + velocity * .12);
       } else {
         ctx.globalAlpha = .65 + velocity * .2;
         ctx.fillStyle = '#05060b';

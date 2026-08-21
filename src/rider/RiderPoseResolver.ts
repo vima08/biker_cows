@@ -1,10 +1,13 @@
 import {
   FIRE_RELEASE_DURATION,
+  GROUNDED_RIDE_CYCLE,
   HERO_AUTHORED_SIZE,
   HERO_EXHAUST_SOURCE,
   HERO_MUZZLE_SOURCE,
+  HERO_SUSTAINED_FIRE_CYCLE,
   HEROES,
 } from './catalog';
+import { resolveRiderKinetics, type RiderKineticPose } from './RiderKinetics';
 import type { HeroBodySheet, HeroSourceMap, RiderPlayer } from './types';
 
 export interface RiderBodyPose {
@@ -24,7 +27,10 @@ export class RiderPoseResolver {
   bodyPose(player: RiderPlayer, debugImpactStage: number | null): RiderBodyPose {
     const grounded = player.jump <= 1;
     if (debugImpactStage === null && grounded && player.fireHeld) {
-      return { sheet: 'sustained', frame: ((Math.floor(player.fireLoop * 9) % 4) + 4) % 4 };
+      const hero = HEROES[player.heroIndex].id;
+      const cycle = HERO_SUSTAINED_FIRE_CYCLE[hero];
+      const fireIndex = ((Math.floor(player.fireLoop * 9) % cycle.length) + cycle.length) % cycle.length;
+      return { sheet: 'sustained', frame: cycle[fireIndex] };
     }
     if (debugImpactStage === null && grounded && player.fireReleaseElapsed >= 0 && player.fireReleaseElapsed < FIRE_RELEASE_DURATION) {
       return {
@@ -35,6 +41,16 @@ export class RiderPoseResolver {
     return { sheet: 'authored', frame: this.authoredFrame(player, debugImpactStage) };
   }
 
+  kinetics(
+    player: RiderPlayer,
+    debugImpactStage: number | null,
+    pose = this.bodyPose(player, debugImpactStage),
+  ): RiderKineticPose {
+    const active = debugImpactStage === null && player.jump <= 1 && !player.fireHeld
+      && player.fireReleaseElapsed < 0 && pose.sheet === 'authored' && pose.frame <= 1;
+    return resolveRiderKinetics(player, active);
+  }
+
   muzzle(
     player: RiderPlayer,
     debugImpactStage: number | null,
@@ -42,7 +58,7 @@ export class RiderPoseResolver {
     bodyY = player.y - player.jump + 38,
     pose = this.bodyPose(player, debugImpactStage),
   ): RiderHardpoint {
-    return this.hardpoint(player, bodyX, bodyY, pose, HERO_MUZZLE_SOURCE);
+    return this.hardpoint(player, bodyX, bodyY, pose, HERO_MUZZLE_SOURCE, this.kinetics(player, debugImpactStage, pose));
   }
 
   exhaust(
@@ -52,7 +68,7 @@ export class RiderPoseResolver {
     bodyY = player.y - player.jump + 38,
     pose = this.bodyPose(player, debugImpactStage),
   ): RiderHardpoint {
-    return this.hardpoint(player, bodyX, bodyY, pose, HERO_EXHAUST_SOURCE);
+    return this.hardpoint(player, bodyX, bodyY, pose, HERO_EXHAUST_SOURCE, this.kinetics(player, debugImpactStage, pose));
   }
 
   private authoredFrame(player: RiderPlayer, debugImpactStage: number | null): number {
@@ -64,7 +80,9 @@ export class RiderPoseResolver {
       else if (player.jumpV < -185) frame = 6;
       else frame = 7;
     } else {
-      frame = [0, 0, 3, 3, 6, 6, 7, 7][((Math.floor(player.wheel) % 8) + 8) % 8];
+      const rideIndex = ((Math.floor(player.wheel) % GROUNDED_RIDE_CYCLE.length) + GROUNDED_RIDE_CYCLE.length)
+        % GROUNDED_RIDE_CYCLE.length;
+      frame = GROUNDED_RIDE_CYCLE[rideIndex];
     }
     return debugImpactStage === null
       ? frame
@@ -77,16 +95,19 @@ export class RiderPoseResolver {
     bodyY: number,
     pose: RiderBodyPose,
     sourceMaps: Readonly<Record<'cassia' | 'bruna' | 'nova', HeroSourceMap>>,
+    kinetics: RiderKineticPose,
   ): RiderHardpoint {
     const hero = HEROES[player.heroIndex].id;
     const size = HERO_AUTHORED_SIZE[hero];
     const points = sourceMaps[hero][pose.sheet];
     const source = points[Math.min(points.length - 1, Math.max(0, pose.frame))];
-    const left = bodyX - size.width * size.anchorX;
-    const top = bodyY - size.height * size.anchorY;
+    const localX = (-size.width * size.anchorX + source[0] / 256 * size.width) * kinetics.scaleX;
+    const localY = (-size.height * size.anchorY + source[1] / 192 * size.height) * kinetics.scaleY;
+    const cos = Math.cos(kinetics.chassisPitch);
+    const sin = Math.sin(kinetics.chassisPitch);
     return {
-      x: left + source[0] / 256 * size.width,
-      y: top + source[1] / 192 * size.height,
+      x: bodyX + localX * cos - localY * sin,
+      y: bodyY + kinetics.suspensionY + localX * sin + localY * cos,
       sourceX: source[0],
       sourceY: source[1],
       ...pose,

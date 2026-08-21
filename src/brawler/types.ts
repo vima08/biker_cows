@@ -32,6 +32,7 @@ export interface BrawlerPlayer {
   special: number;
   facing: 1 | -1;
   moving: boolean;
+  gaitDistance: number;
   attackTimer: number;
   attackDuration: number;
   attackStep: number;
@@ -39,6 +40,10 @@ export interface BrawlerPlayer {
   comboWindow: number;
   stun: number;
   invuln: number;
+  reactionTimer: number;
+  reactionDuration: number;
+  reactionDirection: 1 | -1;
+  hitFlash: number;
   knockX: number;
   downed: boolean;
   hitEnemies: Set<number>;
@@ -53,13 +58,21 @@ export interface BrawlerEnemy {
   maxHp: number;
   facing: 1 | -1;
   moving: boolean;
+  gaitDistance: number;
   attackTimer: number;
+  attackDuration: number;
   attackSerial: number;
+  attackVariant: number;
   cooldown: number;
   stun: number;
   flash: number;
+  reactionTimer: number;
+  reactionDuration: number;
+  reactionDirection: 1 | -1;
+  reactionKind: 'hit' | 'phase';
   knockX: number;
   phase: number;
+  phaseShifted: boolean;
   dead: boolean;
   lastHitSerial: Record<number, number>;
 }

@@ -12,13 +12,27 @@
     figure{margin:0;background:#0c0912;border:2px solid #382848;box-shadow:0 8px 28px #0008}
     img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;image-rendering:pixelated}
     figcaption{padding:10px 12px;color:#d8cadf}.tag{display:inline-block;margin:4px 6px 0 0;padding:3px 8px;border:1px solid #5de4e0;color:#5de4e0;font-size:12px}
+    .verdict{padding:14px 16px;border-left:4px solid #ff5d7d;background:#140c1ed9;color:#e8d8eb;max-width:980px}.pass{color:#75f1dd}.gap{color:#ffd761}
     footer{margin-top:42px;color:#80738a}
   </style>
 </head>
 <body><main>
   <h1>Biker Cows from Venus: Neon Stampede</h1>
   <p class="lede">Компактная production-витрина. Здесь остаются только ключевые кадры текущей двухуровневой сборки; полные серии автоматических прогонов хранятся локально в <code>.gauntlet/</code>.</p>
-  <p><span class="tag">Stage 1 + Stage 2</span><span class="tag">solo + local co-op</span><span class="tag">12 showcase captures</span></p>
+  <p><span class="tag">Stage 1 + Stage 2</span><span class="tag">solo + local co-op</span><span class="tag">Gauntlet Wave D</span></p>
+
+  <h2>Gauntlet iteration 24 · Wave D handoff</h2>
+  <p class="lede">Закрыты все дефекты из таблицы: critical ride/beat ’em up motion, атаки и реакции, sustained-fire anchors, foreground rocks, intro Cassia и стабильность defeat-экрана. Последующие волны добавили кинетику байка, boss hit staging, центральную combat camera и реальное spatial resolution melee-контакта. <span class="pass">Чистая сборка, оба полных маршрута, integration и alpha-mask contracts: PASS.</span></p>
+  <p class="verdict"><strong>Последний независимый visual critic (Wave C):</strong> <span class="gap">8.4/10, AAA-era NO</span> из-за единственного blocker — silhouette overlap до 2267 ms. Wave D после этого снизила normal overlap до 12.17%, boss peak до одного contact-кадра 39.19%, а непрерывный overlap &gt;35% — до 0 ms на 20+20 подтверждённых попаданиях. Новый независимый Wave D recheck оставлен первым шагом handoff из-за внешнего лимита.</p>
+  <div class="grid">
+    <figure><img src="captures/iteration-24/intro-cassia-fixed.png" alt="Corrected Cassia intro panel"><figcaption>Intro: исправленная анатомия Cassia в реальном 960×540 рендере</figcaption></figure>
+    <figure><img src="captures/iteration-24/highway-foreground.png" alt="Grounded foreground rocks"><figcaption>Stage 1: foreground-камни уходят основанием за нижнюю границу</figcaption></figure>
+    <figure><img src="captures/iteration-24/wave-c-ride.png" alt="Stage 1 articulated ride"><figcaption>Stage 1: выразительная подвеска, наклон корпуса и secondary motion</figcaption></figure>
+    <figure><img src="captures/iteration-24/wave-c-stage1-impact.png" alt="Stage 1 confirmed boss impact"><figcaption>Stage 1: подтверждённый boss impact с крупным burst и recoil</figcaption></figure>
+    <figure><img src="captures/iteration-24/wave-d-normal-contact.png" alt="Stage 2 resolved contact"><figcaption>Stage 2 Wave D: раздельные alpha-силуэты в обычном бою</figcaption></figure>
+    <figure><img src="captures/iteration-24/wave-d-boss-contact.png" alt="Stage 2 boss contact"><figcaption>Stage 2 Wave D: краткий Forge contact без длительного pile-up</figcaption></figure>
+    <figure><img src="captures/iteration-24/victory.png" alt="Full route victory"><figcaption>Сквозной маршрут: стабильное состояние victory</figcaption></figure>
+  </div>
 
   <h2>Вход в игру</h2>
   <div class="grid">

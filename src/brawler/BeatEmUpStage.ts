@@ -1,6 +1,8 @@
 import { gameEvents } from '../core/GameEvents';
 import { ImageAsset } from '../core/ImageAsset';
 import { BRAWLER_HEROES } from './catalog';
+import { enemyAttackDuration, enemyAttackPhase, resolveEnemyMotionPose } from './enemyMotion';
+import { resolvePlayerMotionPose, resolvePlayerReactionPose } from './motion';
 import type {
   BeatEmUpOptions,
   BrawlerControls,
@@ -43,10 +45,14 @@ export class BeatEmUpStage {
   private goTimer = 0;
   private shake = 0;
   private flash = 0;
+  private hitStop = 0;
+  private contactFocusTimer = 0;
+  private contactFocusX = 0;
   private enemySerial = 0;
   private score = 0;
   private combo = 0;
   private maxCombo = 0;
+  private confirmedHits = 0;
   private comboTimer = 0;
   private bossDefeated = false;
   private defeatedCount = 0;
@@ -93,13 +99,23 @@ export class BeatEmUpStage {
     return {
       id, hero, x: 110 + (id - 1) * 76, y: 382 + (id - 1) * 36, z: 0, vz: 0,
       hp: spec.hp, maxHp: spec.hp, special: 35, facing: 1, moving: false,
+      gaitDistance: 0,
       attackTimer: 0, attackDuration: 0, attackStep: 0, attackSerial: 0, comboWindow: 0,
-      stun: 0, invuln: 0, knockX: 0, downed: false, hitEnemies: new Set<number>(),
+      stun: 0, invuln: 0, reactionTimer: 0, reactionDuration: 0, reactionDirection: 1, hitFlash: 0,
+      knockX: 0, downed: false, hitEnemies: new Set<number>(),
     };
   }
 
   update(dt: number, controls: BrawlerControls[]): void {
+    if (this.status === 'running' && this.hitStop > 0) {
+      this.hitStop = Math.max(0, this.hitStop - dt);
+      this.shake = Math.max(0, this.shake - dt * 12);
+      for (const player of this.players) player.hitFlash = Math.max(0, player.hitFlash - dt);
+      for (const enemy of this.enemies) enemy.flash = Math.max(0, enemy.flash - dt);
+      return;
+    }
     this.elapsed += dt;
+    this.contactFocusTimer = Math.max(0, this.contactFocusTimer - dt);
     this.shake = Math.max(0, this.shake - dt * 24);
     this.flash = Math.max(0, this.flash - dt * 4);
     this.comboTimer -= dt;
@@ -119,12 +135,13 @@ export class BeatEmUpStage {
     this.updateCamera(dt);
     this.updateEncounter();
     this.updateEnemies(dt);
+    this.resolveActorBodySeparation();
     this.updateParticles(dt);
     this.updatePickups(dt);
     this.resolvePlayerAttacks();
     this.resolveEnemyAttacks();
 
-    this.enemies = this.enemies.filter(enemy => !enemy.dead || enemy.phase < .7);
+    this.enemies = this.enemies.filter(enemy => !enemy.dead || enemy.phase < .9);
     if (this.arenaLocked && !this.enemies.some(enemy => !enemy.dead)) {
       this.arenaLocked = false;
       this.waveIndex++;
@@ -151,13 +168,15 @@ export class BeatEmUpStage {
   }
 
   private updatePlayer(player: BrawlerPlayer, controls: BrawlerControls, dt: number): void {
+    player.reactionTimer = Math.max(0, player.reactionTimer - dt);
+    player.hitFlash = Math.max(0, player.hitFlash - dt);
     if (player.downed) return;
     const spec = BRAWLER_HEROES[player.hero];
     player.attackTimer = Math.max(0, player.attackTimer - dt);
     player.comboWindow = Math.max(0, player.comboWindow - dt);
     player.stun = Math.max(0, player.stun - dt);
     player.invuln = Math.max(0, player.invuln - dt);
-    player.knockX = lerp(player.knockX, 0, Math.min(1, dt * 8));
+    player.knockX = lerp(player.knockX, 0, Math.min(1, dt * 12));
     player.x += player.knockX * dt;
 
     if (player.z > 0 || player.vz !== 0) {
@@ -167,16 +186,21 @@ export class BeatEmUpStage {
     }
 
     if (player.stun <= 0 && player.attackTimer <= 0) {
+      const movementStartX = player.x;
+      const movementStartY = player.y;
       const horizontal = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
       const vertical = (controls.down ? 1 : 0) - (controls.up ? 1 : 0);
+      const wantsMovement = horizontal !== 0 || vertical !== 0;
       const length = Math.hypot(horizontal, vertical) || 1;
       const speed = spec.speed * (player.z > 0 ? .72 : 1);
       player.x += horizontal / length * speed * dt;
       player.y += vertical / length * speed * .62 * dt;
-      player.moving = horizontal !== 0 || vertical !== 0;
       if (horizontal) player.facing = horizontal > 0 ? 1 : -1;
       player.x = clamp(player.x, this.cameraX + 52, Math.min(this.options.level.length - 80, this.cameraX + W - 52));
       player.y = clamp(player.y, this.options.level.floorFar + 24, this.options.level.floorNear - 8);
+      const actualTravel = Math.hypot(player.x - movementStartX, player.y - movementStartY);
+      player.moving = wantsMovement && actualTravel > .001;
+      if (player.moving && player.z === 0) player.gaitDistance += actualTravel;
     } else player.moving = false;
 
     if (controls.jumpPressed && player.z === 0 && player.stun <= 0) {
@@ -208,10 +232,34 @@ export class BeatEmUpStage {
     const living = this.players.filter(player => !player.downed);
     const leadX = living.length ? Math.max(...living.map(player => player.x)) : this.cameraX;
     const waves = this.options.level.waves;
-    const lockMax = this.arenaLocked ? waves[Math.min(this.waveIndex, waves.length - 1)].at - 250 : this.options.level.length - W;
-    const target = clamp(leadX - 310, 0, Math.max(0, lockMax));
-    this.cameraX = lerp(this.cameraX, target, Math.min(1, dt * 4.4));
-    for (const player of living) player.x = clamp(player.x, this.cameraX + 46, this.cameraX + W - 42);
+    let target = clamp(leadX - 310, 0, this.options.level.length - W);
+    let cameraEase = 4.4;
+    if (this.arenaLocked && living.length) {
+      const focusPlayer = living.reduce((best, player) => player.x > best.x ? player : best, living[0]);
+      const visibleEnemies = this.enemies.filter(enemy => !enemy.dead && enemy.x - this.cameraX > -120 && enemy.x - this.cameraX < W + 100);
+      const focusEnemy = visibleEnemies.find(enemy => enemy.attackTimer > 0)
+        ?? visibleEnemies.reduce<BrawlerEnemy | null>((best, enemy) => !best || distance(enemy.x, enemy.y, focusPlayer.x, focusPlayer.y) < distance(best.x, best.y, focusPlayer.x, focusPlayer.y) ? enemy : best, null);
+      const focusX = this.contactFocusTimer > 0
+        ? this.contactFocusX
+        : focusEnemy ? lerp(focusPlayer.x, focusEnemy.x, .48) : focusPlayer.x;
+      const wave = waves[Math.min(this.waveIndex, waves.length - 1)];
+      const nextWaveAt = waves[this.waveIndex + 1]?.at ?? this.options.level.length;
+      const lockMin = Math.max(0, wave.at - W * .48);
+      const lockMax = Math.min(this.options.level.length - W, nextWaveAt - W * .56);
+      target = clamp(focusX - W * .5, Math.min(lockMin, lockMax), Math.max(lockMin, lockMax));
+      cameraEase = this.contactFocusTimer > 0 ? 8.5 : 5.6;
+    }
+    this.cameraX = lerp(this.cameraX, target, Math.min(1, dt * cameraEase));
+    const bossActive = this.arenaLocked && this.enemies.some(enemy => !enemy.dead && enemy.kind === 'boss');
+    for (const player of living) {
+      const leftMargin = this.arenaLocked ? W * (bossActive ? .18 : .16) : 46;
+      // The final boss arena sits at the world boundary, where the camera can no
+      // longer recenter a pair that keeps advancing. Hold the player in a broad
+      // central lane so the boss, its anticipation and the reaction gap remain
+      // on screen instead of accumulating against the right edge.
+      const rightMargin = this.arenaLocked ? W * (bossActive ? .68 : .82) : W - 42;
+      player.x = clamp(player.x, this.cameraX + leftMargin, this.cameraX + rightMargin);
+    }
   }
 
   private updateEncounter(): void {
@@ -235,8 +283,10 @@ export class BeatEmUpStage {
         id: ++this.enemySerial, kind,
         x: this.cameraX + (debugBoss && isBoss ? 760 : W + 80 + enemyIndex * 72),
         y: 332 + (enemyIndex % 3) * 58,
-        hp: maxHp, maxHp, facing: -1, moving: false, attackTimer: 0, attackSerial: 0, cooldown: .6 + enemyIndex * .15,
-        stun: 0, flash: 0, knockX: 0, phase: 0, dead: false, lastHitSerial: {},
+        hp: maxHp, maxHp, facing: -1, moving: false, gaitDistance: enemyIndex * 13,
+        attackTimer: 0, attackDuration: 0, attackSerial: 0, attackVariant: enemyIndex % 3, cooldown: .6 + enemyIndex * .15,
+        stun: 0, flash: 0, reactionTimer: 0, reactionDuration: 0, reactionDirection: -1, reactionKind: 'hit',
+        knockX: 0, phase: 0, phaseShifted: false, dead: false, lastHitSerial: {},
       });
     });
     audio('warning', .72, index === waves.length - 1 ? .72 : 1.1);
@@ -250,31 +300,122 @@ export class BeatEmUpStage {
       enemy.stun = Math.max(0, enemy.stun - dt);
       enemy.cooldown -= dt;
       enemy.attackTimer = Math.max(0, enemy.attackTimer - dt);
+      enemy.reactionTimer = Math.max(0, enemy.reactionTimer - dt);
       enemy.moving = false;
       enemy.phase += dt;
-      enemy.knockX = lerp(enemy.knockX, 0, Math.min(1, dt * 7));
+      enemy.knockX = lerp(enemy.knockX, 0, Math.min(1, dt * 10));
       enemy.x += enemy.knockX * dt;
+    }
+
+    const targets = new Map<number, BrawlerPlayer>();
+    for (const enemy of this.enemies) {
       if (enemy.dead) continue;
       const target = living.reduce<BrawlerPlayer | null>((best, player) => !best || distance(enemy.x, enemy.y, player.x, player.y) < distance(enemy.x, enemy.y, best.x, best.y) ? player : best, null);
-      if (!target || enemy.stun > 0) continue;
-      const dx = target.x - enemy.x;
-      const dy = target.y - enemy.y;
-      enemy.facing = dx >= 0 ? 1 : -1;
+      if (target) targets.set(enemy.id, target);
+    }
+    const leadByPlayer = new Map<number, BrawlerEnemy>();
+    for (const player of living) {
+      const candidates = this.enemies.filter(enemy => !enemy.dead && targets.get(enemy.id)?.id === player.id && enemy.stun <= 0 && enemy.reactionTimer <= 0);
+      const lead = candidates.reduce<BrawlerEnemy | null>((best, enemy) => {
+        if (!best) return enemy;
+        const score = (enemy.attackTimer > 0 ? -10_000 : 0) + distance(enemy.x, enemy.y, player.x, player.y) + Math.max(0, enemy.cooldown) * 72;
+        const bestScore = (best.attackTimer > 0 ? -10_000 : 0) + distance(best.x, best.y, player.x, player.y) + Math.max(0, best.cooldown) * 72;
+        return score < bestScore ? enemy : best;
+      }, null);
+      if (lead) leadByPlayer.set(player.id, lead);
+    }
+
+    const slotDepth = [-58, 58, -92, 92, -34, 34] as const;
+    const slotSide = [1, 1, -1, -1, 1, -1] as const;
+    for (const enemy of this.enemies) {
+      if (enemy.dead) continue;
+      const target = targets.get(enemy.id) ?? null;
+      if (!target || enemy.stun > 0 || enemy.reactionTimer > 0) continue;
       const reach = enemy.kind === 'boss' ? 92 : enemy.kind === 'bruiser' ? 64 : 50;
-      if (Math.abs(dx) > reach || Math.abs(dy) > 26) {
+      const isLead = enemy.kind === 'boss' || leadByPlayer.get(target.id)?.id === enemy.id;
+      const currentSide = enemy.x >= target.x ? 1 : -1;
+      const slotIndex = (enemy.id - 1) % slotDepth.length;
+      const supportDistance = reach + (enemy.kind === 'bruiser' ? 66 : 54) + (slotIndex % 2) * 14;
+      const desiredX = target.x + (isLead ? currentSide * Math.max(42, reach - 1) : slotSide[slotIndex] * supportDistance);
+      const desiredY = clamp(target.y + (isLead ? 0 : slotDepth[slotIndex]), this.options.level.floorFar + 18, this.options.level.floorNear - 10);
+      const dx = desiredX - enemy.x;
+      const dy = desiredY - enemy.y;
+      enemy.facing = target.x >= enemy.x ? 1 : -1;
+      if (enemy.attackTimer <= 0 && (Math.abs(dx) > (isLead ? .75 : 10) || Math.abs(dy) > (isLead ? 3 : 9))) {
+        const movementStartX = enemy.x;
+        const movementStartY = enemy.y;
         const length = Math.hypot(dx, dy) || 1;
         const speed = enemy.kind === 'boss' ? 105 : enemy.kind === 'bruiser' ? 80 : enemy.kind === 'shocker' ? 118 : 105;
         enemy.x += dx / length * speed * dt;
         enemy.y += dy / length * speed * .72 * dt;
-        enemy.moving = true;
-      } else if (enemy.cooldown <= 0 && enemy.attackTimer <= 0) {
-        enemy.attackTimer = enemy.kind === 'boss' ? .78 : .48;
+        enemy.x = clamp(enemy.x, this.cameraX + 30, this.cameraX + W + 130);
+        enemy.y = clamp(enemy.y, this.options.level.floorFar + 12, this.options.level.floorNear - 4);
+        const actualTravel = Math.hypot(enemy.x - movementStartX, enemy.y - movementStartY);
+        enemy.moving = actualTravel > .001;
+        if (enemy.moving) enemy.gaitDistance += actualTravel;
+      } else if (isLead && enemy.cooldown <= 0 && enemy.attackTimer <= 0 && Math.abs(enemy.x - target.x) <= reach && Math.abs(enemy.y - target.y) <= 27) {
+        enemy.attackDuration = enemyAttackDuration(enemy.kind);
+        enemy.attackTimer = enemy.attackDuration;
         enemy.attackSerial++;
+        enemy.attackVariant = (enemy.attackVariant + 1) % 3;
         enemy.cooldown = enemy.kind === 'boss' ? 1.3 : enemy.kind === 'bruiser' ? 1.25 : .8;
+        if (enemy.kind === 'boss') this.emitRing(enemy.x + enemy.facing * 38, enemy.y - 54, '#ff8b3d');
         audio(enemy.kind === 'boss' ? 'boss_cannon' : 'melee_swing', .45, enemy.kind === 'bruiser' ? .7 : 1);
       }
-      enemy.x = clamp(enemy.x, this.cameraX + 30, this.cameraX + W + 130);
+      const margin = enemy.kind === 'boss' ? 148 : enemy.kind === 'bruiser' ? 92 : 76;
+      const enteredSafeZone = enemy.x - this.cameraX <= W - margin + 12;
+      const safeRight = enemy.kind === 'boss' ? W * .72 : W - margin;
+      enemy.x = clamp(enemy.x, this.cameraX + (this.arenaLocked && enteredSafeZone ? margin : 30), this.cameraX + (this.arenaLocked && enteredSafeZone ? safeRight : W + 130));
       enemy.y = clamp(enemy.y, this.options.level.floorFar + 12, this.options.level.floorNear - 4);
+    }
+    this.separateEnemySlots();
+  }
+
+  private separateEnemySlots(): void {
+    const active = this.enemies.filter(enemy => !enemy.dead);
+    for (let firstIndex = 0; firstIndex < active.length; firstIndex++) {
+      for (let secondIndex = firstIndex + 1; secondIndex < active.length; secondIndex++) {
+        const first = active[firstIndex];
+        const second = active[secondIndex];
+        const minX = first.kind === 'boss' || second.kind === 'boss' ? 122 : first.kind === 'bruiser' || second.kind === 'bruiser' ? 82 : 62;
+        const minY = first.kind === 'boss' || second.kind === 'boss' ? 48 : 34;
+        const dx = second.x - first.x;
+        const rawDy = second.y - first.y;
+        const dy = Math.abs(rawDy) < .01 ? (second.id > first.id ? 1 : -1) : rawDy;
+        const normalized = Math.hypot(dx / minX, dy / minY);
+        if (normalized >= 1) continue;
+        const push = (1 - normalized) * minY * .52;
+        const directionY = Math.sign(dy) || 1;
+        first.y = clamp(first.y - directionY * push, this.options.level.floorFar + 12, this.options.level.floorNear - 4);
+        second.y = clamp(second.y + directionY * push, this.options.level.floorFar + 12, this.options.level.floorNear - 4);
+        const directionX = Math.sign(dx) || (second.id > first.id ? 1 : -1);
+        first.x -= directionX * push * .18;
+        second.x += directionX * push * .18;
+      }
+    }
+  }
+
+  private resolveActorBodySeparation(): void {
+    const activeEnemies = this.enemies.filter(enemy => !enemy.dead);
+    for (const player of this.players) {
+      if (player.downed || player.z > 24) continue;
+      // Resolve the nearest bodies first so a lead attacker remains the stable
+      // obstacle and support-slot enemies do not squeeze the hero through it.
+      const nearby = activeEnemies
+        .filter(enemy => Math.abs(enemy.y - player.y) < 32 && Math.abs(enemy.x - player.x) < 92)
+        .sort((first, second) => Math.abs(first.x - player.x) - Math.abs(second.x - player.x));
+      for (const enemy of nearby) {
+        const minimumGap = enemy.kind === 'bruiser' || enemy.kind === 'boss' ? 60 : enemy.kind === 'shocker' ? 56 : 58;
+        const deltaX = enemy.x - player.x;
+        const absoluteX = Math.abs(deltaX);
+        if (absoluteX >= minimumGap) continue;
+        const side = absoluteX > .01 ? Math.sign(deltaX) : enemy.facing > 0 ? -1 : 1;
+        const penetration = minimumGap - absoluteX;
+        const playerShare = enemy.kind === 'boss' ? .82 : .58;
+        player.x -= side * penetration * playerShare;
+        enemy.x += side * penetration * (1 - playerShare);
+        player.moving = false;
+      }
     }
   }
 
@@ -290,12 +431,40 @@ export class BeatEmUpStage {
         if (enemy.dead || player.hitEnemies.has(enemy.id)) continue;
         const inDepth = Math.abs(enemy.y - player.y) < (player.attackStep === 3 ? 58 : 30);
         const ahead = player.attackStep === 3 || (enemy.x - player.x) * player.facing > -18;
-        if (inDepth && ahead && distance(player.x, player.y, enemy.x, enemy.y) <= radius) {
+        // Large authored bodies stop at their collision cores. Their melee
+        // hurtboxes extend into the weapon/contact strip, so a strike connects
+        // without requiring either opaque torso to walk through the other.
+        const targetReach = radius + (enemy.kind === 'boss' ? 64 : enemy.kind === 'bruiser' ? 16 : 10);
+        if (inDepth && ahead && distance(player.x, player.y, enemy.x, enemy.y) <= targetReach) {
           player.hitEnemies.add(enemy.id);
+          this.confirmedHits++;
+          const wasAboveHalf = enemy.hp / enemy.maxHp > .5;
           enemy.hp -= damageAmount * (player.hero === 'bruna' ? 1.18 : player.hero === 'nova' ? .9 : 1);
-          enemy.stun = player.attackStep >= 2 ? .28 : .15;
-          enemy.flash = .12;
-          enemy.knockX = player.facing * (player.attackStep >= 2 ? 260 : 145);
+          const reactionDuration = player.attackStep >= 2 ? .34 : .26;
+          enemy.reactionDuration = enemy.reactionTimer = reactionDuration;
+          enemy.reactionDirection = player.facing;
+          enemy.reactionKind = 'hit';
+          enemy.stun = reactionDuration;
+          enemy.flash = .034;
+          const recoil = enemy.kind === 'boss' ? 36 : enemy.kind === 'bruiser' ? 48 : 58;
+          enemy.knockX = player.facing * (recoil + (player.attackStep >= 2 ? 12 : 0));
+          if (enemy.kind === 'boss') {
+            // The boss is wider than the hero's melee reach. Bounce the striker
+            // off its armored core on a confirmed hit, leaving a readable strip
+            // of floor between bodies during hit-stop/reaction instead of
+            // compositing both large silhouettes into one sprite mass.
+            const hitDirection = enemy.x >= player.x ? 1 : -1;
+            player.x -= hitDirection * 24;
+            enemy.x += hitDirection * 12;
+          } else {
+            // Make the normal target's authored reaction read in world space;
+            // velocity recoil continues after this initial twelve-pixel beat.
+            enemy.x += player.facing * 12;
+            player.x -= player.facing * 4;
+          }
+          this.hitStop = Math.max(this.hitStop, enemy.kind === 'boss' ? .075 : player.attackStep >= 2 ? .065 : .055);
+          this.contactFocusTimer = Math.max(this.contactFocusTimer, .28);
+          this.contactFocusX = (player.x + enemy.x) * .5;
           player.special = clamp(player.special + 4.5, 0, 100);
           this.combo++;
           this.maxCombo = Math.max(this.maxCombo, this.combo);
@@ -304,6 +473,18 @@ export class BeatEmUpStage {
           this.shake = Math.max(this.shake, player.attackStep >= 2 ? 5 : 2.5);
           this.emitHit(enemy.x, enemy.y - 42, BRAWLER_HEROES[player.hero].accent, player.attackStep >= 2 ? 10 : 6);
           audio('hit', .6, .82 + player.attackStep * .08);
+          if (enemy.kind === 'boss' && !enemy.phaseShifted && wasAboveHalf && enemy.hp / enemy.maxHp <= .5 && enemy.hp > 0) {
+            enemy.phaseShifted = true;
+            enemy.reactionKind = 'phase';
+            enemy.reactionDuration = enemy.reactionTimer = .76;
+            enemy.stun = .76;
+            enemy.attackTimer = 0;
+            this.shake = Math.max(this.shake, 9);
+            this.emitRing(enemy.x, enemy.y - 62, '#ff623d');
+            this.emitRing(enemy.x, enemy.y - 38, '#55e7ef');
+            this.emitBurst(enemy.x, enemy.y - 28, '#ff8b3d');
+            audio('warning', .85, .68);
+          }
           if (enemy.hp <= 0) this.defeatEnemy(enemy, player);
         }
       }
@@ -313,9 +494,7 @@ export class BeatEmUpStage {
   private resolveEnemyAttacks(): void {
     for (const enemy of this.enemies) {
       if (enemy.dead || enemy.attackTimer <= 0) continue;
-      const duration = enemy.kind === 'boss' ? .78 : .48;
-      const progress = 1 - enemy.attackTimer / duration;
-      if (progress < .42 || progress > .58) continue;
+      if (enemyAttackPhase(enemy) !== 'contact') continue;
       const radius = enemy.kind === 'boss' ? 112 : enemy.kind === 'bruiser' ? 68 : 48;
       for (const player of this.players) {
         if (player.downed || player.invuln > 0 || enemy.lastHitSerial[player.id] === enemy.attackSerial) continue;
@@ -323,13 +502,23 @@ export class BeatEmUpStage {
           enemy.lastHitSerial[player.id] = enemy.attackSerial;
           const damageAmount = enemy.kind === 'boss' ? 18 : enemy.kind === 'bruiser' ? 17 : 10;
           player.hp -= damageAmount;
-          player.stun = .38;
+          const reactionDuration = enemy.kind === 'boss' ? .7 : enemy.kind === 'bruiser' ? .62 : .54;
+          player.reactionDuration = player.reactionTimer = reactionDuration;
+          player.reactionDirection = enemy.facing;
+          player.hitFlash = .034;
+          player.facing = enemy.x >= player.x ? 1 : -1;
+          player.stun = reactionDuration;
           player.invuln = .75;
-          player.knockX = enemy.facing * (enemy.kind === 'boss' ? 310 : 190);
+          player.attackTimer = 0;
+          player.comboWindow = 0;
+          player.knockX = enemy.facing * (enemy.kind === 'boss' ? 96 : enemy.kind === 'bruiser' ? 88 : 76);
+          this.hitStop = Math.max(this.hitStop, enemy.kind === 'boss' ? .08 : enemy.kind === 'bruiser' ? .07 : .06);
+          this.contactFocusTimer = Math.max(this.contactFocusTimer, .3);
+          this.contactFocusX = (player.x + enemy.x) * .5;
           this.shake = Math.max(this.shake, enemy.kind === 'boss' ? 8 : 4);
           this.emitHit(player.x, player.y - 48, '#ff674d', 8);
           audio('player_hit', .7, .82);
-          if (player.hp <= 0) { player.hp = 0; player.downed = true; this.emitBurst(player.x, player.y, BRAWLER_HEROES[player.hero].accent); }
+          if (player.hp <= 0) { player.hp = 0; player.downed = true; player.reactionDuration = player.reactionTimer = .82; this.emitBurst(player.x, player.y, BRAWLER_HEROES[player.hero].accent); }
         }
       }
     }
@@ -339,7 +528,9 @@ export class BeatEmUpStage {
     enemy.dead = true;
     this.defeatedCount++;
     enemy.phase = 0;
-    enemy.knockX = player.facing * 330;
+    enemy.attackTimer = 0;
+    enemy.reactionTimer = 0;
+    enemy.knockX = player.facing * (enemy.kind === 'boss' ? 28 : enemy.kind === 'bruiser' ? 55 : 72);
     this.score += enemy.kind === 'boss' ? 25_000 : enemy.kind === 'bruiser' ? 750 : 420;
     this.emitBurst(enemy.x, enemy.y, enemy.kind === 'boss' ? '#ff6b39' : '#b965ff');
     audio(enemy.kind === 'boss' ? 'boss_explode' : 'explode', enemy.kind === 'boss' ? 1 : .55, enemy.kind === 'boss' ? .7 : 1);
@@ -485,16 +676,28 @@ export class BeatEmUpStage {
     const screenX = px(player.x - this.cameraX);
     const screenY = px(player.y - player.z);
     ctx.save();
-    ctx.globalAlpha = player.downed ? .42 : player.invuln > 0 && Math.floor(player.invuln * 18) % 2 ? .55 : 1;
+    ctx.globalAlpha = player.downed ? .68 : player.invuln > 0 && Math.floor(player.invuln * 18) % 2 ? .55 : 1;
     ctx.fillStyle = '#0008'; ctx.beginPath(); ctx.ellipse(screenX, player.y + 5, player.downed ? 50 : 36, 10, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.translate(screenX, screenY);
-    const frame = this.playerFrame(player);
+    const motionPose = resolvePlayerMotionPose(player);
+    const reactionPose = resolvePlayerReactionPose(player);
+    ctx.translate(screenX + px(motionPose.offsetX), screenY + px(motionPose.offsetY));
+    ctx.rotate(motionPose.rotation);
+    ctx.scale(motionPose.scaleX, motionPose.scaleY);
+    const frame = motionPose.frame;
     const authoredSize = player.hero === 'bruna' ? { width: 184, height: 138 } : player.hero === 'nova' ? { width: 168, height: 126 } : { width: 174, height: 130 };
     let drawn = false;
-    if (player.downed || player.stun > .1) {
+    if (reactionPose) {
       ctx.save();
+      ctx.translate(px(reactionPose.offsetX), px(reactionPose.offsetY));
+      ctx.rotate(reactionPose.rotation);
+      ctx.scale(reactionPose.scaleX, reactionPose.scaleY);
       if (player.facing < 0) ctx.scale(-1, 1);
-      drawn = this.drawSheetFrame(this.heroReactionSheets[player.hero], 7, 0, 12, authoredSize.width, authoredSize.height, .5, 1);
+      drawn = this.drawSheetFrame(this.heroReactionSheets[player.hero], reactionPose.frame, 0, 12, authoredSize.width, authoredSize.height, .5, 1);
+      if (drawn && player.hitFlash > 0) {
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = .64;
+        this.drawSheetFrame(this.heroReactionSheets[player.hero], reactionPose.frame, 0, 12, authoredSize.width, authoredSize.height, .5, 1);
+      }
       ctx.restore();
     } else drawn = this.drawSheetFrame(this.heroSheets[player.hero], frame, 0, 12, authoredSize.width, authoredSize.height, .5, 1);
     if (!drawn) {
@@ -508,15 +711,7 @@ export class BeatEmUpStage {
   }
 
   private playerFrame(player: BrawlerPlayer): number {
-    const directionBase = player.facing > 0 ? 0 : 8;
-    if (player.z > 8) return directionBase + (player.attackTimer > 0 ? 7 : 6);
-    if (player.attackTimer > 0) {
-      if (player.attackStep === 0) return directionBase + 3;
-      if (player.attackStep === 1) return directionBase + 4;
-      return directionBase + 5;
-    }
-    if (player.moving) return directionBase + 1 + (Math.floor(this.elapsed * 7.5 + player.id) % 2);
-    return directionBase;
+    return resolvePlayerMotionPose(player).frame;
   }
 
   private drawPlayerFallback(player: BrawlerPlayer, spec: typeof BRAWLER_HEROES[BrawlerHeroId]): void {
@@ -535,22 +730,23 @@ export class BeatEmUpStage {
 
   private drawEnemy(enemy: BrawlerEnemy): void {
     const ctx = this.ctx;
-    const screenX = px(enemy.x - this.cameraX);
+    // Forge's logical origin is its near-side collision core, while the atlas
+    // is centered on a much wider cape-and-weapon silhouette. Stage the bitmap
+    // away from its opponent so the hero meets the gauntlet, not the torso.
+    const rootOffsetX = -enemy.facing * (enemy.kind === 'boss' ? 28 : 18);
+    const screenX = px(enemy.x - this.cameraX + rootOffsetX);
     const screenY = px(enemy.y);
+    const motionPose = resolveEnemyMotionPose(enemy);
     ctx.save();
-    ctx.globalAlpha = enemy.dead ? clamp(1 - enemy.phase / .7, 0, 1) : 1;
+    ctx.globalAlpha = motionPose.alpha;
     ctx.fillStyle = '#0008'; ctx.beginPath(); ctx.ellipse(screenX, screenY + 4, enemy.kind === 'boss' ? 76 : 34, enemy.kind === 'boss' ? 16 : 9, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.translate(screenX, screenY);
+    ctx.translate(screenX + px(motionPose.offsetX), screenY + px(motionPose.offsetY));
+    ctx.rotate(motionPose.rotation);
+    ctx.scale(motionPose.scaleX, motionPose.scaleY);
     if (enemy.kind === 'boss' && enemy.facing > 0) ctx.scale(-1, 1);
-    if (enemy.dead && enemy.kind !== 'boss') ctx.rotate(-enemy.facing * enemy.phase * 1.2);
-    const attacking = enemy.attackTimer > 0;
     const hit = enemy.flash > 0;
-    const frame = attacking ? 3 : enemy.moving ? 1 + (Math.floor(enemy.phase * 7) % 2) : 0;
     const asset = enemy.kind === 'boss' ? this.bossSheet : this.enemySheet;
-    const bossAttackProgress = attacking ? 1 - enemy.attackTimer / .78 : 0;
-    const mappedFrame = enemy.kind === 'boss'
-      ? enemy.dead ? 5 : hit ? 4 : attacking ? (bossAttackProgress > .45 ? 3 : 2) : Math.floor(enemy.phase * 5) % 2
-      : (enemy.kind === 'bruiser' ? 8 : enemy.kind === 'shocker' ? 16 : 0) + (enemy.facing > 0 ? 0 : 4) + frame;
+    const mappedFrame = motionPose.frame;
     const width = enemy.kind === 'boss' ? 268 : enemy.kind === 'bruiser' ? 174 : enemy.kind === 'shocker' ? 142 : 138;
     const height = enemy.kind === 'boss' ? 202 : enemy.kind === 'bruiser' ? 142 : enemy.kind === 'shocker' ? 118 : 114;
     if (!this.drawSheetFrame(asset, mappedFrame, 0, 10, width, height, .5, 1)) {
@@ -669,6 +865,48 @@ export class BeatEmUpStage {
     ctx.fillStyle = '#c9b8ce'; ctx.font = '700 13px Arial'; ctx.fillText(win ? `${this.options.level.bossName} IS FINISHED` : 'VENUS STILL NEEDS ITS RIDERS', 480, 314);
   }
 
+  private combatFramingSnapshot() {
+    const player = this.players.find(candidate => !candidate.downed);
+    if (!player) return null;
+    const enemies = this.enemies.filter(enemy => !enemy.dead);
+    const attacker = enemies.find(enemy => enemy.attackTimer > 0)
+      ?? enemies.reduce<BrawlerEnemy | null>((best, enemy) => !best || distance(enemy.x, enemy.y, player.x, player.y) < distance(best.x, best.y, player.x, player.y) ? enemy : best, null);
+    if (!attacker) return null;
+    const playerMotion = resolvePlayerMotionPose(player);
+    const playerReaction = resolvePlayerReactionPose(player);
+    const enemyPose = resolveEnemyMotionPose(attacker);
+    const playerScreenX = player.x - this.cameraX + (playerReaction?.offsetX ?? playerMotion.offsetX);
+    const playerScreenY = player.y - player.z + (playerReaction?.offsetY ?? playerMotion.offsetY);
+    const enemyRootOffsetX = -attacker.facing * (attacker.kind === 'boss' ? 28 : 18);
+    const enemyScreenX = attacker.x - this.cameraX + enemyRootOffsetX + enemyPose.offsetX;
+    const enemyScreenY = attacker.y + enemyPose.offsetY;
+    const playerHalfWidth = player.hero === 'bruna' ? 92 : player.hero === 'nova' ? 84 : 87;
+    const enemyHalfWidth = attacker.kind === 'boss' ? 134 : attacker.kind === 'bruiser' ? 87 : attacker.kind === 'shocker' ? 71 : 69;
+    const edgeMargin = Math.min(playerScreenX - playerHalfWidth, W - playerScreenX - playerHalfWidth, enemyScreenX - enemyHalfWidth, W - enemyScreenX - enemyHalfWidth);
+    const renderSeparation = Math.hypot(enemyScreenX - playerScreenX, (enemyScreenY - playerScreenY) * 1.45);
+    const playerBodyRadius = player.hero === 'bruna' ? 48 : 42;
+    // The Overseer's 268px authored frame is mostly weapons and cape. Measure
+    // core-body overlap from the torso/feet rather than treating the extended
+    // cannon silhouette as a second body occupying that entire width.
+    const enemyBodyRadius = attacker.kind === 'boss' ? 45 : attacker.kind === 'bruiser' ? 46 : 36;
+    const depthFactor = clamp(1 - Math.abs(enemyScreenY - playerScreenY) / 42, 0, 1);
+    const overlapPixels = Math.max(0, playerBodyRadius + enemyBodyRadius - Math.abs(enemyScreenX - playerScreenX)) * depthFactor;
+    return {
+      playerId: player.id,
+      attackerId: attacker.id,
+      attackerKind: attacker.kind,
+      playerScreenX: Number(playerScreenX.toFixed(2)),
+      playerScreenY: Number(playerScreenY.toFixed(2)),
+      enemyScreenX: Number(enemyScreenX.toFixed(2)),
+      enemyScreenY: Number(enemyScreenY.toFixed(2)),
+      contactCenterX: Number(((playerScreenX + enemyScreenX) * .5).toFixed(2)),
+      renderSeparation: Number(renderSeparation.toFixed(2)),
+      overlapPixels: Number(overlapPixels.toFixed(2)),
+      edgeMargin: Number(edgeMargin.toFixed(2)),
+      contactFocusTimer: Number(this.contactFocusTimer.toFixed(3)),
+    };
+  }
+
   snapshot() {
     const boss = this.enemies.find(enemy => enemy.kind === 'boss' && !enemy.dead);
     const assets = {
@@ -677,10 +915,20 @@ export class BeatEmUpStage {
     };
     return {
       status: this.status, elapsed: Number(this.elapsed.toFixed(2)), cameraX: Number(this.cameraX.toFixed(2)),
-      levelId: this.options.level.id, stageLength: this.options.level.length, wave: this.waveIndex, arenaLocked: this.arenaLocked, score: this.score, combo: this.combo, maxCombo: this.maxCombo,
-      players: this.players.map(player => ({ id: player.id, hero: player.hero, x: Number(player.x.toFixed(2)), y: Number(player.y.toFixed(2)), z: Number(player.z.toFixed(2)), hp: Number(player.hp.toFixed(2)), maxHp: player.maxHp, special: Number(player.special.toFixed(2)), downed: player.downed, facing: player.facing, moving: player.moving, frame: this.playerFrame(player), airborneAttack: player.z > 8 && player.attackTimer > 0, attackStep: player.attackStep, attackTimer: Number(player.attackTimer.toFixed(3)) })),
-      enemies: this.enemies.filter(enemy => !enemy.dead).map(enemy => ({ id: enemy.id, kind: enemy.kind, x: Number(enemy.x.toFixed(2)), y: Number(enemy.y.toFixed(2)), hp: Number(enemy.hp.toFixed(2)), maxHp: enemy.maxHp, facing: enemy.facing, moving: enemy.moving, frame: enemy.kind === 'boss' ? null : (enemy.kind === 'bruiser' ? 8 : enemy.kind === 'shocker' ? 16 : 0) + (enemy.facing > 0 ? 0 : 4) + (enemy.attackTimer > 0 ? 3 : enemy.moving ? 1 + (Math.floor(enemy.phase * 7) % 2) : 0) })),
-      boss: boss ? { hp: boss.hp, maxHp: boss.maxHp } : null,
+      levelId: this.options.level.id, stageLength: this.options.level.length, wave: this.waveIndex, arenaLocked: this.arenaLocked, score: this.score, combo: this.combo, maxCombo: this.maxCombo, confirmedHits: this.confirmedHits,
+      hitStop: Number(this.hitStop.toFixed(3)), impactParticles: this.particles.filter(particle => particle.kind === 'spark').length,
+      combatFraming: this.combatFramingSnapshot(),
+      players: this.players.map(player => {
+        const motionPose = resolvePlayerMotionPose(player);
+        const reactionPose = resolvePlayerReactionPose(player);
+        return { id: player.id, hero: player.hero, x: Number(player.x.toFixed(2)), y: Number(player.y.toFixed(2)), z: Number(player.z.toFixed(2)), hp: Number(player.hp.toFixed(2)), maxHp: player.maxHp, special: Number(player.special.toFixed(2)), downed: player.downed, facing: player.facing, moving: player.moving, frame: reactionPose?.frame ?? motionPose.frame, walkPhase: motionPose.walkPhase, walkPhaseProgress: Number(motionPose.walkPhaseProgress.toFixed(3)), gaitDistance: Number(player.gaitDistance.toFixed(2)), attackPhase: motionPose.attackPhase, reactionPhase: reactionPose?.phase ?? null, reactionTimer: Number(player.reactionTimer.toFixed(3)), hitFlash: Number(player.hitFlash.toFixed(3)), pose: { offsetX: Number((reactionPose?.offsetX ?? motionPose.offsetX).toFixed(3)), offsetY: reactionPose?.offsetY ?? motionPose.offsetY, rotation: Number((reactionPose?.rotation ?? motionPose.rotation).toFixed(4)), scaleX: reactionPose?.scaleX ?? motionPose.scaleX, scaleY: reactionPose?.scaleY ?? motionPose.scaleY }, airborneAttack: player.z > 8 && player.attackTimer > 0, attackStep: player.attackStep, attackTimer: Number(player.attackTimer.toFixed(3)) };
+      }),
+      enemies: this.enemies.filter(enemy => !enemy.dead).map(enemy => {
+        const pose = resolveEnemyMotionPose(enemy);
+        const rootOffsetX = -enemy.facing * (enemy.kind === 'boss' ? 28 : 18);
+        return { id: enemy.id, kind: enemy.kind, x: Number(enemy.x.toFixed(2)), y: Number(enemy.y.toFixed(2)), renderX: Number((enemy.x + rootOffsetX + pose.offsetX).toFixed(2)), hp: Number(enemy.hp.toFixed(2)), maxHp: enemy.maxHp, facing: enemy.facing, moving: enemy.moving, frame: pose.frame, walkPhase: pose.walkPhase, walkPhaseProgress: Number(pose.walkPhaseProgress.toFixed(3)), gaitDistance: Number(enemy.gaitDistance.toFixed(2)), attackPhase: pose.attackPhase, attackTimer: Number(enemy.attackTimer.toFixed(3)), reactionPhase: pose.reactionPhase, reactionTimer: Number(enemy.reactionTimer.toFixed(3)), flash: Number(enemy.flash.toFixed(3)), phaseShifted: enemy.phaseShifted, pose: { offsetX: Number(pose.offsetX.toFixed(3)), offsetY: pose.offsetY, rotation: Number(pose.rotation.toFixed(4)), scaleX: pose.scaleX, scaleY: pose.scaleY } };
+      }),
+      boss: boss ? (() => { const pose = resolveEnemyMotionPose(boss); return { hp: boss.hp, maxHp: boss.maxHp, frame: pose.frame, attackPhase: pose.attackPhase, reactionPhase: pose.reactionPhase, phaseShifted: boss.phaseShifted }; })() : null,
       bossDefeated: this.bossDefeated, defeatedCount: this.defeatedCount, friendlyFire: false, assets,
       finishReady: (this.status === 'victory' || this.status === 'defeat') && this.finishTimer > 1.2,
     };
