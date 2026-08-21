@@ -1,0 +1,60 @@
+import type { HeroId, HeroSourceMap, HeroSpec, IntroPanel } from './types';
+
+export const HEROES: readonly HeroSpec[] = [
+  { id: 'cassia', name: 'CASSIA', epithet: 'THE SOLAR CAPTAIN', color: '#d99a42', accent: '#ffcf32', maxHp: 110, maxArmor: 45, speed: 330, fireRate: .145, weapon: 'blaster', special: 'SUNBURST FOCUS', stats: [4, 4, 4] },
+  { id: 'bruna', name: 'BRUNA', epithet: 'THE IRON HORN', color: '#aab2c1', accent: '#55d6ff', maxHp: 150, maxArmor: 80, speed: 285, fireRate: .24, weapon: 'spread', special: 'GRAVITY STOMP', stats: [5, 2, 5] },
+  { id: 'nova', name: 'NOVA', epithet: 'THE WILD COMET', color: '#f1e6d3', accent: '#ff4b72', maxHp: 90, maxArmor: 30, speed: 375, fireRate: .105, weapon: 'laser', special: 'VENUS RUSH', stats: [3, 5, 2] },
+];
+
+export const INTRO_PANELS: readonly IntroPanel[] = [
+  { src: '/assets/intro/venus-beach-01-rest.png', kicker: 'VENUS BOARDWALK // 18:42 LOCAL', title: 'A PERFECT DAY OFF.', caption: 'CASSIA: "Quiet suits us."   BRUNA: "Last set."   NOVA: "Last wave!"', duration: 5.2, pan: -12 },
+  { src: '/assets/intro/venus-beach-02-blast.png', kicker: 'THEN THE HORIZON BLINKS.', title: 'KRA-KOOM!', caption: 'One blast. Three heads turn. The day off is officially over.', duration: 4.1, pan: 10 },
+  { src: '/assets/intro/venus-beach-03-jackets.png', kicker: 'NO SPEECHES. NO HESITATION.', title: 'JACKETS ON.', caption: 'Leather, engines and a rising column of smoke. Just like old times.', duration: 4.2, pan: -8 },
+  { src: '/assets/intro/venus-beach-04-ride.png', kicker: 'VACATION STATUS: CANCELLED', title: 'GIRLS... RIDE.', caption: 'The Venus skyway is waiting - and trouble never waits politely.', duration: 4.6, pan: 14 },
+];
+
+export const HERO_AUTHORED_SIZE: Readonly<Record<HeroId, { width: number; height: number; anchorX: number; anchorY: number }>> = {
+  cassia: { width: 208, height: 156, anchorX: .48, anchorY: .74 },
+  bruna: { width: 220, height: 164, anchorX: .5, anchorY: .75 },
+  nova: { width: 202, height: 152, anchorX: .48, anchorY: .73 },
+};
+
+// Source-cell hardpoints keep projectiles and exhaust attached to the authored
+// sprite even when animation switches between ride, held-fire and release sheets.
+export const HERO_MUZZLE_SOURCE = {
+  cassia: {
+    authored: [[235, 105], [240, 105], [218, 67], [201, 111], [196, 111], [198, 109], [210, 107], [198, 112]],
+    sustained: [[244, 107], [243, 108], [243, 107], [243, 108]],
+    release: [[246, 109], [247, 110], [246, 109]],
+  },
+  bruna: {
+    authored: [[231, 112], [239, 111], [220, 68], [230, 110], [228, 110], [232, 110], [222, 106], [231, 108]],
+    sustained: [[244, 111], [244, 112], [244, 111], [244, 112]],
+    release: [[246, 111], [246, 112], [246, 111]],
+  },
+  nova: {
+    authored: [[221, 104], [222, 105], [220, 63], [220, 106], [223, 108], [220, 110], [219, 105], [223, 111]],
+    sustained: [[219, 106], [220, 106], [219, 107], [220, 107]],
+    release: [[221, 107], [221, 108], [221, 108]],
+  },
+} as const satisfies Readonly<Record<HeroId, HeroSourceMap>>;
+
+export const HERO_EXHAUST_SOURCE = {
+  cassia: {
+    authored: [[21, 145], [22, 145], [23, 147], [25, 145], [18, 143], [30, 147], [25, 146], [23, 146]],
+    sustained: [[24, 146], [25, 146], [24, 146], [24, 146]],
+    release: [[23, 146], [24, 146], [24, 146]],
+  },
+  bruna: {
+    authored: [[13, 153], [14, 154], [14, 155], [15, 154], [12, 158], [18, 154], [15, 154], [13, 154]],
+    sustained: [[13, 154], [14, 154], [13, 154], [14, 154]],
+    release: [[13, 154], [14, 154], [14, 154]],
+  },
+  nova: {
+    authored: [[27, 147], [27, 147], [28, 148], [29, 148], [25, 150], [29, 148], [28, 148], [27, 148]],
+    sustained: [[27, 148], [28, 148], [27, 148], [28, 148]],
+    release: [[27, 148], [28, 148], [28, 148]],
+  },
+} as const satisfies Readonly<Record<HeroId, HeroSourceMap>>;
+
+export const FIRE_RELEASE_DURATION = .15;

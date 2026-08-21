@@ -1,17 +1,18 @@
-# NEXT_STEPS — Gauntlet handoff после Wave 17
+# NEXT_STEPS — Gauntlet handoff после Wave 23
 
-Проект оставлен в полностью запускаемом состоянии. Wave 17 перевела игру на самостоятельный мир **Biker Cows from Venus: Neon Stampede**.
+Проект оставлен в полностью запускаемом состоянии. Wave 23 исправила directional animation второго уровня: у героинь появились отчётливо разные шаги с чередованием ведущей ноги, самостоятельные левые/правые боевые позы, воздушные атаки и исправленные удары Bruna. Враги больше не используют независимо нарисованные двусмысленные направления.
 
 ## Что работает
 
-- полный маршрут: `title → select → level → miniboss → final boss → victory/defeat → restart`;
-- Cassia, Bruna и Nova имеют собственные 8-frame ride/action, 4-frame sustained-fire, 3-frame release и select-портреты;
-- левая киберрука Bruna сохраняет сторону, серебряные сегменты и cyan-joint во всех базовых, sustained, release и portrait кадрах;
-- выхлоп Cassia, Bruna и Nova выходит из видимых труб байков во всех authored, sustained, release и jump-позах; runtime измеряет общий hardpoint рендера и эмиттера;
-- новая стартовая Venus-панорама и новый gameplay horizon без прежней планетарной символики;
-- локальный кооператив с независимыми героями, уроном, оружием, pickups и спецприёмами; friendly fire отключён;
-- 13/13 atlas’ов, полный наземный/воздушный roster, мини-босс, финальный босс, музыка, SFX, пауза и локальные рекорды;
-- старые публичные имена, UI-тексты, пути ассетов и документация удалены.
+- сквозной маршрут `title → select → Stage 1 → Stage-1 boss → Stage 2: Furnace District → Forge Overseer → victory → restart`;
+- Stage 1 и Stage 2 поддерживают solo и локальный co-op без friendly fire;
+- Cassia, Bruna и Nova имеют 16-frame directional brawler atlases: right idle/walk/attacks/jump/air attack и отдельно нарисованный left-набор;
+- в двухфазном цикле ходьбы каждой героини видны разные ведущие ноги, а не две вариации правого шага;
+- Bruna не отражается для ключевого левого finisher: она разворачивается спиной к камере и бьёт в пол своей анатомически левой киберрукой;
+- у Bruna сохранена одна левая киберрука и одна правая органическая рука;
+- raider, bruiser и shocker при движении влево используют один авторитетный left-facing atlas; движение вправо использует только его точное пиксельное зеркало;
+- полноценный Stage-2 run, boss clear, victory, restart и co-op/no-friendly-fire остаются рабочими;
+- игра запускается без внешних API во время исполнения.
 
 ## Как запустить
 
@@ -27,43 +28,42 @@ npm run build
 npm run preview
 ```
 
-Smoke:
+Основные проверки:
 
 ```bash
-npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
-npm run test:smoke
+npm run test:wave18
+npm run test:brawler
+node scripts/gauntlet-brawler-motion.mjs
+node scripts/gauntlet-brawler-enemy-direction.mjs
 ```
 
-## Последняя проверка
+Для browser harness нужен preview на `127.0.0.1:4173`; адрес можно изменить через `BCFV_URL`.
 
-- canonical report: [.gauntlet/iteration-17/report.json](.gauntlet/iteration-17/report.json) — `ok=true`, 13/13 ready, `runtimeErrors=[]`;
-- [start screen](.gauntlet/iteration-17/menu.png);
-- [character select](.gauntlet/iteration-17/select.png);
-- [Nova select](.gauntlet/iteration-17/select-nova.png);
-- [Bruna base](.gauntlet/iteration-17/bruna-base.png);
-- [Bruna sustained fire](.gauntlet/iteration-17/sustain-bruna-03.png);
-- [Bruna release](.gauntlet/iteration-17/release-bruna-10.png);
-- [Bruna exhaust hardpoint](.gauntlet/iteration-17/exhaust-review/bruna-sustained.png);
-- [exhaust hardpoint report](.gauntlet/iteration-17/exhaust-review/report.json) — `ok=true`, ошибки отсутствуют;
-- [boss exchange](.gauntlet/iteration-17/boss-exchange.png);
-- [co-op select](.gauntlet/iteration-17/coop-select.png);
-- [co-op boss](.gauntlet/iteration-17/coop-boss-exchange.png).
+## Последние результаты
 
-Полный production run занял 115.3 с, прошёл solo и co-op; Cassia 6.58, Bruna 3.74, Nova 8.15, rapid Nova 13.78 выстр./с. Release-мосты прошли за 150–180 мс; muzzle origins остаются на стволах, а exhaust origins — на выходах труб байков.
+- полный Stage-2 regression на финальном enemy atlas: [.gauntlet/iteration-23/full-stage2-directional/report.json](.gauntlet/iteration-23/full-stage2-directional/report.json) — `ok=true`, `runtimeErrors=[]`, 22 defeated, Forge Overseer defeated, victory;
+- directional hero motion: [.gauntlet/iteration-23/final-motion/report.json](.gauntlet/iteration-23/final-motion/report.json) — все три героини показали оба walk frames, три удара в обе стороны и отдельные воздушные атаки;
+- enemy direction: [.gauntlet/iteration-23/enemy-direction-final/report.json](.gauntlet/iteration-23/enemy-direction-final/report.json) — `ok=true`, `runtimeErrors=[]`, все три класса показали left-facing walk rows `5/6`, `13/14`, `21/22`; разворот вправо использовал зеркальные строки;
+- `npm run build`, `node --check` и `git diff --check` проходят.
 
-## Текущий визуальный verdict
+Ключевые кадры:
 
-Новая тройка цельно читается в меню, select и gameplay; Bruna сохраняет киберруку во времени. Вертикальный срез выглядит как сильная оригинальная 16-битная браузерная игра. Whole-game premium verdict пока не зафиксирован независимым слепым критиком после смены IP.
+- [Cassia — правая нога впереди](.gauntlet/iteration-23/final-motion/cassia-walk-right-02.png)
+- [Cassia — левая нога впереди](.gauntlet/iteration-23/final-motion/cassia-walk-right-00.png)
+- [Bruna — исправленный cyber hook](.gauntlet/iteration-23/final-motion/bruna-attack-cycle-01.png)
+- [Bruna — back-facing left ground smash](.gauntlet/iteration-23/final-motion/bruna-attack-left-02.png)
+- [Bruna — отдельная воздушная атака влево](.gauntlet/iteration-23/final-motion/bruna-air-left-00.png)
+- [Gang — начало подхода влево](.gauntlet/iteration-23/enemy-direction-final/enemy-left-mixed-04.png)
+- [Gang — несколько секунд спустя](.gauntlet/iteration-23/enemy-direction-final/enemy-left-mixed-12.png)
+
+## Последний визуальный вывод
+
+Запрошенный directional scope принят: в последовательностях ходьбы действительно чередуются ноги; Bruna имеет отдельную rear-view атаку, а не зеркальный удар неправильной рукой; airborne attacks существуют в обе стороны. Враги больше не пятятся: при подходе справа их лицо, грудь, оружие и ведущий шаг направлены к героине, а противоположный разворот является точным зеркалом того же дизайна.
 
 ## Один крупнейший оставшийся недостаток
 
-**Читаемость максимального ракетного огня в финальном бою.** При Rockets Lv.4 длинные одинаковые smoke-ribbons перекрывают входящие телеграфы и weak point босса сильнее, чем новые герои или окружение.
+Обычные враги теперь имеют убедительные idle/walk/attack направления, но реакция на попадание и поражение всё ещё в основном строится на вспышке, переносе, частицах и вращении целого спрайта. На фоне новых героинь это остаётся самым заметным анимационным упрощением Stage 2.
 
-## Точная следующая итерация
+## Точная следующая итерация Gauntlet
 
-1. Заморозить персонажей, их анимации, muzzle hardpoints, cadence, damage и collision.
-2. Сделать 10-секундную production boss-sequence с Rockets Lv.4 и двумя игроками.
-3. Ограничить непрозрачность/длину перекрывающихся friendly smoke-ribbons, не уменьшая число реальных снарядов.
-4. Добавить компактный owner-colour ember P1/P2 у muzzle, trail и impact.
-5. Снять минимум 20 последовательных кадров; weak point и incoming telegraph должны быть различимы не менее чем в 18/20.
-6. Сохранить `runtimeErrors=[]`, 13/13 ready, no-friendly-fire и полный solo/co-op маршрут.
+Создать `venus-gang-reactions` 4×3: строки raider/bruiser/shocker, колонки `contact compression → recoil → airborne knockback → grounded defeat`. Подключить кадры к реальным collisions, убрать whole-sprite death rotation и снять для каждого класса шестикадровую последовательность `attack → contact → recoil → launch → landing → defeat`. Сохранить текущий directional atlas, физику, damage, camera, full clear, co-op/no-friendly-fire, Stage-1 gate и `runtimeErrors=[]`.

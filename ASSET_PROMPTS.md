@@ -122,3 +122,120 @@ Production: `public/assets/world/venus-highway-panorama.png`.
 > Primary request: a full-bleed very wide late-era Sega Mega Drive pixel-art Venus horizon: dense layered golden sulfur clouds with deep plum shadow bands, volcanic tessera ridges, suspended basalt shelves and a distant floating industrial refinery city with restrained cyan and hot-magenta hard lights. No moons, stars, cratered planets or open outer-space sky. Arrange at least five clear horizontal depth bands for parallax; keep the lower quarter dark and simple where the separately rendered highway begins. Make left and right edges visually compatible for a slow bounded pan.
 > Style: crisp clustered nearest-neighbour pixels, hard stepped silhouettes, controlled 3-5 shade material ramps, high-end 16-bit palette discipline, no smoothing, blur, photorealism or vector-flat shapes.
 > Constraints: no characters, cows, rodents, vehicles, enemies, road, UI, title, text, readable signage, logo or watermark. No Earth or Mars iconography.
+
+## Wave 18 — Bruna arm material correction
+
+Generated with the built-in `imagegen` tool in `precise-object-edit` mode. Raw masters are in `.gauntlet/iteration-18/raw/`; deterministic processing is `scripts/process_iteration18_art.ps1`.
+
+Base atlas prompt:
+
+> Use case: precise-object-edit. Asset type: production 4 columns × 2 rows gameplay sprite atlas for Bruna, an original adult anthropomorphic cow biker in a premium late-era 16-bit game. Input image 1 is the exact edit target and authoritative 8-frame atlas. Input image 2 is the authoritative anatomy/material reference: Bruna's LEFT arm is the silver segmented cyberarm attached to the cyan-lit shoulder joint; her RIGHT arm is organic charcoal-gray fur. Correct only Bruna's anatomical RIGHT organic arm in all 8 cells. She faces screen-right. The organic RIGHT arm is the nearer/front arm that originates from the non-cyber shoulder/chest side and reaches the motorcycle controls; render it consistently as charcoal-gray fur with the existing black glove or dark cuff. Remove every accidental silver plate, steel band, cyan joint, or mechanical finger from this right arm. Preserve the anatomical LEFT cyberarm exactly as a continuous silver segmented limb from the round cyan-lit shoulder joint through forearm and hand in every pose. Retain the exact 4×2 cell order, pose, motorcycle position, scale, baseline, frame spacing and complete silhouettes. Preserve every other feature and keep the transparent background. Exactly one cyberarm (LEFT) and one organic arm (RIGHT) in every cell. Avoid two metal arms, partly metal right arm, arm switching, pose drift, smoothing, background, text or watermark.
+
+Sustained-fire prompt:
+
+> Use case: precise-object-edit. Asset type: production 4 columns × 3 rows sustained-fire sprite atlas. Image 1 is the exact edit target; rows are Cassia, Bruna and Nova. Image 2 is the corrected authoritative Bruna anatomy/material reference. Edit only the middle Bruna row so all four poses consistently show one silver segmented LEFT cyberarm attached to the cyan-lit shoulder joint and one fully organic charcoal-gray RIGHT/front arm reaching the controls. The right arm has gray fur and a dark glove/cuff, with no plates or cyan mechanisms. Preserve exact grid, firing cadence, bikes, scale, baseline and transparent background. Keep Cassia and Nova unchanged. Avoid two metal arms, material switching, pose drift, blur, text or watermark.
+
+Release prompt:
+
+> Use case: precise-object-edit. Asset type: production 3 columns × 3 rows fire-release sprite atlas. Image 1 is the exact edit target; rows are Cassia, Bruna and Nova. Image 2 is the corrected authoritative Bruna anatomy/material reference. Edit only the middle Bruna row so all three release poses consistently show one silver segmented LEFT cyberarm attached to the cyan-lit shoulder joint and one fully organic charcoal-gray RIGHT/front arm. Preserve exact 3×3 order, poses, motorcycle position, scale, baseline, spacing and all non-arm pixels. Keep Cassia and Nova unchanged. Avoid two metal arms, partially metal right arm, arm switching, pose drift, smoothing, background, text or watermark.
+
+The release result received a second background-only pass:
+
+> Use case: background-extraction. Replace only the solid black background surrounding the nine complete sprites with a perfectly flat exact #FF00FF chroma-key field. Preserve every sprite pixel, black outline, 3×3 cell, pose, scale and alignment exactly. Do not redraw, resize, recolor or smooth any sprite. Avoid gradients, texture, halos, grid lines, text and watermark.
+
+## Wave 18 — Nova low-duck overlap
+
+Production: corrected bottom-left cell in `public/assets/sprites/nova-sheet.png`.
+
+> Use case: precise-object-edit. Asset type: production 4 columns × 2 rows gameplay sprite atlas for Nova. The input is the exact authoritative atlas. Correct only cell 5, bottom-left, where Nova leans very low over the motorcycle. Her complete head, muzzle, goggles, white forelock and both horns must render visibly in front of the cream/red front fairing and handlebar silhouette, with a clean dark contour separating face from machinery. Restore the hidden lower muzzle/cheek contour over the fairing while keeping the same aerodynamic duck pose. Retain exact grid, all other seven cells, bike position, body pose, scale, baseline and transparent background. Avoid enlarging the head, changing the pose or bike, smoothing, text and watermark.
+
+## Wave 18 — Venus shoulder strip
+
+Production: `public/assets/world/venus-shoulder-strip.png`.
+
+> Use case: stylized-concept. Asset type: wide horizontally scrolling near-foreground terrain strip for an original late-era 16-bit Venus highway game. Image 1 is a real gameplay reference for palette, pixel density and the role of the flat bottom strip. Image 2 is the authoritative material reference for the existing purple basalt rocks. Create a standalone, wide, seamless-feeling Venus highway shoulder: layered dark-plum asphalt lip, fractured basalt plates, compact rusty-red gravel, thin hot-orange mineral seams, sparse cyan mineral glints and depth shadows. Transition from a near-black low-detail upper edge into richer broken volcanic ground below. Use crisp nearest-neighbour clustered pixels, hard stepped silhouettes and controlled shade ramps. Terrain only; no characters, vehicles, enemies, UI, signs, rails, lamps, buildings, sky, text, logo or watermark. Avoid gradients, blur, photorealism, flat empty fields and tall objects rising into the action lane.
+
+## Waves 19–21 — Furnace District beat ’em up
+
+Generated with the built-in `imagegen` tool in sprite-sheet and wide-environment modes. Raw outputs are preserved in `.gauntlet/iteration-19/raw/`; deterministic matte removal, shared-scale normalization and panorama composition are in `scripts/process_brawler_art.ps1`. Production files are in `public/assets/brawler/`.
+
+### Cassia / Bruna / Nova on-foot atlases
+
+Shared contract for each 4×2 atlas:
+
+> Use case: game sprite sheet. Create an original late-era 16-bit side-scrolling beat-'em-up character atlas from the provided authoritative Biker Cows from Venus gameplay and portrait references. The heroine fights on foot; no motorcycle, gun, vehicle, text or UI. Output a strict 4 columns × 2 rows sheet, eight complete non-overlapping cells on a perfectly flat exact #FF00FF chroma-key background. Same side-view scale, ground baseline, proportions and lighting; face screen-right. Row-major semantics: combat idle; walk A; walk B with opposite foot; fast jab; heavy cross or signature kick; wide spinning/ground-smash finisher; airborne forward attack; hit reaction/knockback. Premium late-Mega-Drive pixel art: hard 1–2 px clusters, dark outlines, controlled 4–6 shade ramps, no antialiasing, gradients or blur. Generous padding; nothing crosses a cell border; no labels or dividers.
+
+Cassia identity clause:
+
+> Adult anthropomorphic brown cow, swept auburn hair, small cream horns, green eyes, red scarf, black biker vest and pants, gold/orange sun accents, athletic feminine build. Finisher has a restrained red/orange scarf arc.
+
+Bruna identity/anatomy clause:
+
+> Adult anthropomorphic charcoal-grey cow, black swept hair, horns, blue sleeveless biker vest, dark pants, large powerful feminine build. In every cell Bruna's anatomical LEFT arm is fully cybernetic from shoulder to hand, silver segmented metal with cyan light; her anatomical RIGHT arm is entirely organic charcoal-grey fur and black glove. Never swap the arms, make both arms metal, or put metal plates on the organic right arm. Organic-right jab, cyber-left hook and cyber-left ground-smash.
+
+Nova identity clause:
+
+> Adult anthropomorphic white-and-black spotted cow, swept white forelock, short horns, orange visor, magenta scarf, fitted black/white/red racing leathers and athletic hotshot attitude. Fast palm jab, high roundhouse and acrobatic spinning finisher. Keep face, forelock and horns in front of torso/limbs with no layer accidents.
+
+### Venus street gang 4×3
+
+> Use case: game sprite sheet. Create a wholly original enemy gang atlas for a late-era 16-bit side-scrolling beat-'em-up in the Furnace District of Venus. Strict 4 columns × 3 rows, twelve isolated full-body sprites on flat exact #FF00FF. All face screen-left, shared baseline per row, generous padding. Row 0: lean purple alien street raider with respirator and armored boots — idle, walk A, walk B, punch. Row 1: massive ochre/graphite horned refinery bruiser with furnace gauntlets — idle, walk A, walk B, haymaker. Row 2: wiry teal bio-electric Venusian shocker with cable-whip forearms — idle, walk A, walk B, electric lunge. Three immediately distinct silhouettes; hard 1–2 px clusters, black/plum contours, cyan/magenta/rust highlights; no smoothing, gradients, labels, vehicles or guns.
+
+### The Forge Overseer 3×2
+
+> Use case: game sprite sheet. Create a wholly original final boss atlas: THE FORGE OVERSEER, a towering broad-shouldered female Venusian industrial warlord with crimson skin, four small swept horns, black-violet armored foundry coat, one huge glowing orange furnace gauntlet and one articulated cyan shock claw. Strong asymmetrical silhouette, fighting on foot and facing screen-left. Strict 3 columns × 2 rows on flat exact #FF00FF: idle command pose; stalking walk; furnace-gauntlet windup; crushing punch; hit recoil with sparks; defeated kneeling/falling. Consistent large gameplay scale/baseline; premium hard-cluster 16-bit rendering; no text, UI, scenery or outside-franchise imagery.
+
+### Furnace District panorama pair
+
+First plate:
+
+> Create an original extra-wide late-era 16-bit background for Stage 2, Furnace District, on Venus. Golden sulfur clouds, layered black-violet foundries, copper pipes, furnace mouths, catwalks, cyan coolant windows, magenta warning lamps and distant floating platforms. Left-to-right progression: refinery gates, pipe canyon, smelter plaza, monumental forge tower. Keep bottom 28% dark and low-contrast for a separate floor. No characters, vehicles, text or UI; crisp 2px-equivalent clusters and controlled material ramps.
+
+Continuation plate:
+
+> Create a second panorama placed immediately to the right of the first. Preserve sulfur sky, horizon, material density and lighting; add new copper pipe canyons, cyan coolant towers, suspended smelter vats, catwalk silhouettes and a forge-arena entrance. Make the left edge compatible with the first plate's right edge; no repeated landmarks, characters, words or logos.
+
+### Authored perspective floor
+
+> Create an extra-wide 16-bit walkable factory floor only, seen as a classic belt-scrolling oblique ground plane. Dark black-violet steel and volcanic panels, copper seams, grated channels, rivets, cyan coolant strips, magenta lamps and orange furnace reflections. Strong perspective scaling from small far-edge details to large near panels; keep the middle combat lane readable. Seam-friendly edges; no walls, skyline, actors, tall props, text or UI; hard pixel clusters only.
+
+## Venus beach opening comic
+
+Generated as four separate 16:9 `illustration-story` assets with the built-in `imagegen` tool. Production files are in `public/assets/intro/`.
+
+Shared prompt contract:
+
+> Use case: illustration-story. Asset type: 16:9 opening comic cinematic panel for a retro arcade browser game. Images 1-3 are the authoritative identity, color and motorcycle references for Cassia, Bruna and Nova. Scene: a peaceful retro-futuristic Venusian beach inspired by the broad visual idea of a Southern California pier and boardwalk, with alien palms, turquoise ocean, a distant original pier, warm peach sky and two small moons; no real landmarks or brands. Subjects: exactly three clearly adult anthropomorphic cow biker heroines. Cassia is golden-brown with swept auburn mane, small horns and green eyes. Bruna is tall, muscular and charcoal-gray with black mane, horns and a clearly segmented silver cybernetic left arm. Nova is slim and white-furred with swept white hair, dark horns and magenta accents. Style: polished hand-painted 1990s Saturday-morning arcade comic illustration, strong ink contours, halftone texture and readable silhouettes. One cinematic widescreen panel with room at the bottom for runtime captions. Preserve identity, fur colors, horns, hair and body types. Tasteful non-sexual beach attire; no embedded panels, speech balloons, captions, letters, logos, trademarks, watermark or border.
+
+Panel requests:
+
+> 01 REST: Cassia relaxes on a striped towel and sunbathes in a tasteful yellow-orange two-piece bikini and sunglasses. Nova actively carves across a turquoise wave on a futuristic surfboard in a sporty red-and-white surf suit. Bruna performs a standing dumbbell curl in a blue athletic crop top and training shorts, with her cybernetic left arm clearly visible. All three activities must read in one peaceful golden-hour establishing shot.
+
+> 02 BLAST: Continue the same vacation. Cassia sits up, Nova balances on her board and turns toward shore, and Bruna lowers her dumbbells. A spectacular non-graphic orange-magenta explosion blooms far behind the pier; the heroines react with alert determination. Preserve the same outfits. No injuries or gore.
+
+> 03 JACKETS: The three heroines decisively pull on their signature black biker leather jackets over their beach and athletic outfits. Cassia wears gold accents, Bruna a blue-lined heavy jacket with her silver left arm visible, and Nova a sleek red-and-white jacket. Smoke rises behind the pier. Their red-gold chopper, heavy blue cruiser and white-red sportbike wait nearby. Energetic diagonal composition.
+
+> 04 RIDE: The heroines, now in their signature jackets, leap onto their distinct motorcycles and accelerate toward camera-right. Cassia rides the red-gold chopper, Bruna the heavy blue cruiser and Nova the white-red sportbike. Rear wheels throw sand and boardwalk dust; hair and jackets stream in the wind; orange-magenta smoke rises far behind the pier. Heroic low angle and strong forward motion, without combat or weapons.
+
+## Wave 23 — authored directional brawler motion
+
+Generated with the built-in `imagegen` tool in `game sprite sheet` and `precise single-frame production game sprite` modes. Raw masters are preserved in `.gauntlet/iteration-23/raw/`; deterministic chroma removal, shared-scale normalization, cell replacement and enemy mirroring are implemented in `scripts/process_brawler_motion_art.ps1`. Production atlases are:
+
+- `public/assets/brawler/cassia-brawler-sheet.png`;
+- `public/assets/brawler/bruna-brawler-sheet.png`;
+- `public/assets/brawler/nova-brawler-sheet.png`;
+- `public/assets/brawler/venus-gang-sheet.png`.
+
+Hero directional contract:
+
+> Create a strict 4 columns × 4 rows late-era 16-bit beat-'em-up atlas for one authoritative Biker Cows from Venus heroine, on flat exact #FF00FF. Rows 0–1 face screen-right and rows 2–3 are separately authored screen-left poses, not simple mirrored artwork. Within each direction provide idle, two unmistakably different walk poses with opposite anatomical legs leading, three distinct grounded attacks, jump pose and airborne attack. Keep a fixed baseline, scale and lower-center pivot. Preserve the heroine's identity and asymmetry. Bruna always has one anatomical-left silver segmented cyberarm and one anatomical-right organic arm; her left-facing cyber ground-smash is a back-to-camera pose so the same cyberarm strikes the floor. No vehicle, gun, UI, labels, smoothing or effects baked outside the body.
+
+Opposite-stride correction contract used for the six single-cell masters `cassia/bruna/nova-opposite-{right,left}-chroma.png`:
+
+> Produce one complete side-view walk frame matching the supplied heroine, scale, palette and baseline. The anatomical LEFT knee and boot must be unmistakably forward and visibly ahead of the pelvis; the anatomical RIGHT leg is the rear support leg. Do not merely recolor or slightly bend the existing right-leg-forward pose. Preserve directional facing and all asymmetric anatomy. Exact #FF00FF background; no shadow, effect, labels or crop.
+
+Bruna correction contract used for `bruna-pose-correction-chroma.png`:
+
+> Create a strict 3 × 2 corrective atlas for Bruna. Preserve her anatomical-left silver/cyan segmented cyberarm and anatomical-right organic arm. The right-facing heavy-hook cell must be a clean readable cyberarm strike with intact anatomy. The left-facing finisher must be independently drawn from a rear three-quarter/back-to-camera view, striking the floor only with the same cybernetic left arm; never mirror the right-facing pose or transfer metal to the organic arm. Flat exact #FF00FF, fixed gameplay scale and baseline.
+
+Enemy direction is deliberately not regenerated per direction. The authoritative raw `enemy-roster-chroma.png` contains raider, bruiser and shocker facing screen-left. `process_brawler_motion_art.ps1` copies that row exactly for leftward movement and constructs the rightward row only by a deterministic horizontal pixel mirror. This removes the ambiguous backward-walking silhouettes produced by independently generated direction rows.

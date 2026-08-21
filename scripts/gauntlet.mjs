@@ -114,6 +114,8 @@ try {
     throw new Error(`Hero select did not return to Bruna: ${JSON.stringify(brunaSelect)}`);
   }
   await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'intro', undefined, { polling: 'raf' });
+  await page.keyboard.press('Escape');
   await page.waitForTimeout(350);
   checkpoints.start = await assertState('playing');
   if (checkpoints.start.hero !== 'bruna') {
@@ -1494,6 +1496,8 @@ try {
   requireCoop(p1Ready.selectReady?.[0] === true && p1Ready.selectReady?.[1] === false,
     'P1 confirmation did not wait for P2', p1Ready);
   await page.keyboard.press('Numpad1');
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'intro', undefined, { polling: 'raf' });
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'playing', undefined, { polling: 'raf' });
   const coopRideStart = await assertState('playing');
   requireCoop(coopRideStart.coopEnabled === true && coopRideStart.players?.length === 2 &&
