@@ -30,7 +30,7 @@ const canvasShot = async name => {
 };
 const waitAssets = async () => page.waitForFunction(() => {
   const assets = window.__BCFV_DEBUG__?.snapshot().brawler?.assets;
-  return assets && Object.keys(assets).length === 7 && Object.values(assets).every(value => value === 'ready');
+  return assets && Object.values(assets).length >= 7 && Object.values(assets).every(value => value === 'ready');
 });
 
 const movement = new Set();

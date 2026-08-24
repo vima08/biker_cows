@@ -62,6 +62,18 @@ const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 const baseFrame = (enemy: BrawlerEnemy): number =>
   (enemy.kind === 'bruiser' ? 8 : enemy.kind === 'shocker' ? 16 : 0) + (enemy.facing > 0 ? 0 : 4);
 
+/**
+ * Raider and shocker are internally inconsistent in the source atlas: their
+ * idle/walk cels follow the normal row direction, but cel 3 in each row was
+ * authored punching/firing the opposite way. Swap only that contact cel;
+ * swapping the complete row makes the enemies walk backwards.
+ */
+const attackContactFrame = (enemy: BrawlerEnemy): number => {
+  const base = enemy.kind === 'bruiser' ? 8 : enemy.kind === 'shocker' ? 16 : 0;
+  if (enemy.kind === 'bruiser') return base + (enemy.facing > 0 ? 3 : 7);
+  return base + (enemy.facing > 0 ? 7 : 3);
+};
+
 function pose(frame: number, options: Partial<Omit<EnemyMotionPose, 'frame'>> = {}): EnemyMotionPose {
   return {
     frame,
@@ -188,9 +200,9 @@ function commonPose(enemy: BrawlerEnemy): EnemyMotionPose {
     return pose(base + 1, { reactionPhase: 'recovery', offsetX: enemy.reactionDirection * 3, rotation: -enemy.reactionDirection * .018 });
   }
   const attack = enemyAttackPhase(enemy);
-  if (attack === 'anticipation') return pose(base, { attackPhase: attack, offsetX: -facing * (enemy.kind === 'bruiser' ? 4 : 3), rotation: -facing * .025, scaleX: .98, scaleY: 1.025 });
-  if (attack === 'contact') return pose(base + 3, { attackPhase: attack, offsetX: facing * (enemy.kind === 'bruiser' ? 7 : 6), rotation: facing * .018, scaleX: 1.035, scaleY: .975 });
-  if (attack === 'recovery') return pose(base + 1, { attackPhase: attack, offsetX: facing * 2, rotation: -facing * .012 });
+  if (attack === 'anticipation') return pose(base, { attackPhase: attack, offsetX: -facing * (enemy.kind === 'bruiser' ? 8 : 7), offsetY: 1, rotation: -facing * .055, scaleX: .96, scaleY: 1.04 });
+  if (attack === 'contact') return pose(attackContactFrame(enemy), { attackPhase: attack, offsetX: facing * (enemy.kind === 'bruiser' ? 13 : 11), offsetY: -1, rotation: facing * .045, scaleX: 1.055, scaleY: .96 });
+  if (attack === 'recovery') return pose(base + 1, { attackPhase: attack, offsetX: -facing * 3, offsetY: 1, rotation: -facing * .035, scaleX: .985, scaleY: 1.015 });
   if (!enemy.moving) return pose(base);
 
   const kind = enemy.kind as Exclude<BrawlerEnemyKind, 'boss'>;

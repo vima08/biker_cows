@@ -21,6 +21,20 @@
   <p class="lede">Компактная production-витрина. Здесь остаются только ключевые кадры текущей двухуровневой сборки; полные серии автоматических прогонов хранятся локально в <code>.gauntlet/</code>.</p>
   <p><span class="tag">Stage 1 + Stage 2</span><span class="tag">solo + local co-op</span><span class="tag">Gauntlet Wave D</span></p>
 
+  <h2>Gauntlet iteration 26 · three-act campaign</h2>
+  <p class="lede">Кампания перестроена в цельный маршрут: rider до Magma Mauler → Furnace District beat ’em up → финальный rider-отрезок → Sulfur Dreadnought. Бывшие 320 секунд после минибосса воспроизводятся за 160 секунд с сохранением исходной временной шкалы 145→465. <span class="pass">Campaign, continue, full brawler, full smoke и production build: PASS.</span></p>
+  <p class="verdict"><strong>Порядок:</strong> ACT 1 <span class="pass">MINIBOSS</span> → ACT 2 <span class="pass">BRAWLER</span> → ACT 3 <span class="pass">FINAL RUN</span> → CAMPAIGN WIN. Co-op, выбранные герои, score, weapon/rank и оставшиеся попытки сохраняются между runtime.</p>
+  <div class="grid">
+    <figure><img src="captures/iteration-26/act1.png" alt="Campaign Act 1"><figcaption>Act 1: внешний участок Venus Highway и таймер до минибосса</figcaption></figure>
+    <figure><img src="captures/iteration-26/miniboss.png" alt="Magma Mauler miniboss"><figcaption>Act 1: Magma Mauler завершает первую shoot ’em up-секцию</figcaption></figure>
+    <figure><img src="captures/iteration-26/route-open.png" alt="Route open transition"><figcaption>Переход: спешиться для входа в Furnace District</figcaption></figure>
+    <figure><img src="captures/iteration-26/act2.png" alt="Campaign Act 2"><figcaption>Act 2: полноценная beat ’em up-секция</figcaption></figure>
+    <figure><img src="captures/iteration-26/return-bikes.png" alt="Return to bikes"><figcaption>Mid-campaign victory ясно возвращает героев к байкам</figcaption></figure>
+    <figure><img src="captures/iteration-26/act3.png" alt="Campaign Act 3"><figcaption>Act 3: 160-секундный FINAL RUN по исходной post-miniboss шкале</figcaption></figure>
+    <figure><img src="captures/iteration-26/final-boss.png" alt="Final rider boss"><figcaption>Финал: Sulfur Dreadnought без перекрытия входным overlay</figcaption></figure>
+    <figure><img src="captures/iteration-26/win.png" alt="Campaign win"><figcaption>Общая победа после прохождения всех трёх актов</figcaption></figure>
+  </div>
+
   <h2>Gauntlet iteration 25 · feature handoff</h2>
   <p class="lede">Добавлены попытки и continue, расширенная линия езды с горизонтальным огнём, воспроизводимые brawler debug-сцены и переключаемый vector-art режим. Integration выровняла HUD, слои ограды, дистанции melee и выбор атакующего. <span class="pass">Production build, continue, smoke, brawler footing, lane/fire, debug/vector и sustained-wheel contracts: PASS.</span></p>
   <p class="verdict"><strong>Открытый пункт:</strong> <span class="gap">просадка производительности на shoot ’em up минибоссе/боссе ещё требует воспроизводимого профиля</span>. Новый независимый critic не запускался по просьбе завершить итерацию из-за лимита; подробный handoff находится в <code>NEXT_STEPS.md</code>.</p>

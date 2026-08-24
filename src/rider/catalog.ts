@@ -14,6 +14,11 @@ export const INTRO_PANELS: readonly IntroPanel[] = [
   { src: assetUrl('assets/intro/venus-beach-04-ride.png'), kicker: 'VACATION STATUS: CANCELLED', title: 'GIRLS... RIDE.', caption: 'The Venus skyway is waiting - and trouble never waits politely.', duration: 4.6, pan: 14 },
 ];
 
+export const OUTRO_PANELS: readonly IntroPanel[] = [
+  { src: assetUrl('assets/outro/venus-victory-01-parade.png'), kicker: 'VENUS CITY // THE ROAD HOME', title: 'THEY REMEMBER.', caption: 'The engines roll slowly now. Every raised fist says the same thing: Venus is free.', duration: 5.4, pan: -14 },
+  { src: assetUrl('assets/outro/venus-victory-02-fireworks.png'), kicker: 'TONIGHT, THE SKY ANSWERS.', title: 'VENUS RIDES FREE.', caption: 'CASSIA: "Worth the detour."   BRUNA: "Almost."   NOVA: "Best vacation ever!"', duration: 7.2, pan: 12 },
+];
+
 export const HERO_AUTHORED_SIZE: Readonly<Record<HeroId, { width: number; height: number; anchorX: number; anchorY: number }>> = {
   cassia: { width: 208, height: 156, anchorX: .48, anchorY: .74 },
   bruna: { width: 220, height: 164, anchorX: .5, anchorY: .75 },

@@ -18,6 +18,13 @@ import { HighScoreStore, type HighScore } from './core/HighScoreStore';
 import { assetUrl } from './assetUrl';
 import { InputController } from './core/InputController';
 import { ContinueSystem, type CampaignCheckpoint } from './core/ContinueSystem';
+import {
+  CAMPAIGN_TIMING,
+  campaignSegment,
+  riderSegmentDuration,
+  riderSourceElapsed,
+  type CampaignAct,
+} from './core/CampaignFlow';
 import { parseBrawlerDebugScene, type BrawlerDebugScene } from './debug/brawlerScenes';
 import { getRenderMode, isArtEnabled } from './debug/runtime';
 import { campaign, FURNACE_DISTRICT, VENUS_HIGHWAY } from './levels/campaign';
@@ -27,6 +34,7 @@ import {
   HERO_AUTHORED_SIZE,
   HEROES,
   INTRO_PANELS,
+  OUTRO_PANELS,
 } from './rider/catalog';
 import { RiderPoseResolver } from './rider/RiderPoseResolver';
 import {
@@ -54,6 +62,7 @@ import type {
 const W = 960;
 const H = 540;
 const LEVEL_BOSS_TIME = VENUS_HIGHWAY.bossAtSeconds;
+const ACT_THREE_BOSS_TIME = CAMPAIGN_TIMING.act3BossAtSeconds;
 // `Player.y` is the authored bike ground anchor, not the top-left of its
 // sprite. The foreground shoulder intentionally covers the last 30 px of the
 // base road (it starts at y=476), so gameplay must use that visible edge rather
@@ -128,6 +137,7 @@ export class VenusGame {
   private readonly continues = new ContinueSystem({ levelId: VENUS_HIGHWAY.id, stage: 1, runtime: 'rider' });
   private mode: GameMode = 'title';
   private last = 0;
+  private frameInterval = .016;
   private time = 0;
   private selected = 0;
   private selectedHeroes: [number,number] = [0,1];
@@ -158,10 +168,17 @@ export class VenusGame {
   private minibossSpawned = false;
   private bossSpawned = false;
   private bossDefeated = false;
+  private minibossDefeated = false;
   private brawler: BeatEmUpStage | null = null;
   private pausedFrom: 'playing' | 'brawler' = 'playing';
   private currentLevelId = VENUS_HIGHWAY.id;
-  private completedStage = 1;
+  private completedStage: CampaignAct = 1;
+  private campaignAct: CampaignAct = 1;
+  private campaignTransition = 'campaign-start';
+  private campaignHistory: string[] = [];
+  private riderCheckpointLoadout: Array<{id:1|2;weapon:Weapon;weaponRank:number;special:number}> = [];
+  private standaloneBrawler = false;
+  private riderActIntroClock = 0;
   private debugStageOneOnly = false;
   private brawlerScoreCommitted = false;
   private debugBeat = false;
@@ -177,7 +194,14 @@ export class VenusGame {
   private introArt: HTMLImageElement[] = [];
   private introPanel = 0;
   private introClock = 0;
+  private outroArt: HTMLImageElement[] = [];
+  private outroPanel = 0;
+  private outroClock = 0;
   private debugScene: BrawlerDebugScene | null = null;
+  private readonly bossBackgroundCache = document.createElement('canvas');
+  private readonly bossForegroundCache = document.createElement('canvas');
+  private bossEnvironmentFrame = 0;
+  private bossEnvironmentCacheValid = false;
 
   constructor(private canvas: HTMLCanvasElement) {
     canvas.width = W;
@@ -187,6 +211,8 @@ export class VenusGame {
     if (!ctx) throw new Error('2D canvas is unavailable');
     this.ctx = ctx;
     ctx.imageSmoothingEnabled = false;
+    this.bossBackgroundCache.width = this.bossForegroundCache.width = W;
+    this.bossBackgroundCache.height = this.bossForegroundCache.height = H;
     this.input = new InputController(canvas);
     // Atlas loading is deliberately non-blocking. Until every individual PNG is
     // ready, its existing procedural counterpart remains the renderer of record.
@@ -194,6 +220,12 @@ export class VenusGame {
     void preloadSelectPortraits();
     this.titleArt.src = assetUrl('assets/venus-title-key-art.png');
     this.introArt = INTRO_PANELS.map(panel => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = panel.src;
+      return image;
+    });
+    this.outroArt = OUTRO_PANELS.map(panel => {
       const image = new Image();
       image.decoding = 'async';
       image.src = panel.src;
@@ -211,13 +243,21 @@ export class VenusGame {
       this.beginIntro();
       this.introPanel=clamp(Math.floor(Number(query.get('panel'))||0),0,INTRO_PANELS.length-1);
     }
+    else if(scene==='outro'){
+      this.beginOutro();
+      this.outroPanel=clamp(Math.floor(Number(query.get('panel'))||0),0,OUTRO_PANELS.length-1);
+    }
     else if(scene==='coop'||scene==='coop-ride'||scene==='coop-boss'){
       this.coopEnabled=true;this.beginRun();if(scene==='coop-boss')this.debugCoopBoss();
     }
-    else if (brawlerDebugScene) this.beginBrawler(false, undefined, brawlerDebugScene);
+    else if(scene==='rider-act-3'){
+      this.beginRun();this.captureRiderLoadout();this.beginRiderAct(3,false);
+      this.elapsed=clamp(Number(query.get('time'))||0,0,ACT_THREE_BOSS_TIME);if(this.elapsed>0)this.riderActIntroClock=0;if(this.elapsed>=ACT_THREE_BOSS_TIME)this.spawnFinalBoss();
+    }
+    else if (brawlerDebugScene) this.beginBrawler(false, undefined, brawlerDebugScene, true);
     else if (scene === 'brawler' || scene === 'brawler-boss' || scene === 'brawler-coop' || scene === 'brawler-coop-boss') {
       this.coopEnabled = scene.includes('coop');
-      this.beginBrawler(scene.endsWith('boss'));
+      this.beginBrawler(scene.endsWith('boss'), undefined, null, true);
     }
     else if (scene === 'stage-transition') this.debugStageTransition();
     else if (scene === 'game' || scene === 'boss' || scene === 'sustain') {
@@ -229,13 +269,15 @@ export class VenusGame {
   }
 
   start() {
-    emitMusic(this.mode === 'title' ? 'title' : this.mode === 'select' ? 'select' : this.mode === 'intro' ? 'intro' : this.mode === 'brawler' ? 'brawler' : 'stage', this.mode === 'title' ? .65 : this.mode === 'intro' ? .36 : .86);
+    emitMusic(this.mode === 'title' ? 'title' : this.mode === 'select' ? 'select' : this.mode === 'intro' ? 'intro' : this.mode === 'outro' ? 'victory' : this.mode === 'brawler' ? 'brawler' : 'stage', this.mode === 'title' ? .65 : this.mode === 'intro' ? .36 : .86);
     requestAnimationFrame(this.loop);
   }
 
   private loop = (now: number) => {
-    const dt = Math.min(.034, (now - this.last) / 1000 || .016);
+    const rawDt = (now - this.last) / 1000 || .016;
+    const dt = Math.min(.034, rawDt);
     this.last = now;
+    this.frameInterval = rawDt;
     this.time += dt;
     this.input.pollGamepads();
     this.update(dt);
@@ -248,6 +290,7 @@ export class VenusGame {
     if (this.mode === 'title') this.updateTitle();
     else if (this.mode === 'select') this.updateSelect();
     else if (this.mode === 'intro') this.updateIntro(dt);
+    else if (this.mode === 'outro') this.updateOutro(dt);
     else if (this.mode === 'playing') this.updatePlaying(dt);
     else if (this.mode === 'brawler') this.updateBrawler(dt);
     else if (this.mode === 'paused') this.updatePause();
@@ -317,6 +360,38 @@ export class VenusGame {
     if (this.introClock >= INTRO_PANELS[this.introPanel].duration) this.advanceIntro();
   }
 
+  private beginOutro() {
+    this.outroPanel = 0;
+    this.outroClock = 0;
+    this.mode = 'outro';
+    emitMusic('victory');
+  }
+
+  private advanceOutro() {
+    if (this.outroPanel >= OUTRO_PANELS.length - 1) {
+      this.mode = 'win';
+      emitAudio('menu_accept', .55);
+      return;
+    }
+    this.outroPanel += 1;
+    this.outroClock = 0;
+    emitAudio('menu_move', .55);
+  }
+
+  private updateOutro(dt: number) {
+    if (this.input.tap('Escape','Backspace','P1PadStart','P2PadStart')) {
+      this.mode = 'win';
+      return;
+    }
+    if (this.input.tap('Enter','Space','KeyZ','Numpad1','NumpadDivide','Slash','P1PadFire','P2PadFire')) {
+      this.advanceOutro();
+      return;
+    }
+    const image = this.outroArt[this.outroPanel];
+    if (image?.complete && image.naturalWidth > 0) this.outroClock += dt;
+    if (this.outroClock >= OUTRO_PANELS[this.outroPanel].duration) this.advanceOutro();
+  }
+
   private makePlayer(id:1|2,heroIndex:number):Player{
     const hero=HEROES[heroIndex];
     const solo=!this.coopEnabled;
@@ -325,6 +400,25 @@ export class VenusGame {
   }
 
   private beginRun(newCampaign = true) {
+    this.beginRiderAct(1, newCampaign);
+  }
+
+  private setCampaignAct(act:CampaignAct, transition:string) {
+    if (this.campaignAct !== act && this.campaignHistory.at(-1)!==transition) this.campaignHistory.push(transition);
+    this.campaignAct = act;
+    this.campaignTransition = transition;
+  }
+
+  private captureRiderLoadout() {
+    this.riderCheckpointLoadout = this.players.map(player => ({
+      id: player.id,
+      weapon: player.weapon,
+      weaponRank: player.weaponRank,
+      special: player.special,
+    }));
+  }
+
+  private beginRiderAct(act:1|3, newCampaign = false) {
     this.debugScene = null;
     this.selected=this.selectedHeroes[0];
     const hero = HEROES[this.selected];
@@ -332,18 +426,36 @@ export class VenusGame {
     if(this.coopEnabled)this.players.push(this.makePlayer(2,this.selectedHeroes[1]));
     this.player=this.players[0];
     this.enemies = []; this.shots = []; this.pickups = []; this.particles = []; this.floaters = []; this.lastProjectileOrigin = null;
+    if (act === 3) {
+      for (const player of this.players) {
+        const saved = this.riderCheckpointLoadout.find(loadout => loadout.id === player.id);
+        if (saved) {
+          player.weapon = saved.weapon;
+          player.weaponRank = saved.weaponRank;
+          player.special = saved.special;
+        }
+      }
+    }
     this.elapsed = 0; this.distance = 0; this.worldSpeed = hero.speed;
-    if(newCampaign){this.score=0;this.kills=0;this.continues.startCampaign({levelId:VENUS_HIGHWAY.id,stage:1,runtime:'rider'});}
+    if(newCampaign){
+      this.score=0;this.kills=0;this.riderCheckpointLoadout=[];this.campaignHistory=[];
+      this.continues.startCampaign({levelId:VENUS_HIGHWAY.id,stage:1,runtime:'rider'});
+      this.setCampaignAct(1,'campaign-start');
+    } else {
+      this.setCampaignAct(act,act===3?'brawler-victory':'act-1-checkpoint');
+      this.continues.setCheckpoint({levelId:VENUS_HIGHWAY.id,stage:act,runtime:'rider'});
+    }
     this.combo = 1; this.comboClock = 0;this.lastFriendlyFireProbe=null;this.hitStop=0;
-    this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = false; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.debugSustainedFire = false; this.debugFireHeld = false; this.riderImpacts=[]; this.finishClock = 0;
-    this.brawler = null; this.currentLevelId = campaign.first().id; this.completedStage = 1; this.debugStageOneOnly = false; this.brawlerScoreCommitted = false; this.pausedFrom = 'playing';
+    this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = act===3; this.minibossDefeated = act===3; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.debugSustainedFire = false; this.debugFireHeld = false; this.riderImpacts=[]; this.finishClock = 0;
+    this.brawler = null; this.currentLevelId = VENUS_HIGHWAY.id; this.completedStage = act; this.debugStageOneOnly = false; this.brawlerScoreCommitted = false; this.standaloneBrawler=false;this.pausedFrom = 'playing';
+    this.riderActIntroClock = act === 3 ? 2.6 : 0;
     this.mode = 'playing';
     emitAudio('engine_start'); emitMusic('stage', .86);
   }
 
   private updatePause() {
     if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.mode = this.pausedFrom; emitAudio('menu_accept'); emitMusic(this.pausedFrom === 'brawler' ? (this.brawler?.snapshot().boss ? 'boss' : 'brawler') : this.bossSpawned ? 'boss' : 'stage'); }
-    if (this.input.tap('KeyR')) this.pausedFrom === 'brawler' ? this.beginBrawler(false) : this.beginRun();
+    if (this.input.tap('KeyR')) this.pausedFrom === 'brawler' ? this.beginBrawler(false) : this.beginRiderAct(this.campaignAct===3?3:1,false);
   }
 
   private updateEnd() {
@@ -369,6 +481,7 @@ export class VenusGame {
 
   private updatePlaying(dt: number) {
     if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.pausedFrom = 'playing'; this.mode = 'paused'; emitAudio('pause'); emitMusic('pause', .35); return; }
+    this.riderActIntroClock = Math.max(0, this.riderActIntroClock - dt);
     if(this.hitStop>0){this.hitStop=Math.max(0,this.hitStop-dt);return;}
     // The twelve production impact frames are frozen authored instants.  They
     // still use the production world/entity/projectile renderer, but do not
@@ -387,12 +500,13 @@ export class VenusGame {
     this.worldSpeed = worldSpeed;
     for(const rider of this.players)if(rider.alive){rider.wheel+=worldSpeed*dt*.045;rider.kineticClock+=dt;}
     this.distance += worldSpeed * dt;
-    if (!this.bossSpawned) this.elapsed += dt;
+    if (!this.bossSpawned && !this.minibossDefeated) this.elapsed += dt;
+    else if (this.campaignAct === 3 && !this.bossSpawned) this.elapsed += dt;
     this.spawnClock -= dt; this.obstacleClock -= dt;
     if (!this.debugBeat && !this.debugSustainedFire && !bossAlive && !this.bossSpawned && this.spawnClock <= 0) this.spawnWave();
     if (!this.debugBeat && !this.debugSustainedFire && !bossAlive && this.obstacleClock <= 0) this.spawnObstacle();
-    if (!this.debugBeat && !this.debugSustainedFire && !this.minibossSpawned && this.elapsed >= VENUS_HIGHWAY.minibossAtSeconds) { this.minibossSpawned = true; this.spawnEnemy('miniboss', 1010, 393); emitMusic('miniboss'); }
-    if (!this.debugBeat && !this.debugSustainedFire && !this.bossSpawned && this.elapsed >= LEVEL_BOSS_TIME) { this.bossSpawned = true; this.enemies = this.enemies.filter(e => e.x > 0); this.spawnEnemy('boss', 1110, 295); emitMusic('boss'); emitAudio('warning'); }
+    if (this.campaignAct===1 && !this.debugBeat && !this.debugSustainedFire && !this.minibossSpawned && this.elapsed >= CAMPAIGN_TIMING.minibossAtSeconds) { this.minibossSpawned = true; this.spawnEnemy('miniboss', 1010, 393); emitMusic('miniboss'); }
+    if (this.campaignAct===3 && !this.debugBeat && !this.debugSustainedFire && this.elapsed >= ACT_THREE_BOSS_TIME) this.spawnFinalBoss();
 
     this.updateEnemies(dt, worldSpeed);
     this.updateShots(dt);
@@ -402,31 +516,53 @@ export class VenusGame {
     this.flash = Math.max(0, this.flash - dt * 3.5); this.shake = Math.max(0, this.shake - dt * 20);
 
     for(const rider of this.players)if(rider.alive&&!this.debugBeat){rider.exhaustClock-=dt;if(rider.exhaustClock<=0){this.emitBikeExhaust(rider);rider.exhaustClock=rider.specialTime>0?.055:.095;}}
-    if (this.bossDefeated) {
+    if (this.campaignAct===1 && this.minibossDefeated) {
+      this.finishClock += dt;
+      if (this.finishClock > 3.2) this.completeActOne();
+    } else if (this.bossDefeated) {
       this.finishClock += dt;
       if (this.finishClock > 4.8) {
         if (this.debugStageOneOnly) this.finishRun(true);
-        else this.beginBrawler(false);
+        else this.finishRun(true);
       }
     }
   }
 
-  private beginBrawler(debugBoss = false, requestedLevel?: BrawlerLevelDefinition, debugScene: BrawlerDebugScene | null = null) {
+  private beginBrawler(debugBoss = false, requestedLevel?: BrawlerLevelDefinition, debugScene: BrawlerDebugScene | null = null, standalone = false) {
     const heroes = (this.coopEnabled ? this.selectedHeroes : [this.selectedHeroes[0]])
       .map(index => HEROES[index].id as BrawlerHeroId);
     const active = campaign.get(this.currentLevelId);
     const candidate = requestedLevel ?? (active.runtime === 'brawler' ? active : campaign.nextAfter(active.id));
     const level = candidate?.runtime === 'brawler' ? candidate : FURNACE_DISTRICT;
     this.debugScene = debugScene;
-    this.brawler = new BeatEmUpStage(this.ctx, { level, heroes, debugBoss, debugScene: debugScene ?? undefined });
+    this.brawler = new BeatEmUpStage(this.ctx, { level, heroes, debugBoss, debugScene: debugScene ?? undefined, campaignContinuation: !standalone && !debugScene });
     this.mode = 'brawler';
     this.pausedFrom = 'brawler';
     this.currentLevelId = level.id;
-    this.completedStage = level.order;
+    this.completedStage = 2;
+    this.setCampaignAct(2,'miniboss-defeated');
+    this.standaloneBrawler=standalone;
     const checkpoint:CampaignCheckpoint={levelId:level.id,stage:2,runtime:'brawler'};
     if(!this.continues.isActive)this.continues.startCampaign(checkpoint);else this.continues.setCheckpoint(checkpoint);
     this.brawlerScoreCommitted = false;
     this.finishClock = 0;
+  }
+
+  private completeActOne() {
+    if(this.mode!=='playing'||this.campaignAct!==1||!this.minibossDefeated)return;
+    // Include any weapon pickup collected during the miniboss clear hold in
+    // the Act 3 checkpoint loadout.
+    this.captureRiderLoadout();
+    this.beginBrawler(false);
+  }
+
+  private completeBrawlerAct() {
+    if(!this.brawler||this.campaignAct!==2)return;
+    if(!this.brawlerScoreCommitted){
+      this.score+=this.brawler.getScore();this.kills+=this.brawler.getDefeatedCount();
+      this.combo=Math.max(this.combo,this.brawler.getMaxCombo());this.brawlerScoreCommitted=true;
+    }
+    this.beginRiderAct(3,false);
   }
 
   private brawlerControls(id: 1 | 2): BrawlerControls {
@@ -456,9 +592,10 @@ export class VenusGame {
     this.brawler.update(dt, controls);
     const state = this.brawler.snapshot();
     if (state.finishReady) {
-      const next = state.status === 'victory' ? campaign.nextAfter(this.currentLevelId) : null;
-      if (next?.runtime === 'brawler') this.beginBrawler(false, next);
-      else this.finishRun(state.status === 'victory');
+      if (state.status === 'victory') {
+        if (this.standaloneBrawler || this.debugScene) this.finishRun(true);
+        else this.completeBrawlerAct();
+      } else this.finishRun(false);
     }
   }
 
@@ -529,7 +666,7 @@ export class VenusGame {
     const hero = HEROES[p.heroIndex];
     p.special = 0; this.flash = .35; this.shake = 9; emitAudio('special', 1); emitMusic('special', 1);
     if (hero.id === 'bruna') {
-      for (const e of this.enemies) { e.hp -= 65; e.flash = .25; }
+      for (const e of [...this.enemies]) { e.hp -= 65; e.flash = .25; if(e.hp<=0)this.killEnemy(e); }
       this.shots = this.shots.filter(s => s.friendly);
       this.ring(p.x, p.y-p.jump, '#65eaff', 14);
     } else {
@@ -540,7 +677,7 @@ export class VenusGame {
   }
 
   private spawnWave() {
-    const progress = clamp(this.elapsed / LEVEL_BOSS_TIME, 0, 1);
+    const progress = clamp(riderSourceElapsed(this.campaignAct,this.elapsed) / LEVEL_BOSS_TIME, 0, 1);
     const roll = Math.random();
     if (roll < .30) {
       const n = Math.random() < .5 + progress*.25 ? 3 : 2;
@@ -566,7 +703,7 @@ export class VenusGame {
   private spawnEnemy(kind: EnemyKind, x: number, y: number) {
     const stats: Record<EnemyKind,[number,number,number,number,boolean,number]> = {
       rider:[68,42,35,140,false,450], tank:[94,58,115,36,false,950], drone:[48,30,30,85,true,400], skimmer:[70,32,52,105,true,550], mine:[30,22,20,0,false,175],
-      miniboss:[190,100,900,24,false,7000], boss:[260,205,3500,0,true,30000], pod:[55,55,90,90,true,700]
+      miniboss:[190,100,1400,24,false,7000], boss:[260,205,3500,0,true,30000], pod:[55,55,90,90,true,700]
     };
     const [w,h,hp,vx,aerial,score] = stats[kind];
     this.enemies.push({id:++this.enemyId,kind,x,y,w,h,hp,maxHp:hp,vx,vy:0,t:0,fire:rnd(.45,1.8),aerial,phase:rnd(0,Math.PI*2),flash:0,hitReact:0,score});
@@ -575,13 +712,14 @@ export class VenusGame {
   private updateEnemies(dt: number, worldSpeed: number) {
     const p = this.players.find(r=>r.alive)??this.player;
     for (const e of this.enemies) {
-      e.t += dt; e.flash = Math.max(0,e.flash-dt); e.hitReact = Math.max(0,e.hitReact-dt); e.fire -= dt;
+      e.t += dt; e.flash = Math.max(0,e.flash-dt); e.hitReact = Math.max(0,e.hitReact-dt); e.impactFxCooldown = Math.max(0,(e.impactFxCooldown??0)-dt); e.fire -= dt;
       if (e.kind === 'boss') {
         e.x = lerp(e.x, 705 + Math.sin(e.t*.42)*25, dt*.7);
         e.y = 270 + Math.sin(e.t*.7)*38;
         if((e.attackTime??-1)>=0)this.updateBossAttack(e,dt);
         else if(e.fire<=0)this.startBossAttack(e);
-        if (Math.random() < dt*.7 && e.hp < e.maxHp*.68) this.spawnEnemy('pod', e.x+80, e.y+rnd(25,150));
+        const podCount=this.enemies.reduce((count,enemy)=>count+(enemy.kind==='pod'?1:0),0);
+        if (Math.random() < dt*.7 && e.hp < e.maxHp*.68 && podCount<3) this.spawnEnemy('pod', e.x+80, e.y+rnd(25,150));
       } else if (e.kind === 'miniboss') {
         e.x = Math.max(670 + Math.sin(e.t)*45, e.x - (worldSpeed*.55+e.vx)*dt);
         e.y = 390 + Math.sin(e.t*.9)*18;
@@ -616,6 +754,12 @@ export class VenusGame {
 
   private startBossAttack(e:Enemy){
     e.attackMode=((e.attackMode??-1)+1)%3;e.attackTime=0;e.attackShot=0;
+  }
+
+  private spawnFinalBoss() {
+    if(this.bossSpawned)return;
+    this.bossSpawned=true;this.enemies=this.enemies.filter(e=>e.x>0);
+    this.spawnEnemy('boss',1110,295);emitMusic('boss');emitAudio('warning');
   }
 
   private updateBossAttack(e:Enemy,dt:number){
@@ -673,6 +817,8 @@ export class VenusGame {
         for(const e of this.enemies){
           const er={x:e.x-e.w/2,y:e.y-e.h/2,w:e.w,h:e.h};
           if(s.life>0&&hit({x:s.x-s.r,y:s.y-s.r,w:s.r*2,h:s.r*2},er)){
+            const largeTarget=e.kind==='boss'||e.kind==='miniboss';
+            const emitImpact=!largeTarget||(e.impactFxCooldown??0)<=0;
             e.hp-=s.damage;e.flash=e.kind==='boss'?.04:.09;
             if(e.kind==='rider'){
               e.hitReact=this.debugBeat?1.75:1.35;
@@ -682,12 +828,20 @@ export class VenusGame {
               // old flash-only response made confirmed damage readable mostly
               // through score/HP UI, especially during sustained fire.
               e.hitReact=Math.max(e.hitReact,e.kind==='boss'?.22:.18);
-              if(e.kind==='boss')this.hitStop=Math.max(this.hitStop,.068);
-              this.hitFx(s.x,s.y,s.color,e.kind==='boss'?7:s.kind==='laser'?2:3);
+              // Rapid weapons used to freeze the entire simulation for 68 ms
+              // on every boss hit.  At 10-15 hits/s that reduced boss motion
+              // to roughly one third speed and looked like an FPS collapse.
+              // Preserve a short stop for heavyweight rockets, while ordinary
+              // hits retain flash/recoil and share a bounded impact burst.
+              if(e.kind==='boss'&&s.kind==='rockets'&&emitImpact)this.hitStop=Math.max(this.hitStop,.028);
+              if(emitImpact)this.hitFx(s.x,s.y,s.color,e.kind==='boss'?4:s.kind==='laser'?2:3);
             }
             const owner=this.players.find(p=>p.id===s.ownerId)??this.player;
             this.comboClock=1.15;this.combo=clamp(this.combo+.055,1,9.9);this.score+=Math.ceil(3*this.combo);owner.special=clamp(owner.special+.42,0,100);
-            if(e.kind==='boss'||e.kind==='miniboss')this.shake=Math.max(this.shake,s.kind==='rockets'?2.1:1.35);
+            if(largeTarget&&emitImpact){
+              this.shake=Math.max(this.shake,s.kind==='rockets'?2.1:s.kind==='laser'?.9:.55);
+              e.impactFxCooldown=s.kind==='rockets'?.07:.14;
+            }
             if(s.kind==='rockets'){this.blast(s.x,s.y,35,s.color,undefined,2.1);for(const other of this.enemies)if(Math.hypot(other.x-s.x,other.y-s.y)<74)other.hp-=s.damage*.45;}
             if(s.pierce>0)s.pierce--;else s.life=0;
             if(e.hp<=0)this.killEnemy(e);
@@ -721,8 +875,16 @@ export class VenusGame {
     this.floaters.push({x:e.x,y:e.y-e.h*.6,text:`+${gain.toLocaleString()}`,color:mult>=4?'#fff16a':'#fff',life:1});
     this.blast(e.x,e.y,e.kind==='boss'?145:e.kind==='miniboss'?90:e.kind==='tank'?44:25,e.kind==='boss'?'#c74cff':'#ff6338',e.kind==='boss'?80:e.kind==='miniboss'?45:undefined);
     emitAudio(e.kind==='boss'?'boss_explode':'explode',e.kind==='boss'?1:.55,rnd(.85,1.12));
-    if(e.kind==='boss'){this.bossDefeated=true;this.shots=this.shots.filter(s=>s.friendly);emitMusic('victory');}
-    else if(e.kind==='miniboss'){this.pickups.push({x:e.x,y:e.y-45,kind:'weapon',t:0},{x:e.x+42,y:e.y,kind:'health',t:0});emitMusic('stage',.95);}
+    if(e.kind==='boss'){
+      this.bossDefeated=true;this.shots=this.shots.filter(s=>s.friendly);
+      if(this.campaignAct===3&&this.campaignHistory.at(-1)!=='boss-defeated')this.campaignHistory.push('boss-defeated');
+      this.campaignTransition='boss-defeated';emitMusic('victory');
+    }
+    else if(e.kind==='miniboss'){
+      this.pickups.push({x:e.x,y:e.y-45,kind:'weapon',t:0},{x:e.x+42,y:e.y,kind:'health',t:0});
+      this.minibossDefeated=true;this.finishClock=0;this.captureRiderLoadout();
+      this.campaignTransition='miniboss-defeated';if(this.campaignHistory.at(-1)!=='miniboss-defeated')this.campaignHistory.push('miniboss-defeated');emitMusic('stage',.95);
+    }
     else if(Math.random()<(e.kind==='tank'?.52:.13))this.dropPickup(e.x,e.y);
   }
 
@@ -742,7 +904,7 @@ export class VenusGame {
   }
 
   private restartCheckpoint(checkpoint:CampaignCheckpoint){
-    if(checkpoint.runtime==='rider'){this.beginRun(false);return;}
+    if(checkpoint.runtime==='rider'){this.beginRiderAct(checkpoint.stage===3?3:1,false);return;}
     const level=campaign.get(checkpoint.levelId);
     if(level.runtime==='brawler')this.beginBrawler(false,level);
     else this.beginRun(false);
@@ -763,7 +925,13 @@ export class VenusGame {
     // feedback before switching modes or the last damage shake is frozen into
     // every frame of the defeat screen.
     this.clearTerminalTransients();
-    if(win){this.mode='win';this.saveScore();if(!wasBrawler)emitMusic('victory');emitAudio('stage_clear');return;}
+    if(win){
+      if(this.campaignAct===3){
+        this.campaignTransition='campaign-win';if(this.campaignHistory.at(-1)!=='campaign-win')this.campaignHistory.push('campaign-win');
+        this.saveScore();emitAudio('stage_clear');this.beginOutro();return;
+      }
+      this.mode='win';this.saveScore();if(!wasBrawler)emitMusic('victory');emitAudio('stage_clear');return;
+    }
     const outcome=this.continues.registerDefeat();
     if(outcome==='continue'){
       this.mode='continue';
@@ -803,7 +971,7 @@ export class VenusGame {
     this.spawnEnemy('boss',930,295);emitMusic('boss');emitAudio('warning');
   }
 
-  setCoop(enabled:boolean){this.coopEnabled=enabled;this.selectReady=[false,false];if(this.mode==='playing')this.beginRun();return this.snapshot();}
+  setCoop(enabled:boolean){this.coopEnabled=enabled;this.selectReady=[false,false];if(this.mode==='playing')this.beginRiderAct(this.campaignAct===3?3:1,false);return this.snapshot();}
   setDebugPlayerInput(id:1|2,state:Player['debugInput']){const p=this.players.find(p=>p.id===id);if(p)p.debugInput={...(p.debugInput??{}),...state};return this.snapshot();}
   debugFriendlyFireProbe(){
     if(!this.coopEnabled||this.players.length<2){this.coopEnabled=true;this.beginRun();}
@@ -813,14 +981,36 @@ export class VenusGame {
     this.lastFriendlyFireProbe={ownerId:owner.id,targetId:target.id,crossedTarget:true,before,after};return this.lastFriendlyFireProbe;
   }
   debugDamagePlayer(id:1|2,amount:number){const p=this.players.find(p=>p.id===id);if(p&&p.alive){p.invuln=0;this.damagePlayer(p,amount,p.x,p.y-p.jump);}return {targetId:id,productionCollision:true,state:this.snapshot()};}
-  debugDefeatStage(stage:1|2){
+  debugDefeatStage(stage:1|2|3){
     this.continues.abandon();this.score=0;this.kills=0;this.combo=1;
     if(stage===1){this.beginRun();this.debugDamagePlayer(1,9999);}
-    else{this.beginBrawler(false);this.finishRun(false);}
+    else if(stage===2){this.beginBrawler(false);this.finishRun(false);}
+    else{this.beginRun();this.captureRiderLoadout();this.beginRiderAct(3,false);this.debugDamagePlayer(1,9999);}
+    return this.snapshot();
+  }
+  debugCompleteCurrentAct(){
+    if(this.debugStageOneOnly&&this.enemies.some(enemy=>enemy.kind==='boss')){
+      const boss=this.enemies.find(enemy=>enemy.kind==='boss')!;
+      boss.x=610;boss.y=350;boss.hp=1;
+      this.shots.push({ownerId:1,x:boss.x,y:boss.y,vx:0,vy:0,r:8,life:1,damage:2,friendly:true,color:'#fff',kind:'blaster',pierce:0,age:0,phase:0});this.handleCollisions();
+      return this.snapshot();
+    }
+    if(this.campaignAct===1){
+      let miniboss=this.enemies.find(enemy=>enemy.kind==='miniboss');
+      if(!miniboss){this.minibossSpawned=true;this.spawnEnemy('miniboss',610,393);miniboss=this.enemies.at(-1);}
+      if(miniboss){miniboss.hp=1;this.shots.push({ownerId:1,x:miniboss.x,y:miniboss.y,vx:0,vy:0,r:8,life:1,damage:2,friendly:true,color:'#fff',kind:'blaster',pierce:0,age:0,phase:0});this.handleCollisions();}
+      return this.snapshot();
+    }
+    if(this.campaignAct===2){
+      this.brawler?.debugCompleteVictory();return this.snapshot();
+    }
+    if(!this.bossSpawned)this.spawnFinalBoss();
+    const boss=this.enemies.find(enemy=>enemy.kind==='boss');
+    if(boss){boss.x=610;boss.y=350;boss.hp=1;this.shots.push({ownerId:1,x:boss.x,y:boss.y,vx:0,vy:0,r:8,life:1,damage:2,friendly:true,color:'#fff',kind:'blaster',pierce:0,age:0,phase:0});this.handleCollisions();}
     return this.snapshot();
   }
   debugCoopBoss(){this.coopEnabled=true;if(this.players.length<2)this.beginRun();this.debugBoss();const boss=this.enemies.find(e=>e.kind==='boss');if(boss){boss.hp=boss.maxHp=720;boss.x=750;}for(const p of this.players){p.x=140+(p.id-1)*100;p.y=390+(p.id-1)*42;p.debugInput={fire:true};}return this.snapshot();}
-  debugStageTransition(){this.beginRun();this.debugBoss();this.debugStageOneOnly=false;const boss=this.enemies.find(e=>e.kind==='boss');if(boss){boss.hp=1;boss.x=610;}this.player.debugInput={fire:true};return this.snapshot();}
+  debugStageTransition(){this.beginRun();this.elapsed=CAMPAIGN_TIMING.minibossAtSeconds;this.minibossSpawned=true;this.spawnEnemy('miniboss',610,393);const boss=this.enemies.at(-1);if(boss)boss.hp=1;this.player.debugInput={fire:true};return this.snapshot();}
 
   debugCombatBeat(){
     this.debugStart('cassia');this.debugBeat=true;this.elapsed=92;this.spawnClock=999;this.obstacleClock=999;
@@ -1045,11 +1235,23 @@ export class VenusGame {
       const radius=px(particle.size*(.75+progress*.65));
       return {x:px(particle.x),y:px(particle.y),diameter:radius*2,lifeMs:Number((particle.life*1000).toFixed(1))};
     });
+    const segment=campaignSegment(this.campaignAct);
+    const segmentDuration=riderSegmentDuration(this.campaignAct);
+    const sourceElapsed=riderSourceElapsed(this.campaignAct,this.elapsed);
     return {
-      state: this.mode, stage: this.mode==='brawler'||this.completedStage===2?2:1, hero: HEROES[this.selected].id, score: Math.floor(this.score),
+      state: this.mode, stage:this.campaignAct,act:this.campaignAct,segment,hero: HEROES[this.selected].id, score: Math.floor(this.score),
       artEnabled:isArtEnabled(),renderMode:getRenderMode(),debugScene:this.debugScene,
+      campaign:{
+        act:this.campaignAct,segment,levelId:this.currentLevelId,transition:this.campaignTransition,history:[...this.campaignHistory],
+        rider:this.campaignAct===2?null:{elapsed:Number(this.elapsed.toFixed(2)),duration:segmentDuration,sourceElapsed:Number(sourceElapsed.toFixed(2)),
+          sourceStart:this.campaignAct===3?CAMPAIGN_TIMING.minibossAtSeconds:0,
+          sourceEnd:this.campaignAct===3?CAMPAIGN_TIMING.originalBossAtSeconds:CAMPAIGN_TIMING.minibossAtSeconds,
+          timelineRate:this.campaignAct===3?CAMPAIGN_TIMING.act3TimelineRate:1},
+        timing:{...CAMPAIGN_TIMING},
+      },
       continue:this.continues.snapshot(),
       intro:this.mode==='intro'?{panel:this.introPanel,total:INTRO_PANELS.length,time:Number(this.introClock.toFixed(2)),skippable:true,assetReady:Boolean(this.introArt[this.introPanel]?.complete&&this.introArt[this.introPanel].naturalWidth)}:null,
+      outro:this.mode==='outro'?{panel:this.outroPanel,total:OUTRO_PANELS.length,time:Number(this.outroClock.toFixed(2)),skippable:true,assetReady:Boolean(this.outroArt[this.outroPanel]?.complete&&this.outroArt[this.outroPanel].naturalWidth)}:null,
       coop:this.coopEnabled,coopEnabled:this.coopEnabled,selectedHeroes:this.selectedHeroes.map(index=>HEROES[index].id),selectReady:[...this.selectReady],
       coopControls:{players:this.coopEnabled?2:1,keyboard:{p1:'WASD / Z X C',p2:'ARROWS / NUM1 NUM2 NUM3'},gamepadSlots:this.coopEnabled?2:1},
       players:this.players.map(p=>({id:p.id,hero:HEROES[p.heroIndex].id,x:Number(p.x.toFixed(2)),y:Number((p.y-p.jump).toFixed(2)),groundY:Number(p.y.toFixed(2)),hp:Number(p.hp.toFixed(2)),armor:Number(p.armor.toFixed(2)),alive:p.alive,downed:p.downed,fireHeld:p.fireHeld,shotsFired:p.shotsFired,weapon:p.weapon,weaponRank:p.weaponRank,
@@ -1092,11 +1294,17 @@ export class VenusGame {
     if (scene === 'title') { this.mode = 'title'; emitMusic('title'); }
     else if (scene === 'select') { this.mode = 'select'; emitMusic('select'); }
     else if (scene === 'intro') { this.beginIntro(); this.introPanel=clamp(Math.floor(time),0,INTRO_PANELS.length-1); }
-    else if (parseBrawlerDebugScene(scene)) this.beginBrawler(false, undefined, parseBrawlerDebugScene(scene)!);
-    else if (scene === 'brawler') this.beginBrawler(false);
-    else if (scene === 'brawler-boss') this.beginBrawler(true);
-    else if (scene === 'brawler-coop') { this.coopEnabled=true; this.beginBrawler(false); }
-    else if (scene === 'brawler-coop-boss') { this.coopEnabled=true; this.beginBrawler(true); }
+    else if (scene === 'outro') { this.beginOutro(); this.outroPanel=clamp(Math.floor(time),0,OUTRO_PANELS.length-1); }
+    else if (parseBrawlerDebugScene(scene)) this.beginBrawler(false, undefined, parseBrawlerDebugScene(scene)!, true);
+    else if (scene === 'brawler') this.beginBrawler(false,undefined,null,true);
+    else if (scene === 'brawler-boss') this.beginBrawler(true,undefined,null,true);
+    else if (scene === 'brawler-coop') { this.coopEnabled=true; this.beginBrawler(false,undefined,null,true); }
+    else if (scene === 'brawler-coop-boss') { this.coopEnabled=true; this.beginBrawler(true,undefined,null,true); }
+    else if (scene === 'rider-act-3') {
+      if(this.campaignAct===3&&this.continues.isActive)this.beginRiderAct(3,false);
+      else{this.beginRun();this.captureRiderLoadout();this.beginRiderAct(3,false);}
+      this.elapsed=clamp(time,0,ACT_THREE_BOSS_TIME);if(this.elapsed>0)this.riderActIntroClock=0;if(this.elapsed>=ACT_THREE_BOSS_TIME)this.spawnFinalBoss();
+    }
     else if (scene === 'boss') this.debugBoss();
     else if (scene === 'miniboss') this.debugMiniboss();
     else if (scene === 'beat') this.debugCombatBeat();
@@ -1156,11 +1364,13 @@ export class VenusGame {
     if(this.mode==='title')this.drawTitle();
     else if(this.mode==='select')this.drawSelect();
     else if(this.mode==='intro')this.drawIntro();
+    else if(this.mode==='outro')this.drawOutro();
     else if(brawlerScene)this.brawler?.draw(!(this.mode==='continue'||this.mode==='win'||this.mode==='lose'));
     else this.drawWorld();
     c.restore();
-    if(this.mode!=='title'&&this.mode!=='select'&&this.mode!=='intro'){
+    if(this.mode!=='title'&&this.mode!=='select'&&this.mode!=='intro'&&this.mode!=='outro'){
       if(!brawlerScene){this.drawHud();if(this.bossSpawned&&!this.bossDefeated&&this.enemies.some(e=>e.kind==='boss'))this.drawWarningEdges();}
+      if(this.mode==='playing')this.drawCampaignTransition();
       if(this.mode==='playing'||this.mode==='brawler')this.drawAttemptBadge();
       if(this.mode==='paused')this.drawPause();else if(this.mode==='continue')this.drawContinue();else if(this.mode==='win'||this.mode==='lose')this.drawEnding();
     }
@@ -1170,8 +1380,34 @@ export class VenusGame {
   private drawWorld(){
     const c=this.ctx;
     const intensity=clamp(.78+this.enemies.length*.025+(this.bossSpawned ? .28 : 0)+(this.combo-1)*.018,.78,1.45);
-    const environment={scroll:this.distance,elapsed:this.elapsed,speed:this.worldSpeed,time:this.debugImpactStage===null?this.time:21,shake:this.shake,intensity};
-    drawEnvironment(c,environment);
+    const environment={scroll:this.distance,elapsed:riderSourceElapsed(this.campaignAct,this.elapsed),speed:this.worldSpeed,time:this.debugImpactStage===null?this.time:21,shake:this.shake,intensity};
+    const bossEncounter=this.enemies.some(enemy=>enemy.kind==='boss'||enemy.kind==='miniboss');
+    if(bossEncounter){
+      // Bosses leave the route geometry and palette unchanged while actors,
+      // bullets and hit effects need the full display cadence.  Cache the two
+      // expensive procedural environment passes independently of the actor
+      // cadence. Parallax stays at 30 fps on a 60 Hz display and scales down
+      // gracefully on a slow CPU, while combat input/actors remain uncapped.
+      const cacheStride=this.frameInterval>.04?4:this.frameInterval>.025?3:2;
+      const refresh=!this.bossEnvironmentCacheValid||(this.bossEnvironmentFrame++%cacheStride)===0;
+      if(refresh){
+        const background=this.bossBackgroundCache.getContext('2d',{alpha:false});
+        const foreground=this.bossForegroundCache.getContext('2d');
+        if(background&&foreground){
+          background.imageSmoothingEnabled=false;
+          foreground.imageSmoothingEnabled=false;
+          drawEnvironment(background,environment);
+          foreground.clearRect(0,0,W,H);
+          drawEnvironmentForeground(foreground,environment);
+          this.bossEnvironmentCacheValid=true;
+        }
+      }
+      c.drawImage(this.bossBackgroundCache,0,0);
+    }else{
+      this.bossEnvironmentCacheValid=false;
+      this.bossEnvironmentFrame=0;
+      drawEnvironment(c,environment);
+    }
     for(const q of this.pickups)this.drawPickup(q);
     if(this.debugImpactStage!==null){const rider=this.enemies.find(e=>e.kind==='rider');if(rider)this.drawImpactRear(this.debugImpactStage,rider,this.getRiderHitPoint(rider));}
     for(const event of this.riderImpacts){const rider=this.enemies.find(e=>e.id===event.enemyId);if(rider)this.drawImpactRear(this.impactStageFromAge(event.age),rider,{x:rider.x+event.localX,y:rider.y+event.localY});}
@@ -1184,7 +1420,8 @@ export class VenusGame {
     for(const q of this.particles)this.drawParticle(q);
     if(this.debugImpactStage!==null)this.drawImpactChoreography(this.debugImpactStage);
     for(const event of this.riderImpacts){const rider=this.enemies.find(e=>e.id===event.enemyId);if(rider)this.drawImpactForeground(this.impactStageFromAge(event.age),rider,{x:rider.x+event.localX,y:rider.y+event.localY});}
-    drawEnvironmentForeground(c,environment);
+    if(bossEncounter)c.drawImage(this.bossForegroundCache,0,0);
+    else drawEnvironmentForeground(c,environment);
     for(const f of this.floaters){c.globalAlpha=clamp(f.life*2,0,1);this.text(f.text,f.x,f.y,17,f.color,'center',true);c.globalAlpha=1;}
   }
 
@@ -1224,6 +1461,22 @@ export class VenusGame {
     const a=kinetics.secondaryA,b=kinetics.secondaryB;
     ribbon([[-27,-72],[-48,-73+a],[-66,-68-a*.45],[-82,-64+a*.35]],colors.upper,colors.upperLight,8,4);
     ribbon([[-39,-39],[-55,-33+b],[-70,-25-b*.45],[-79,-20+b*.3]],colors.lower,colors.lowerLight,7,3);
+    c.restore();
+  }
+
+  private drawCampaignTransition(){
+    const minibossRouteOpen=this.campaignAct===1&&this.minibossDefeated&&this.finishClock<3.2;
+    const finalRun=this.campaignAct===3&&this.riderActIntroClock>0;
+    if(!minibossRouteOpen&&!finalRun)return;
+    const c=this.ctx;
+    const fadeClock=minibossRouteOpen?this.finishClock:2.6-this.riderActIntroClock;
+    const alpha=clamp(Math.min(fadeClock/.18,(minibossRouteOpen?3.2-this.finishClock:this.riderActIntroClock)/.35),0,1);
+    c.save();c.globalAlpha=alpha;
+    c.fillStyle='#05030bdc';c.fillRect(196,142,568,156);
+    c.strokeStyle=minibossRouteOpen?'#65e9df':'#ffe062';c.lineWidth=4;c.strokeRect(198,144,564,152);
+    c.fillStyle='#ff5873';c.fillRect(212,160,536,5);
+    this.text(minibossRouteOpen?'ROUTE OPEN':'STAGE 3 // FINAL RUN',480,213,38,minibossRouteOpen?'#65e9df':'#ffe868','center',true);
+    this.text(minibossRouteOpen?'DISMOUNT FOR THE FURNACE DISTRICT':'BACK ON THE BIKES  //  DREADNOUGHT AHEAD',480,254,13,'#fff','center',true);
     c.restore();
   }
 
@@ -1409,16 +1662,20 @@ export class VenusGame {
   private drawMuzzle(x:number,y:number,weapon:Weapon,phase:number){
     const c=this.ctx;c.save();c.translate(Math.round(x),Math.round(y));c.globalCompositeOperation='lighter';
     const long=phase===0?1:.72;
+    // A small socket flash always overlaps the authored barrel hardpoint. The
+    // tapered lobes then grow from it, avoiding detached rectangular cards.
+    c.fillStyle='#fff8d8';c.beginPath();c.moveTo(-4,0);c.lineTo(3,-5);c.lineTo(8,0);c.lineTo(3,5);c.closePath();c.fill();
     if(weapon==='blaster'){
       c.fillStyle='#ff8a35';c.beginPath();c.moveTo(0,-7);c.lineTo(30*long,0);c.lineTo(0,7);c.lineTo(6,0);c.fill();
       c.fillStyle='#fffbd1';c.beginPath();c.moveTo(1,-3);c.lineTo(22*long,0);c.lineTo(1,3);c.fill();
     }else if(weapon==='spread'){
       for(const sy of [-1,0,1]){c.fillStyle=sy===0?'#eaffff':'#58eaff';c.beginPath();c.moveTo(0,sy*3);c.lineTo((24-Math.abs(sy)*5)*long,sy*11);c.lineTo(5,sy*4+(sy||1)*2);c.fill();}
-      c.fillStyle='#fff';c.fillRect(0,-2,12*long,4);
+      c.fillStyle='#fff';c.beginPath();c.moveTo(0,-2);c.lineTo(14*long,0);c.lineTo(0,2);c.fill();
     }else if(weapon==='laser'){
-      c.fillStyle='#ff3ca6';c.fillRect(0,-5,27*long,10);c.fillStyle='#fff';c.fillRect(1,-2,35*long,4);c.fillStyle='#ff9fdb';c.fillRect(8,-7,4,14);
+      c.fillStyle='#ff3ca6';c.beginPath();c.moveTo(0,-5);c.lineTo(31*long,-2);c.lineTo(38*long,0);c.lineTo(31*long,2);c.lineTo(0,5);c.closePath();c.fill();
+      c.fillStyle='#fff';c.beginPath();c.moveTo(1,-2);c.lineTo(38*long,0);c.lineTo(1,2);c.fill();
     }else{
-      c.fillStyle='#ff6338';c.beginPath();c.arc(4,0,(phase===0?9:6),0,Math.PI*2);c.fill();c.fillStyle='#fff4bd';c.fillRect(2,-4,18*long,8);c.fillStyle='#ffb52e';c.fillRect(15*long,-2,12*long,4);
+      c.fillStyle='#ff6338';c.beginPath();c.arc(4,0,(phase===0?9:6),0,Math.PI*2);c.fill();c.fillStyle='#fff4bd';c.beginPath();c.moveTo(1,-4);c.lineTo(23*long,0);c.lineTo(1,4);c.fill();c.fillStyle='#ffb52e';c.beginPath();c.moveTo(13*long,-2);c.lineTo(30*long,0);c.lineTo(13*long,2);c.fill();
     }
     c.restore();
   }
@@ -1668,11 +1925,11 @@ export class VenusGame {
   private drawShot(s:Projectile){
     const c=this.ctx,age=s.age??0,pulse=(Math.floor(age*18+(s.phase??0))&1)*2;c.save();c.translate(px(s.x),px(s.y));c.rotate(Math.atan2(s.vy,s.vx));
     if(s.kind==='blaster'){
-      c.fillStyle='#b93624';c.fillRect(-24-pulse,-6,22+pulse,12);c.fillStyle='#ffd33e';c.fillRect(-8,-6,22,12);c.fillStyle='#fffbd5';c.fillRect(-2,-2,16,4);
+      c.fillStyle='#b93624';c.beginPath();c.moveTo(-24-pulse,0);c.lineTo(-8,-6);c.lineTo(14,0);c.lineTo(-8,6);c.closePath();c.fill();c.fillStyle='#ffd33e';c.beginPath();c.moveTo(-10,0);c.lineTo(2,-5);c.lineTo(17,0);c.lineTo(2,5);c.closePath();c.fill();c.fillStyle='#fffbd5';c.fillRect(-1,-2,16,4);
     }else if(s.kind==='spread'){
-      c.fillStyle='#176f91';c.fillRect(-18-pulse,-8,24+pulse,16);c.fillStyle='#5cecff';c.fillRect(-8,-6,20,12);c.fillStyle='#fff';c.fillRect(0,-2,12,4);
+      c.fillStyle='#176f91';c.beginPath();c.moveTo(-19-pulse,0);c.lineTo(-6,-8);c.lineTo(15,0);c.lineTo(-6,8);c.closePath();c.fill();c.fillStyle='#5cecff';c.beginPath();c.moveTo(-9,0);c.lineTo(1,-5);c.lineTo(17,0);c.lineTo(1,5);c.closePath();c.fill();c.fillStyle='#fff';c.fillRect(0,-2,12,4);
     }else if(s.kind==='laser'){
-      c.fillStyle='#8b185e';c.fillRect(-36-pulse*2,-6,64+pulse*2,12);c.fillStyle='#ff55b5';c.fillRect(-28,-4,60,8);c.fillStyle='#fff4fc';c.fillRect(-18,-2,52,4);
+      c.fillStyle='#8b185e';c.beginPath();c.moveTo(-38-pulse*2,0);c.lineTo(-25,-6);c.lineTo(32+pulse,0);c.lineTo(-25,6);c.closePath();c.fill();c.fillStyle='#ff55b5';c.beginPath();c.moveTo(-29,0);c.lineTo(-17,-4);c.lineTo(35,0);c.lineTo(-17,4);c.closePath();c.fill();c.fillStyle='#fff4fc';c.fillRect(-18,-2,52,4);
     }else if(s.kind==='rockets'){
       c.fillStyle='#a62c25';c.fillRect(-28-pulse*2,-6,20+pulse*2,12);c.fillStyle='#272331';c.fillRect(-10,-8,24,16);c.fillStyle='#e3e0e8';c.fillRect(-6,-4,22,8);
     }else if(s.kind==='orb'){
@@ -1714,7 +1971,8 @@ export class VenusGame {
     if(this.coopEnabled){
       const drawRiderHud=(r:Player,x:number)=>{const rh=HEROES[r.heroIndex],w=286;c.fillStyle='#080913e8';c.fillRect(x,9,w,57);c.strokeStyle=r.id===1?'#ffe65c':'#5de4e0';c.lineWidth=2;c.strokeRect(x+1,10,w-2,55);this.text(`P${r.id} ${rh.name}${r.downed?'  DOWN':''}`,x+10,29,13,r.downed?'#777':rh.accent,'left',true);this.text(`${r.weapon.toUpperCase()} ${r.weaponRank}`,x+w-10,29,10,'#ffd55d','right',true);this.text(`HP ${Math.ceil(r.hp)}`,x+10,47,9,'#ffafba','left',true);this.meter(x+58,38,76,9,r.hp/rh.maxHp,'#ef425f','#521b2e');this.text(`AR ${Math.ceil(r.armor)}`,x+143,47,9,'#c1f5ff','left',true);this.meter(x+191,38,48,9,r.armor/rh.maxArmor,'#57d6ff','#15334c');this.text(`SP ${Math.floor(r.special)}`,x+w-10,48,9,rh.accent,'right',true);};
       drawRiderHud(this.players[0],14);if(this.players[1])drawRiderHud(this.players[1],660);
-      c.fillStyle='#05050be6';c.fillRect(321,12,318,48);c.strokeStyle='#6e4c88';c.strokeRect(322,13,316,46);this.text(this.score.toString().padStart(8,'0'),480,34,16,'#fff','center',true);this.text(`TEAM x${this.combo.toFixed(1)}  //  ${this.bossSpawned?'FINAL ASSAULT':`${Math.max(0,LEVEL_BOSS_TIME-this.elapsed)|0}s`}`,480,53,10,'#ff7fb1','center',true);
+      const targetDuration=riderSegmentDuration(this.campaignAct)??LEVEL_BOSS_TIME,targetName=this.campaignAct===1?'MINIBOSS':'DREADNOUGHT';
+      c.fillStyle='#05050be6';c.fillRect(321,12,318,48);c.strokeStyle='#6e4c88';c.strokeRect(322,13,316,46);this.text(this.score.toString().padStart(8,'0'),480,34,16,'#fff','center',true);this.text(`ACT ${this.campaignAct} // TEAM x${this.combo.toFixed(1)} // ${this.bossSpawned?'FINAL ASSAULT':`${Math.max(0,targetDuration-this.elapsed)|0}s TO ${targetName}`}`,480,53,10,'#ff7fb1','center',true);
       const boss=this.enemies.find(e=>e.kind==='boss'||e.kind==='miniboss');if(boss){c.fillStyle='#090613e6';c.fillRect(212,486,536,40);this.text(boss.kind==='boss'?'SULFUR DREADNOUGHT':'MAGMA MAULER MK.IV',480,501,14,boss.kind==='boss'?'#df76ff':'#ff7f5c','center',true);this.meter(229,507,502,10,boss.hp/boss.maxHp,boss.kind==='boss'?'#bd45e9':'#ff554b','#30152b');}
       return;
     }
@@ -1725,7 +1983,8 @@ export class VenusGame {
     c.fillStyle='#080913df';c.fillRect(708,9,238,47);c.strokeStyle='#6e4c88';c.strokeRect(709,10,236,45);
     this.text(`${p.weapon.toUpperCase()} LV.${p.weaponRank}`,720,28,13,'#ffd55d','left',true);this.text(`x${this.combo.toFixed(1)}`,934,29,18,this.combo>=4?'#fff26c':'#ff6fab','right',true);
     this.text(`SP ${Math.floor(p.special)}%`,720,47,9,h.accent,'left',true);this.meter(770,37,164,9,p.special/100,h.accent,'#30223d');
-    const progress=this.bossSpawned?1:this.elapsed/LEVEL_BOSS_TIME;c.fillStyle='#05050bd9';c.fillRect(299,12,388,10);c.fillStyle='#593457';c.fillRect(302,15,382,4);c.fillStyle='#ff784c';c.fillRect(302,15,382*clamp(progress,0,1),4);c.fillStyle='#fff';c.fillRect(302+382*(145/LEVEL_BOSS_TIME),10,2,14);this.text(this.bossSpawned?'FINAL ASSAULT':`${Math.max(0,LEVEL_BOSS_TIME-this.elapsed)|0}s TO TARGET`,493,40,11,'#ead9ee','center',true);
+    const targetDuration=riderSegmentDuration(this.campaignAct)??LEVEL_BOSS_TIME;
+    const progress=this.bossSpawned?1:this.elapsed/targetDuration;c.fillStyle='#05050bd9';c.fillRect(299,12,388,10);c.fillStyle='#593457';c.fillRect(302,15,382,4);c.fillStyle='#ff784c';c.fillRect(302,15,382*clamp(progress,0,1),4);c.fillStyle='#fff';c.fillRect(302+382*clamp(progress,0,1),10,2,14);this.text(this.bossSpawned?(this.campaignAct===3?'ACT 3 // FINAL ASSAULT':'FINAL ASSAULT'):`ACT ${this.campaignAct} // ${Math.max(0,targetDuration-this.elapsed)|0}s TO ${this.campaignAct===1?'MINIBOSS':'DREADNOUGHT'}`,493,40,11,'#ead9ee','center',true);
     const boss=this.enemies.find(e=>e.kind==='boss'||e.kind==='miniboss');if(boss){c.fillStyle='#090613e6';c.fillRect(212,486,536,40);this.text(boss.kind==='boss'?'SULFUR DREADNOUGHT':'MAGMA MAULER MK.IV',480,501,14,boss.kind==='boss'?'#df76ff':'#ff7f5c','center',true);this.meter(229,507,502,10,boss.hp/boss.maxHp,boss.kind==='boss'?'#bd45e9':'#ff554b','#30152b');}
   }
 
@@ -1761,6 +2020,34 @@ export class VenusGame {
     const pulse=.62+.38*Math.sin(this.time*5);c.globalAlpha*=pulse;this.text('ENTER / Z  NEXT     ESC / START  SKIP',928,517,11,'#bffcf2','right',true);c.globalAlpha=fade;
     c.strokeStyle='#fff4cf';c.lineWidth=5;c.strokeRect(6,6,W-12,H-12);c.strokeStyle='#160b22';c.lineWidth=4;c.strokeRect(11,11,W-22,H-22);
     if(this.introPanel===1&&this.introClock<.18){c.globalAlpha=(.18-this.introClock)/.18*.48;c.fillStyle='#fff5c4';c.fillRect(0,0,W,H);}
+    c.restore();
+  }
+
+  private drawOutro(){
+    const c=this.ctx,panel=OUTRO_PANELS[this.outroPanel],image=this.outroArt[this.outroPanel];
+    const phase=clamp(this.outroClock/panel.duration,0,1),ease=phase*phase*(3-2*phase);
+    const fade=clamp(Math.min(this.outroClock/.48,(panel.duration-this.outroClock)/.5),0,1);
+    c.fillStyle='#02030b';c.fillRect(0,0,W,H);c.save();c.globalAlpha=fade;
+    if(image?.complete&&image.naturalWidth>0){
+      c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
+      const zoom=1.008+.026*ease,scale=Math.max(W/image.naturalWidth,H/image.naturalHeight)*zoom;
+      const dw=image.naturalWidth*scale,dh=image.naturalHeight*scale;
+      c.drawImage(image,(W-dw)/2+(ease-.5)*panel.pan,(H-dh)/2,dw,dh);
+    }else{
+      const loading=c.createLinearGradient(0,0,W,H);loading.addColorStop(0,'#28142f');loading.addColorStop(.5,'#b56a48');loading.addColorStop(1,'#102a45');c.fillStyle=loading;c.fillRect(0,0,W,H);
+      this.text('LOADING FINAL PANEL...',480,266,21,'#fff4c2','center',true);
+    }
+    const topShade=c.createLinearGradient(0,0,0,112);topShade.addColorStop(0,'rgba(2,3,11,.84)');topShade.addColorStop(1,'rgba(2,3,11,0)');c.fillStyle=topShade;c.fillRect(0,0,W,112);
+    const bottomShade=c.createLinearGradient(0,310,0,H);bottomShade.addColorStop(0,'rgba(2,3,11,0)');bottomShade.addColorStop(.45,'rgba(2,3,11,.62)');bottomShade.addColorStop(1,'rgba(2,3,11,.98)');c.fillStyle=bottomShade;c.fillRect(0,310,W,H-310);
+    c.fillStyle='#080714e8';c.beginPath();c.moveTo(0,397);c.lineTo(610,379);c.lineTo(650,540);c.lineTo(0,540);c.closePath();c.fill();
+    c.fillStyle=this.outroPanel===0?'#ffcf47':'#5de4e0';c.fillRect(0,397,285,4);c.fillStyle='#ef4268';c.fillRect(285,397,170,4);c.fillStyle='#fff3a0';c.fillRect(455,397,112,4);
+    c.fillStyle='#100a1ce8';c.fillRect(24,18,400,29);c.fillStyle=this.outroPanel===0?'#ffcf47':'#5de4e0';c.fillRect(24,18,5,29);this.text(panel.kicker,42,39,12,'#fff3c2','left',true);
+    this.text(`0${this.outroPanel+1} / 0${OUTRO_PANELS.length}`,930,39,13,'#fff','right',true);
+    this.text(panel.title,35,444,33,this.outroPanel===0?'#fff2b4':'#bffcf2','left',true);
+    this.text(panel.caption,36,472,14,'#f0dfe9','left');
+    for(let i=0;i<OUTRO_PANELS.length;i++){c.fillStyle=i<=this.outroPanel?(i===this.outroPanel?'#ffcf47':'#ef4268'):'#4b3858';c.fillRect(36+i*70,497,58,4);}
+    const pulse=.62+.38*Math.sin(this.time*5);c.globalAlpha*=pulse;this.text('ENTER / Z  NEXT     ESC / START  SKIP',928,518,11,'#bffcf2','right',true);c.globalAlpha=fade;
+    c.strokeStyle='#fff4cf';c.lineWidth=5;c.strokeRect(6,6,W-12,H-12);c.strokeStyle='#12091d';c.lineWidth=4;c.strokeRect(11,11,W-22,H-22);
     c.restore();
   }
 
@@ -1853,7 +2140,7 @@ export class VenusGame {
     c.fillStyle='#12091fee';c.fillRect(x,y,w,h);c.strokeStyle='#ff456b';c.lineWidth=5;c.strokeRect(x,y,w,h);
     c.fillStyle='#ffe15a';c.fillRect(x+10,y+10,w-20,4);c.fillStyle='#5de4e0';c.fillRect(x+10,y+h-14,w-20,4);
     c.globalAlpha=pulse;this.text('CONTINUE?',480,163,48,'#fff16b','center',true);c.globalAlpha=1;
-    this.text(state.checkpoint.stage===2?'FURNACE DISTRICT':'VENUS HIGHWAY',480,192,13,'#d8c5df','center',true);
+    this.text(state.checkpoint.stage===2?'FURNACE DISTRICT':state.checkpoint.stage===3?'VENUS HIGHWAY // FINAL RUN':'VENUS HIGHWAY // OUTER RUN',480,192,13,'#d8c5df','center',true);
     c.fillStyle='#08030f';c.fillRect(400,213,160,123);c.strokeStyle='#6f476d';c.lineWidth=3;c.strokeRect(400,213,160,123);
     this.text(String(seconds),480,312,92,seconds<=3?'#ff526f':'#fff4c4','center',true);
     this.text(`ATTEMPT ${state.attempts.current} / ${state.attempts.total}`,480,366,18,'#fff','center',true);
