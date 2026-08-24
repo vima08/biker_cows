@@ -181,7 +181,11 @@ try {
   }, EXPECTED_ATLAS_COUNT);
   const roadPropsAsset = await page.evaluate(async () => {
     const image = new Image();
-    image.src = '/assets/world/roadside-props-sheet.png';
+    // Production is deployed below Vite's configured base path. Reuse the
+    // renderer's already-requested same-origin URL instead of assuming `/`.
+    const loadedResource = performance.getEntriesByType('resource')
+      .find(entry => entry.name.endsWith('/assets/world/roadside-props-sheet.png'));
+    image.src = loadedResource?.name ?? '/biker_cows/assets/world/roadside-props-sheet.png';
     await image.decode();
     return { src: image.src, width: image.naturalWidth, height: image.naturalHeight, complete: image.complete };
   });
@@ -1589,7 +1593,7 @@ try {
   await canvasShot('coop-enemy-hit');
 
   // Downing is team-aware: one rider down keeps the run alive; the second
-  // down transitions through the normal lose state.
+  // down enters the campaign continue flow at the same co-op checkpoint.
   const downP2Probe = await page.evaluate(() => window.__BCFV_DEBUG__.damagePlayer(2, 99_999));
   await page.waitForTimeout(100);
   checkpoints.coopOneDown = await assertState('playing');
@@ -1598,11 +1602,13 @@ try {
     'one downed rider incorrectly ended the shared run', { probe: downP2Probe, state: checkpoints.coopOneDown });
   await canvasShot('coop-one-down');
   const downP1Probe = await page.evaluate(() => window.__BCFV_DEBUG__.damagePlayer(1, 99_999));
-  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'lose', undefined, { polling: 'raf' });
-  checkpoints.coopBothDown = await assertState('lose');
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'continue', undefined, { polling: 'raf' });
+  checkpoints.coopBothDown = await assertState('continue');
   requireCoop(downP1Probe?.productionCollision === true && checkpoints.coopBothDown.players?.every(player => player.downed),
-    'both downed riders did not enter defeat', { probe: downP1Probe, state: checkpoints.coopBothDown });
-  await canvasShot('coop-defeat');
+    'both downed riders did not enter continue', { probe: downP1Probe, state: checkpoints.coopBothDown });
+  requireCoop(checkpoints.coopBothDown.continue?.checkpoint?.stage === 1 && checkpoints.coopBothDown.continue?.continues === 2,
+    'co-op continue did not preserve the Stage 1 campaign checkpoint', checkpoints.coopBothDown.continue);
+  await canvasShot('coop-continue');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(180);
   checkpoints.coopDefeatRestart = await assertState('playing');

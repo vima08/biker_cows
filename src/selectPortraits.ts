@@ -7,6 +7,7 @@
  */
 
 import { assetUrl } from './assetUrl';
+import { isArtEnabled } from './debug/runtime';
 
 export type SelectPortraitHeroId = "cassia" | "bruna" | "nova";
 export type SelectPortraitLoadState = "idle" | "loading" | "ready" | "error";
@@ -186,6 +187,7 @@ export function drawHeroPortrait(
   height: number,
   options: DrawHeroPortraitOptions = {},
 ): boolean {
+  if (!isArtEnabled()) return false;
   const sourceImage = image;
   const layout: PortraitLayout | undefined = PORTRAIT_LAYOUTS[heroId];
   if (state !== "ready" || !sourceImage || !layout || cellWidth <= 0 || cellHeight <= 0) return false;

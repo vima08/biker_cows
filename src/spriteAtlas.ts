@@ -7,6 +7,7 @@
  */
 
 import { assetUrl } from './assetUrl';
+import { isArtEnabled } from './debug/runtime';
 
 export type SpriteSheetId =
   | "cassia"
@@ -290,6 +291,7 @@ export function drawSpriteFrame(
   y: number,
   options: DrawSpriteFrameOptions = {},
 ): boolean {
+  if (!isArtEnabled()) return false;
   const entry = runtime[id];
   const image = entry.image;
   if (entry.state !== "ready" || !image || entry.frameWidth <= 0 || entry.frameHeight <= 0) {

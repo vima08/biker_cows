@@ -20,6 +20,13 @@ export interface RiderWheelGeometry {
   readonly radius: number;
 }
 
+export interface RiderWheelMotion {
+  readonly active: boolean;
+  readonly angleIndex: number;
+  readonly angle: number;
+  readonly signature: number;
+}
+
 export const HERO_WHEEL_GEOMETRY: Readonly<Record<HeroId, RiderWheelGeometry>> = {
   cassia: { rear: [57, 144], front: [202, 144], radius: 29 },
   bruna: { rear: [51, 151], front: [207, 151], radius: 29 },
@@ -59,6 +66,13 @@ const NEUTRAL: RiderKineticPose = Object.freeze({
   wheelAngle: 0,
 });
 
+const NEUTRAL_WHEELS: RiderWheelMotion = Object.freeze({
+  active: false,
+  angleIndex: 0,
+  angle: 0,
+  signature: 0,
+});
+
 function positiveMod(value: number, modulus: number) {
   return ((value % modulus) + modulus) % modulus;
 }
@@ -78,5 +92,21 @@ export function resolveRiderKinetics(player: RiderPlayer, active: boolean): Ride
     ...phase,
     wheelAngleIndex,
     wheelAngle: wheelAngleIndex * Math.PI / 4,
+  };
+}
+
+/**
+ * Wheel rotation is deliberately independent from the chassis pose. Sustained
+ * fire keeps a neutral body transform so its authored gun/hardpoints cannot
+ * drift, but a grounded bike still has visible road speed.
+ */
+export function resolveRiderWheelMotion(player: RiderPlayer, active: boolean): RiderWheelMotion {
+  if (!active) return NEUTRAL_WHEELS;
+  const angleIndex = positiveMod(Math.floor(player.kineticClock * 8), 8);
+  return {
+    active: true,
+    angleIndex,
+    angle: angleIndex * Math.PI / 4,
+    signature: angleIndex,
   };
 }

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:smoke": "node scripts/gauntlet.mjs",
     "test:wave18": "node scripts/gauntlet-iteration18.mjs",
-    "test:brawler": "node scripts/gauntlet-brawler.mjs"
+    "test:brawler": "node scripts/gauntlet-brawler.mjs",
+    "test:continue": "node scripts/gauntlet-continue.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.62.1",

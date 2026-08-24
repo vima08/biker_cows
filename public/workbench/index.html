@@ -21,6 +21,18 @@
   <p class="lede">Компактная production-витрина. Здесь остаются только ключевые кадры текущей двухуровневой сборки; полные серии автоматических прогонов хранятся локально в <code>.gauntlet/</code>.</p>
   <p><span class="tag">Stage 1 + Stage 2</span><span class="tag">solo + local co-op</span><span class="tag">Gauntlet Wave D</span></p>
 
+  <h2>Gauntlet iteration 25 · feature handoff</h2>
+  <p class="lede">Добавлены попытки и continue, расширенная линия езды с горизонтальным огнём, воспроизводимые brawler debug-сцены и переключаемый vector-art режим. Integration выровняла HUD, слои ограды, дистанции melee и выбор атакующего. <span class="pass">Production build, continue, smoke, brawler footing, lane/fire, debug/vector и sustained-wheel contracts: PASS.</span></p>
+  <p class="verdict"><strong>Открытый пункт:</strong> <span class="gap">просадка производительности на shoot ’em up минибоссе/боссе ещё требует воспроизводимого профиля</span>. Новый независимый critic не запускался по просьбе завершить итерацию из-за лимита; подробный handoff находится в <code>NEXT_STEPS.md</code>.</p>
+  <div class="grid">
+    <figure><img src="captures/iteration-25/continue.png" alt="Continue screen"><figcaption>Continue: попытка 2/3, таймер и явные действия игрока</figcaption></figure>
+    <figure><img src="captures/iteration-25/ride-upper.png" alt="Upper ride line"><figcaption>Stage 1: верхняя линия езды согласована с видимой дорогой</figcaption></figure>
+    <figure><img src="captures/iteration-25/lower-hit.png" alt="Horizontal lower target hit"><figcaption>Горизонтальный огонь поражает нижнюю наземную цель</figcaption></figure>
+    <figure><img src="captures/iteration-25/road-layers.png" alt="Roadside layers"><figcaption>Знаки и фонари находятся за передним слоем ограды</figcaption></figure>
+    <figure><img src="captures/iteration-25/walk.png" alt="Brawler walk debug"><figcaption>Воспроизводимая brawler walk-сцена и четырёхфазный foot-lock</figcaption></figure>
+    <figure><img src="captures/iteration-25/vector.png" alt="Vector debug mode"><figcaption>Vector-art режим включается без перезагрузки</figcaption></figure>
+  </div>
+
   <h2>Gauntlet iteration 24 · Wave D handoff</h2>
   <p class="lede">Закрыты все дефекты из таблицы: critical ride/beat ’em up motion, атаки и реакции, sustained-fire anchors, foreground rocks, intro Cassia и стабильность defeat-экрана. Последующие волны добавили кинетику байка, boss hit staging, центральную combat camera и реальное spatial resolution melee-контакта. <span class="pass">Чистая сборка, оба полных маршрута, integration и alpha-mask contracts: PASS.</span></p>
   <p class="verdict"><strong>Последний независимый visual critic (Wave C):</strong> <span class="gap">8.4/10, AAA-era NO</span> из-за единственного blocker — silhouette overlap до 2267 ms. Wave D после этого снизила normal overlap до 12.17%, boss peak до одного contact-кадра 39.19%, а непрерывный overlap &gt;35% — до 0 ms на 20+20 подтверждённых попаданиях. Новый независимый Wave D recheck оставлен первым шагом handoff из-за внешнего лимита.</p>

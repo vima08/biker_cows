@@ -1,22 +1,22 @@
-# NEXT STEPS — Gauntlet iteration 24 / Wave D handoff
+# NEXT STEPS — Gauntlet iteration 25 handoff
 
-Дата handoff: 2026-08-21. Работа остановлена по внешнему лимиту в полностью собираемом и проходимом состоянии.
+Дата handoff: 2026-08-24. Итерация остановлена по просьбе пользователя из-за лимита; проект оставлен в собираемом и проходимом состоянии.
 
 ## Что уже работает
 
-- Полный маршрут Stage 1 → Stage 2 → victory проходит автоматически; прямые boss-маршруты обоих уровней также завершаются победой.
-- Solo и local co-op запускаются; friendly fire между игроками отсутствует.
-- Все строки в `DEFECTS.md` закрыты проверенными `[x]`.
-- Ride-цикл использует только согласованные позы; подвеска, колёса, одежда/волосы и hardpoints двигаются согласованно.
-- Sustained fire не теряет оружие и сохраняет видимые muzzle/exhaust origins.
-- Beat ’em up имеет четырёхфазную ходьбу героинь и обычных врагов, отдельную воздушную атаку, attack anticipation/contact/recovery, hit-stop, recoil, particles и каскадные hurt/down/recovery реакции.
-- Обычный бой и Forge Overseer удерживаются в camera safe-zone. Wave D добавила body collision, target-specific hurtbox reach и post-contact separation.
-- Stage 1 boss имеет три фазовых attack-pattern, крупный локальный impact и видимый recoil.
-- Defeat стабилен: восемь последовательных terminal-кадров сохраняют `shake=0`, `flash=0`, `hitStop=0`.
-- Runtime использует только локальные same-origin assets; console/page/request errors в проверенных маршрутах отсутствуют.
-- Чистая установка через `npm ci --ignore-scripts --no-audit --no-fund` и production build проверены.
+- Полный маршрут Stage 1 → Stage 2 → victory и прямые boss-маршруты проходят; solo/local co-op и отсутствие friendly fire сохранены.
+- Добавлены 3 попытки, десятисекундный continue, возврат к checkpoint текущего уровня и окончательный game over после третьего поражения или тайм-аута.
+- Линия езды Stage 1 поднята и ограничена видимой дорогой; обычные выстрелы идут горизонтально и поражают нижних наземных врагов.
+- Debug-сцены: `?scene=brawler-walk`, `?scene=brawler-jump`, `?scene=brawler-air-attack`; героиня выбирается `&hero=cassia|bruna|nova`.
+- Векторный режим: `?art=vector` или без перезагрузки `window.__BCFV_DEBUG__.setArtEnabled(false|true)`.
+- Колёса всех героинь вращаются при sustained fire независимо от стабильной позы корпуса и hardpoints.
+- В beat ’em up убран искусственный вертикальный hop, добавлен foot-lock по четырём фазам шага, atlas-враги заземлены относительно world-space тени.
+- Знаки и фонари Stage 1 рисуются за передним слоем ограды; Stage 2 attempt badge встроен в HUD P1 и не перекрывает центральную панель.
+- Runtime использует локальные same-origin assets; проверенные прогоны завершились без console/page/runtime errors.
 
 ## Как запустить
+
+Репозиторий сейчас находится в `C:\Users\PC\Desktop\gitProjects\biker_cows`.
 
 ```powershell
 npm install
@@ -35,43 +35,45 @@ npm run preview -- --host 127.0.0.1 --port 4173
 ```powershell
 npm run test:smoke
 npm run test:brawler
-node scripts/gauntlet-defeat-stability.mjs
-node scripts/gauntlet-stage1-temporal-builder.mjs
-node scripts/gauntlet-brawler-alpha-contact-builder.mjs
+npm run test:continue
+node scripts/gauntlet-ride-lane-builder.mjs
+node scripts/gauntlet-debug-scenes.mjs
+node scripts/gauntlet-sustained-wheels-builder.mjs
+node scripts/gauntlet-brawler-footing.mjs
 ```
 
 ## Последние доказательства
 
 - Наблюдаемая витрина: `public/workbench/index.html`
-- Wave D alpha report: `.gauntlet/builder-brawler-alpha-contact/report.json`
-- Wave D normal sequence: `.gauntlet/builder-brawler-alpha-contact/normal-held-contact-*.png`
-- Wave D boss sequence: `.gauntlet/builder-brawler-alpha-contact/boss-held-contact-*.png`
-- Stage 1 temporal sequence: `.gauntlet/builder-stage1-temporal/`
-- Последний независимый аудит и 480 кадров: `.gauntlet/iteration-24/CRITIQUE_WAVE_C.md`, `.gauntlet/iteration-24/critic-wave-c/`
-- Финальная Wave D integration: `.gauntlet/iteration-24/INTEGRATION_WAVE_D.md`
+- Continue: `.gauntlet/iteration-25/builder-continue/`
+- Ride bounds и горизонтальный огонь: `.gauntlet/builder-ride-lane/`
+- Debug/vector scenes: `.gauntlet/debug-scenes/`
+- Sustained wheels: `.gauntlet/builder-sustained-wheels/`
+- Walk/shadow footing: `.gauntlet/iteration-25/builder-brawler-footing/report.json`
+- Финальная integration: `.gauntlet/iteration-25/integration/INTEGRATION.md`
 
-Финальные Wave D метрики:
+Подтверждённые результаты iteration 25:
 
-- normal: max opaque overlap `12.17%`, longest overlap >35% `0 ms`, recoil `24.03 px`;
-- Forge: max opaque overlap `39.19%` только в одном contact-кадре, longest overlap >35% `0 ms`, recoil `57.42 px`;
-- по `20` подтверждённых damaging contacts для normal и boss;
-- полный Stage 2: victory, `22` противника, `101` попадание, runtime errors `[]`.
+- continue contract — PASS; defeat stability — `8/8` terminal-кадров;
+- полный shoot ’em up smoke — victory, boss/co-op routes PASS, runtime errors `[]`;
+- полный brawler footing-прогон — victory, `22` противника, `101` попадание, runtime errors `[]`;
+- walk footing — все героини в обе стороны прошли фазы `0/1/2/3`, 84 последовательных кадра;
+- enemy alpha-ground residual: raider ≤`2.19 px`, bruiser `0.04 px`, shocker `0.22 px`;
+- sustained fire — все 8 wheel-angle состояний у каждой героини, projectile origin delta `0 px`.
+
+После последнего integration-микрофикса выбора lead attacker выполнен финальный полный brawler-прогон: victory, `22` противника, `97` подтверждённых попаданий, boss clear, runtime errors `[]`.
 
 ## Последнее независимое заключение
 
-Wave C critic: **8.4/10, AAA-era NO**. Статика, палитра, детализация, Stage 1 motion/impact, UI и общая цельность признаны уровнем дорогого retro-AAA. Единственный blocker — Stage 2 spatial hit resolution: до Wave D пассивный enemy approach удерживал opaque silhouette overlap >35% в течение `2267 ms`.
-
-Wave D была создана строго после этого verdict и проходит его измеримый DoD, но новый независимый critic не был запущен из-за внешнего лимита.
+Последний независимый critic остаётся из Wave C: **8.4/10, AAA-era NO**; его blocker по длительному silhouette overlap был затем устранён Wave D и подтверждён измеримым alpha-mask contract. В iteration 25 новый независимый critic не запускался: пользователь явно попросил завершить работу из-за лимита. Эта итерация проверена builder-контрактами, полными маршрутами и отдельным integration/smoothing-прогоном.
 
 ## Один крупнейший оставшийся недостаток
 
-**Нет свежего независимого Wave D verdict на реальной игре.** Автоматический alpha-mask contract показывает устранение последнего blocker, но строгий слепой visual critic ещё должен подтвердить, что новые body gates и расширенные hurtboxes визуально ощущаются естественным контактом, а не невидимым зазором/whiff.
+**Открыт дефект просадки производительности shoot ’em up на минибоссе и боссе.** Он сохранён неотмеченным в `DEFECTS.md`: в этой итерации не было достаточно воспроизводимого performance-профиля, поэтому исправление не заявлено без доказательства.
 
 ## Точная следующая итерация Gauntlet Loop
 
-1. Запустить production build на `127.0.0.1:4173`.
-2. Создать нового critic со свежим контекстом, запретив чтение diff, этого файла и предыдущих отчётов до собственного verdict.
-3. Снять menu/select, 12×100 ms Stage 1 ride, Stage 1 intense/boss, затем Stage 2 input-neutral approach, sustained-right combat и controlled Forge combat на 1440×900.
-4. Набрать минимум 20 damaging contacts normal + 20 boss и измерить реальные opaque alpha masks: >35% overlap ≤200 ms в ≥95% контактов, safe-zone 5–95%, contact 20–80%, reaction separation ≥32 px или recoil ≥12 px, burst ≥32 px.
-5. Повторить blind A/B рядом с Thunder Force IV, Gunstar Heroes, Contra: Hard Corps и Batman MD.
-6. Если critic даёт AAA-era YES — зафиксировать Wave D как visual baseline. Если NO — исправлять только названный им один крупнейший разрыв, затем снова integration/smoothing и fresh-critic pass.
+1. На production build записать frame-time/FPS и число actors/projectiles/particles на обычной дороге, минибоссе и боссе при одинаковом viewport.
+2. Изолировать update/draw/asset bottleneck, задать измеримый бюджет кадра и оптимизировать только подтверждённую горячую точку.
+3. Повторить полный solo и co-op smoke, continue/defeat и boss victory без runtime errors.
+4. После integration/smoothing привлечь нового независимого visual critic со свежим контекстом для menu/select/movement/intense combat/обоих боссов и слепого A/B с 16-битными референсами.

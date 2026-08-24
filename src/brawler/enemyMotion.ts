@@ -29,21 +29,21 @@ interface WalkStyle {
 const WALK_STYLE: Record<Exclude<BrawlerEnemyKind, 'boss'>, WalkStyle> = {
   raider: {
     stride: 62,
-    lift: [0, -1, -3, -1],
+    lift: [0, 0, 0, 0],
     lean: [0, -.025, .02, .015],
     scaleX: [1, 1.015, .985, .995],
     scaleY: [1.005, .99, 1.015, 1.008],
   },
   bruiser: {
     stride: 88,
-    lift: [0, 0, -1, 0],
+    lift: [0, 0, 0, 0],
     lean: [0, -.012, .008, .01],
     scaleX: [1.015, 1.03, 1, 1.02],
     scaleY: [.99, .975, 1.005, .985],
   },
   shocker: {
     stride: 52,
-    lift: [0, -2, -4, -1],
+    lift: [0, 0, 0, 0],
     lean: [0, -.035, .028, .022],
     scaleX: [.995, 1.02, .975, 1.008],
     scaleY: [1.01, .985, 1.025, .995],
@@ -200,7 +200,7 @@ function commonPose(enemy: BrawlerEnemy): EnemyMotionPose {
   const walkPhase = Math.min(3, Math.floor(phaseFloat));
   const progress = phaseFloat - walkPhase;
   const frames = [0, 1, 2, 1] as const;
-  const plantStrength = enemy.kind === 'bruiser' ? 5 : enemy.kind === 'shocker' ? 7 : 6;
+  const plantStrength = style.stride / 4;
   return pose(base + frames[walkPhase], {
     walkPhase,
     walkPhaseProgress: progress,

@@ -6,6 +6,7 @@
  */
 
 import { assetUrl } from './assetUrl';
+import { isArtEnabled } from './debug/runtime';
 
 export const ENVIRONMENT_WIDTH = 960;
 export const ENVIRONMENT_HEIGHT = 540;
@@ -91,6 +92,7 @@ let shoulderStrip: HTMLImageElement | null = null;
 let shoulderStripState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
 
 function getPanorama(): HTMLImageElement | null {
+  if (!isArtEnabled()) return null;
   if (panoramaState === 'ready') return panorama;
   if (panoramaState !== 'idle' || typeof Image === 'undefined') return null;
   panoramaState = 'loading';
@@ -114,6 +116,7 @@ function getPanorama(): HTMLImageElement | null {
 }
 
 function getRoadProps(): HTMLImageElement | null {
+  if (!isArtEnabled()) return null;
   if (roadPropsState === 'ready') return roadProps;
   if (roadPropsState !== 'idle' || typeof Image === 'undefined') return null;
   roadPropsState = 'loading';
@@ -141,6 +144,7 @@ function getRoadProps(): HTMLImageElement | null {
 }
 
 function getShoulderStrip(): HTMLImageElement | null {
+  if (!isArtEnabled()) return null;
   if (shoulderStripState === 'ready') return shoulderStrip;
   if (shoulderStripState !== 'idle' || typeof Image === 'undefined') return null;
   shoulderStripState = 'loading';
@@ -1064,8 +1068,10 @@ export function drawEnvironment(ctx: CanvasRenderingContext2D, options: Environm
     drawRoadMaterialEvents(ctx, palette, options.scroll, options.time);
     drawCracks(ctx, palette, options.scroll);
     drawLaneReflectors(ctx, palette, options.scroll, options.time);
-    drawGuardrail(ctx, palette, options.scroll);
     drawRoadsideProps(ctx, palette, options.scroll, options.time, phase.mix < .5 ? phase.current : phase.next);
+    // The safety rail is nearest to the camera. Drawing it after roadside
+    // lamps/signs keeps their bases behind the barrier and restores depth.
+    drawGuardrail(ctx, palette, options.scroll);
     drawShoulders(ctx, palette, options.scroll);
     drawAmbientSparks(ctx, palette, options.scroll, options.time, phase.mix < .5 ? phase.current : phase.next, intensity);
     drawSpeedLines(ctx, palette, options.scroll, options.speed, options.time, intensity + shakeEnergy * .35);

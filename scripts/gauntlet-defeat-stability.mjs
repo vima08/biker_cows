@@ -17,14 +17,14 @@ try {
   await page.goto(`${baseURL}/?scene=game&hero=cassia`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.__BCFV_DEBUG__?.snapshot().state === 'playing');
   const before = await page.evaluate(() => window.__BCFV_DEBUG__.damagePlayer(1, 9999));
-  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'lose');
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'continue');
   const samples = [];
   for (let index = 0; index < 8; index++) {
     await page.waitForTimeout(45);
     const state = await page.evaluate(() => window.__BCFV_DEBUG__.snapshot());
     samples.push({ state: state.state, feedback: state.cameraFeedback });
   }
-  if (samples.some(sample => sample.state !== 'lose' || sample.feedback.shake !== 0 || sample.feedback.flash !== 0)) {
+  if (samples.some(sample => sample.state !== 'continue' || sample.feedback.shake !== 0 || sample.feedback.flash !== 0 || sample.feedback.hitStop !== 0)) {
     throw new Error(`Defeat feedback was not stable: ${JSON.stringify(samples)}`);
   }
   if (errors.length) throw new Error(errors.join('\n'));
