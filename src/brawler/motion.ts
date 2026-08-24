@@ -2,18 +2,25 @@ import type { BrawlerHeroId, BrawlerPlayer } from './types';
 
 export const WALK_PHASE_COUNT = 4;
 
-const HERO_STRIDE: Record<BrawlerHeroId, number> = {
+export const PLAYER_WALK_STRIDE: Readonly<Record<BrawlerHeroId, number>> = {
   cassia: 96,
   bruna: 104,
-  nova: 90,
+  // Nova used to cycle at ~85 ms per cel, which read as a two-frame buzz.
+  // A longer stride keeps all three heroes inside the authored 100-150 ms
+  // display window without tying animation to refresh rate.
+  nova: 116,
 };
 
 export type BrawlerAttackPhase = 'windup' | 'contact' | 'recovery' | null;
 export type PlayerReactionPhase = 'hit-stun' | 'knockback' | 'ground' | 'recovery' | 'down' | null;
+export type PlayerMotionAtlas = 'hero' | 'walk';
+export type PlayerWalkContact = 'left-contact' | 'passing-right' | 'right-contact' | 'passing-left' | null;
 
 export interface BrawlerMotionPose {
   frame: number;
+  atlas: PlayerMotionAtlas;
   walkPhase: number;
+  walkContact: PlayerWalkContact;
   walkPhaseProgress: number;
   attackPhase: BrawlerAttackPhase;
   offsetX: number;
@@ -41,7 +48,9 @@ function pose(
 ): BrawlerMotionPose {
   return {
     frame,
+    atlas: options.atlas ?? 'hero',
     walkPhase: options.walkPhase ?? 0,
+    walkContact: options.walkContact ?? null,
     walkPhaseProgress: options.walkPhaseProgress ?? 0,
     attackPhase: options.attackPhase ?? null,
     offsetX: options.offsetX ?? 0,
@@ -131,49 +140,35 @@ function groundAttackPose(player: BrawlerPlayer, directionBase: number): Brawler
   });
 }
 
-/**
- * Resolves authored frames and tiny foot-plant corrections from actual distance
- * travelled. The atlas only has two explicit travelling drawings, so the guard
- * and contact drawings bookend them to form a readable four-beat gait.
- */
+/** Resolves the four authored walk cels from actual distance travelled. */
 export function resolvePlayerMotionPose(player: BrawlerPlayer): BrawlerMotionPose {
   const directionBase = player.facing > 0 ? 0 : 8;
   if (player.z > 8) return airbornePose(player, directionBase);
   if (player.attackTimer > 0) return groundAttackPose(player, directionBase);
   if (!player.moving) return pose(directionBase);
 
-  const stride = HERO_STRIDE[player.hero];
+  const stride = PLAYER_WALK_STRIDE[player.hero];
   const cycle = ((player.gaitDistance % stride) + stride) % stride / stride;
   const phaseFloat = cycle * WALK_PHASE_COUNT;
   const walkPhase = Math.min(WALK_PHASE_COUNT - 1, Math.floor(phaseFloat));
   const walkPhaseProgress = phaseFloat - walkPhase;
-  const phaseFrames = [0, 1, 2, 1] as const;
-  // All authored locomotion cells share a bottom-aligned planted boot. Keep
-  // that contact on the arena plane; lifting the whole bitmap made the cow
-  // appear to hop once per stride. Weight now travels through rotation and
-  // squash around the bottom anchor instead.
-  const lift = [0, 0, 0, 0] as const;
-  // Phases one and three share the same authored travelling cel, but resolve
-  // as a forward push and an upright heel strike respectively.
-  const lean = [0, -.028, .016, .024] as const;
-  const squashX = [1, 1.018, .988, .992] as const;
-  const squashY = [1.006, .988, 1.012, 1.014] as const;
-  // Cancel the actor's complete quarter-stride while a cel is held. At the
-  // next authored contact the root advances and the other boot takes over,
-  // producing the deliberate planted-foot cadence of a 16-bit walk instead
-  // of a bitmap sliding continuously underneath the torso.
-  const footPlant = (0.5 - walkPhaseProgress) * (stride / WALK_PHASE_COUNT);
-  const phaseBias = [1, 0, -1, 0] as const;
+  const contacts = ['left-contact', 'passing-right', 'right-contact', 'passing-left'] as const;
 
-  return pose(directionBase + phaseFrames[walkPhase], {
+  // Do not fake silhouette changes with root translation, rotation or squash.
+  // The renderer holds a stable baseline and the four bitmap cels carry the
+  // full gait. Phase 2 is explicitly the lowered right-foot contact requested
+  // by the visual strip contract.
+  return pose(walkPhase, {
+    atlas: 'walk',
     walkPhase,
+    walkContact: contacts[walkPhase],
     walkPhaseProgress,
-    offsetX: player.facing * (footPlant + phaseBias[walkPhase]),
-    offsetY: lift[walkPhase],
-    rotation: player.facing * lean[walkPhase],
-    scaleX: squashX[walkPhase],
-    scaleY: squashY[walkPhase],
   });
+}
+
+/** Nominal real-time hold for one walk cel at the hero's ground speed. */
+export function playerWalkFrameDurationMs(hero: BrawlerHeroId, groundSpeed: number): number {
+  return PLAYER_WALK_STRIDE[hero] / WALK_PHASE_COUNT / groundSpeed * 1000;
 }
 
 export function resolvePlayerReactionPose(player: BrawlerPlayer): PlayerReactionPose | null {

@@ -29,7 +29,8 @@ declare global {
       setPlayerInput: (id: 1|2, state: Parameters<VenusGame['setDebugPlayerInput']>[1]) => ReturnType<VenusGame['snapshot']>;
       friendlyFireProbe: () => ReturnType<VenusGame['debugFriendlyFireProbe']>;
       damagePlayer: (id: 1|2, amount: number) => ReturnType<VenusGame['debugDamagePlayer']>;
-      defeatStage: (stage: 1|2) => ReturnType<VenusGame['debugDefeatStage']>;
+      defeatStage: (stage: 1|2|3) => ReturnType<VenusGame['debugDefeatStage']>;
+      completeAct: () => ReturnType<VenusGame['debugCompleteCurrentAct']>;
       setArtEnabled: (enabled: boolean) => ReturnType<VenusGame['snapshot']>;
     };
   }
@@ -44,6 +45,7 @@ window.__BCFV_DEBUG__ = {
   setPlayerInput: (id: 1|2, state: Parameters<VenusGame['setDebugPlayerInput']>[1]) => game.setDebugPlayerInput(id,state),
   friendlyFireProbe: () => game.debugFriendlyFireProbe(),
   damagePlayer: (id: 1|2, amount: number) => game.debugDamagePlayer(id,amount),
-  defeatStage: (stage: 1|2) => game.debugDefeatStage(stage),
+  defeatStage: (stage: 1|2|3) => game.debugDefeatStage(stage),
+  completeAct: () => game.debugCompleteCurrentAct(),
   setArtEnabled: (enabled: boolean) => { setArtEnabled(enabled); return game.snapshot(); },
 };

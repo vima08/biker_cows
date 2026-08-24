@@ -4,7 +4,7 @@ import { brawlerDebugControls } from '../debug/brawlerScenes';
 import { isArtEnabled } from '../debug/runtime';
 import { BRAWLER_HEROES } from './catalog';
 import { enemyAttackDuration, enemyAttackPhase, resolveEnemyMotionPose } from './enemyMotion';
-import { resolvePlayerMotionPose, resolvePlayerReactionPose } from './motion';
+import { playerWalkFrameDurationMs, resolvePlayerMotionPose, resolvePlayerReactionPose } from './motion';
 import type {
   BeatEmUpOptions,
   BrawlerControls,
@@ -60,6 +60,7 @@ export class BeatEmUpStage {
   private bossDefeated = false;
   private defeatedCount = 0;
   private readonly heroSheets: Record<BrawlerHeroId, ImageAsset>;
+  private readonly heroWalkSheets: Record<BrawlerHeroId, ImageAsset>;
   private readonly heroReactionSheets: Record<BrawlerHeroId, ImageAsset>;
   private readonly enemySheet: ImageAsset;
   private readonly bossSheet: ImageAsset;
@@ -77,6 +78,11 @@ export class BeatEmUpStage {
       cassia: new ImageAsset(BRAWLER_HEROES.cassia.sprites, 4, 4),
       bruna: new ImageAsset(BRAWLER_HEROES.bruna.sprites, 4, 4),
       nova: new ImageAsset(BRAWLER_HEROES.nova.sprites, 4, 4),
+    };
+    this.heroWalkSheets = {
+      cassia: new ImageAsset(BRAWLER_HEROES.cassia.walkSprites, 4, 1),
+      bruna: new ImageAsset(BRAWLER_HEROES.bruna.walkSprites, 4, 1),
+      nova: new ImageAsset(BRAWLER_HEROES.nova.walkSprites, 4, 1),
     };
     this.heroReactionSheets = {
       cassia: new ImageAsset(BRAWLER_HEROES.cassia.reactions, 4, 2),
@@ -179,6 +185,7 @@ export class BeatEmUpStage {
       this.finishTimer += dt;
       if (this.finishTimer > 3.2) {
         this.status = 'victory';
+        this.finishTimer = 0;
         music('victory');
         audio('stage_clear');
       }
@@ -346,7 +353,7 @@ export class BeatEmUpStage {
       if (lead) leadByPlayer.set(player.id, lead);
     }
 
-    const slotDepth = [-58, 58, -92, 92, -34, 34] as const;
+    const slotDepth = [-68, 68, -108, 108, -42, 42] as const;
     const slotSide = [1, 1, -1, -1, 1, -1] as const;
     for (const enemy of this.enemies) {
       if (enemy.dead) continue;
@@ -403,20 +410,20 @@ export class BeatEmUpStage {
       for (let secondIndex = firstIndex + 1; secondIndex < active.length; secondIndex++) {
         const first = active[firstIndex];
         const second = active[secondIndex];
-        const minX = first.kind === 'boss' || second.kind === 'boss' ? 122 : first.kind === 'bruiser' || second.kind === 'bruiser' ? 82 : 62;
-        const minY = first.kind === 'boss' || second.kind === 'boss' ? 48 : 34;
+        const minX = first.kind === 'boss' || second.kind === 'boss' ? 122 : first.kind === 'bruiser' || second.kind === 'bruiser' ? 92 : 76;
+        const minY = first.kind === 'boss' || second.kind === 'boss' ? 48 : 54;
         const dx = second.x - first.x;
         const rawDy = second.y - first.y;
         const dy = Math.abs(rawDy) < .01 ? (second.id > first.id ? 1 : -1) : rawDy;
         const normalized = Math.hypot(dx / minX, dy / minY);
         if (normalized >= 1) continue;
-        const push = (1 - normalized) * minY * .52;
+        const push = (1 - normalized) * minY * .75;
         const directionY = Math.sign(dy) || 1;
         first.y = clamp(first.y - directionY * push, this.options.level.floorFar + 12, this.options.level.floorNear - 4);
         second.y = clamp(second.y + directionY * push, this.options.level.floorFar + 12, this.options.level.floorNear - 4);
         const directionX = Math.sign(dx) || (second.id > first.id ? 1 : -1);
-        first.x -= directionX * push * .18;
-        second.x += directionX * push * .18;
+        first.x -= directionX * push * .28;
+        second.x += directionX * push * .28;
       }
     }
   }
@@ -466,13 +473,13 @@ export class BeatEmUpStage {
           this.confirmedHits++;
           const wasAboveHalf = enemy.hp / enemy.maxHp > .5;
           enemy.hp -= damageAmount * (player.hero === 'bruna' ? 1.18 : player.hero === 'nova' ? .9 : 1);
-          const reactionDuration = player.attackStep >= 2 ? .34 : .26;
+          const reactionDuration = player.attackStep >= 2 ? .38 : .32;
           enemy.reactionDuration = enemy.reactionTimer = reactionDuration;
           enemy.reactionDirection = player.facing;
           enemy.reactionKind = 'hit';
           enemy.stun = reactionDuration;
-          enemy.flash = .034;
-          const recoil = enemy.kind === 'boss' ? 36 : enemy.kind === 'bruiser' ? 48 : 58;
+          enemy.flash = .052;
+          const recoil = enemy.kind === 'boss' ? 42 : enemy.kind === 'bruiser' ? 62 : 74;
           enemy.knockX = player.facing * (recoil + (player.attackStep >= 2 ? 12 : 0));
           if (enemy.kind === 'boss') {
             // The boss is wider than the hero's melee reach. Bounce the striker
@@ -485,10 +492,10 @@ export class BeatEmUpStage {
           } else {
             // Make the normal target's authored reaction read in world space;
             // velocity recoil continues after this initial twelve-pixel beat.
-            enemy.x += player.facing * 12;
-            player.x -= player.facing * 4;
+            enemy.x += player.facing * 16;
+            player.x -= player.facing * 7;
           }
-          this.hitStop = Math.max(this.hitStop, enemy.kind === 'boss' ? .075 : player.attackStep >= 2 ? .065 : .055);
+          this.hitStop = Math.max(this.hitStop, enemy.kind === 'boss' ? .08 : player.attackStep >= 2 ? .078 : .07);
           this.contactFocusTimer = Math.max(this.contactFocusTimer, .28);
           this.contactFocusX = (player.x + enemy.x) * .5;
           player.special = clamp(player.special + 4.5, 0, 100);
@@ -496,8 +503,11 @@ export class BeatEmUpStage {
           this.maxCombo = Math.max(this.maxCombo, this.combo);
           this.comboTimer = 1.8;
           this.score += Math.round(35 * Math.max(1, this.combo * .35));
-          this.shake = Math.max(this.shake, player.attackStep >= 2 ? 5 : 2.5);
-          this.emitHit(enemy.x, enemy.y - 42, BRAWLER_HEROES[player.hero].accent, player.attackStep >= 2 ? 10 : 6);
+          this.shake = Math.max(this.shake, player.attackStep >= 2 ? 6 : 4);
+          const contactX=enemy.x-player.facing*(enemy.kind==='boss'?48:enemy.kind==='bruiser'?34:26);
+          const contactY=(player.y+enemy.y)*.5-20;
+          this.emitHit(contactX, contactY, BRAWLER_HEROES[player.hero].accent, player.attackStep >= 2 ? 10 : 7);
+          this.emitContactSlash(contactX,contactY,player.facing,BRAWLER_HEROES[player.hero].accent,player.attackStep>=2);
           audio('hit', .6, .82 + player.attackStep * .08);
           if (enemy.kind === 'boss' && !enemy.phaseShifted && wasAboveHalf && enemy.hp / enemy.maxHp <= .5 && enemy.hp > 0) {
             enemy.phaseShifted = true;
@@ -521,7 +531,10 @@ export class BeatEmUpStage {
     for (const enemy of this.enemies) {
       if (enemy.dead || enemy.attackTimer <= 0) continue;
       if (enemyAttackPhase(enemy) !== 'contact') continue;
-      const radius = enemy.kind === 'boss' ? 112 : enemy.kind === 'bruiser' ? 68 : 48;
+      // Keep hit registration aligned with the approach reach used by the AI
+      // (raider 60, shocker 58). The old shared 48px radius let their visible
+      // contact cel cross the hero while the logical hit always fell short.
+      const radius = enemy.kind === 'boss' ? 112 : enemy.kind === 'bruiser' ? 68 : enemy.kind === 'shocker' ? 62 : 64;
       for (const player of this.players) {
         if (player.downed || player.invuln > 0 || enemy.lastHitSerial[player.id] === enemy.attackSerial) continue;
         if (Math.abs(player.y - enemy.y) < 36 && Math.abs(player.x - enemy.x) < radius && player.z < 36) {
@@ -594,6 +607,15 @@ export class BeatEmUpStage {
     for (let index = 0; index < amount; index++) {
       const angle = Math.PI + (index / Math.max(1, amount - 1) - .5) * 1.6;
       this.particles.push({ x, y, z: 18, vx: Math.cos(angle) * (90 + index * 7), vy: Math.sin(angle) * 36, vz: 80 + index * 8, life: .22 + index * .018, maxLife: .38, size: index % 3 ? 4 : 7, color: index % 3 ? color : '#fff8d8', kind: 'spark' });
+    }
+  }
+
+  private emitContactSlash(x:number,y:number,facing:1|-1,color:string,strong=false):void {
+    const count=strong?4:3;
+    this.particles.push({x,y,z:24,vx:0,vy:0,vz:0,life:.18,maxLife:.18,size:strong?19:16,color:'#ff7a32',kind:'star'});
+    for(let index=0;index<count;index++){
+      const spread=(index-(count-1)/2)*.26;
+      this.particles.push({x:x-facing*2,y:y+(index-(count-1)/2)*6,z:24,vx:facing*(34+index*8),vy:spread*28,vz:0,life:.21+index*.012,maxLife:.25,size:strong?20:17,color:index===0?'#fff6c9':index===1?'#ff8a35':color,kind:'slash',angle:spread});
     }
   }
 
@@ -728,6 +750,17 @@ export class BeatEmUpStage {
         this.drawSheetFrame(this.heroReactionSheets[player.hero], reactionPose.frame, 0, 12, authoredSize.width, authoredSize.height, .5, 1);
       }
       ctx.restore();
+    } else if (motionPose.atlas === 'walk') {
+      ctx.save();
+      if (player.facing < 0) ctx.scale(-1, 1);
+      drawn = this.drawSheetFrame(this.heroWalkSheets[player.hero], frame, 0, 12, authoredSize.width, authoredSize.height, .5, 1);
+      ctx.restore();
+      // Keep a graceful loading/error fallback without pretending the repeated
+      // legacy cel is part of the validated four-frame walk atlas.
+      if (!drawn) {
+        const legacyFrame = (player.facing > 0 ? 0 : 8) + ([0, 1, 2, 1] as const)[motionPose.walkPhase];
+        drawn = this.drawSheetFrame(this.heroSheets[player.hero], legacyFrame, 0, 12, authoredSize.width, authoredSize.height, .5, 1);
+      }
     } else drawn = this.drawSheetFrame(this.heroSheets[player.hero], frame, 0, 12, authoredSize.width, authoredSize.height, .5, 1);
     if (!drawn) {
       ctx.save();
@@ -774,6 +807,10 @@ export class BeatEmUpStage {
     ctx.save();
     ctx.globalAlpha = motionPose.alpha;
     ctx.fillStyle = '#0008'; ctx.beginPath(); ctx.ellipse(screenX, screenY + 4, enemy.kind === 'boss' ? 76 : 34, enemy.kind === 'boss' ? 16 : 9, 0, 0, Math.PI * 2); ctx.fill();
+    if(enemy.kind!=='boss'){
+      const rim=enemy.kind==='shocker'?'#54e9e2':enemy.kind==='bruiser'?'#ff865c':'#b98aff';
+      ctx.globalAlpha=motionPose.alpha*.42;ctx.strokeStyle=rim;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(screenX,screenY+3,enemy.kind==='bruiser'?39:32,enemy.kind==='bruiser'?11:8,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=motionPose.alpha;
+    }
     ctx.translate(screenX + px(motionPose.offsetX), screenY + px(spriteGroundCorrection + motionPose.offsetY));
     ctx.rotate(motionPose.rotation);
     ctx.scale(motionPose.scaleX, motionPose.scaleY);
@@ -840,6 +877,16 @@ export class BeatEmUpStage {
         const size = index % 3 === 0 ? 6 : 4;
         ctx.fillRect(segmentX - size / 2, segmentY - size / 2, size, size);
       }
+    } else if(particle.kind==='star'){
+      const radius=px(particle.size*(.7+alpha*.3));ctx.translate(x,y);ctx.globalCompositeOperation='lighter';
+      ctx.fillStyle=particle.color;ctx.beginPath();ctx.moveTo(-radius,0);ctx.lineTo(-4,-4);ctx.lineTo(0,-radius);ctx.lineTo(4,-4);ctx.lineTo(radius,0);ctx.lineTo(4,4);ctx.lineTo(0,radius);ctx.lineTo(-4,4);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#ffe15a';ctx.fillRect(-radius*.55,-3,radius*1.1,6);ctx.fillRect(-3,-radius*.55,6,radius*1.1);ctx.fillStyle='#fffbe5';ctx.fillRect(-3,-3,6,6);
+    } else if(particle.kind==='slash'){
+      const length=px(particle.size*(.72+alpha*.28));
+      ctx.translate(x,y);ctx.rotate((particle.angle??0)+(particle.vx<0?Math.PI:0));
+      ctx.globalCompositeOperation='lighter';ctx.fillStyle=particle.color;
+      ctx.beginPath();ctx.moveTo(-length*.55,-3);ctx.lineTo(length*.55,0);ctx.lineTo(-length*.55,3);ctx.lineTo(-length*.18,0);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#fff8d8';ctx.fillRect(-2,-2,Math.max(4,length*.42),4);
     }
     else { const size = px(particle.size * (.7 + (1 - alpha) * .6)); ctx.fillStyle = particle.color; ctx.fillRect(x - size / 2, y - size / 2, size, size); }
     ctx.restore();
@@ -893,11 +940,12 @@ export class BeatEmUpStage {
   private drawResult(): void {
     const ctx = this.ctx;
     const win = this.status === 'victory';
+    const routeOpen = win && this.options.campaignContinuation;
     ctx.fillStyle = '#05030bcc'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#130b1fed'; ctx.fillRect(220, 154, 520, 220); ctx.strokeStyle = win ? '#ffe062' : '#ff4d69'; ctx.lineWidth = 4; ctx.strokeRect(220, 154, 520, 220);
-    ctx.fillStyle = win ? '#ffe868' : '#ff5873'; ctx.font = '900 38px Arial'; ctx.textAlign = 'center'; ctx.fillText(win ? 'DISTRICT LIBERATED!' : 'CREW DOWN', 480, 224);
+    ctx.fillStyle = win ? '#ffe868' : '#ff5873'; ctx.font = '900 38px Arial'; ctx.textAlign = 'center'; ctx.fillText(routeOpen ? 'ROUTE OPEN!' : win ? 'DISTRICT LIBERATED!' : 'CREW DOWN', 480, 224);
     ctx.fillStyle = '#fff'; ctx.font = '900 25px Arial'; ctx.fillText(this.score.toString().padStart(8, '0'), 480, 278);
-    ctx.fillStyle = '#c9b8ce'; ctx.font = '700 13px Arial'; ctx.fillText(win ? `${this.options.level.bossName} IS FINISHED` : 'VENUS STILL NEEDS ITS RIDERS', 480, 314);
+    ctx.fillStyle = routeOpen ? '#65e9df' : '#c9b8ce'; ctx.font = '700 13px Arial'; ctx.fillText(routeOpen ? 'RETURN TO THE BIKES  //  FINAL RUN AHEAD' : win ? `${this.options.level.bossName} IS FINISHED` : 'VENUS STILL NEEDS ITS RIDERS', 480, 314);
   }
 
   private combatFramingSnapshot() {
@@ -946,18 +994,20 @@ export class BeatEmUpStage {
     const boss = this.enemies.find(enemy => enemy.kind === 'boss' && !enemy.dead);
     const assets = {
       cassia: this.heroSheets.cassia.state, bruna: this.heroSheets.bruna.state, nova: this.heroSheets.nova.state,
+      cassiaWalk: this.heroWalkSheets.cassia.state, brunaWalk: this.heroWalkSheets.bruna.state, novaWalk: this.heroWalkSheets.nova.state,
       enemies: this.enemySheet.state, boss: this.bossSheet.state, environment: this.backdrop.state, floor: this.floor.state,
     };
     return {
       status: this.status, elapsed: Number(this.elapsed.toFixed(2)), cameraX: Number(this.cameraX.toFixed(2)),
       debugScene: this.options.debugScene ?? null,
       levelId: this.options.level.id, stageLength: this.options.level.length, wave: this.waveIndex, arenaLocked: this.arenaLocked, score: this.score, combo: this.combo, maxCombo: this.maxCombo, confirmedHits: this.confirmedHits,
-      hitStop: Number(this.hitStop.toFixed(3)), impactParticles: this.particles.filter(particle => particle.kind === 'spark').length,
+      hitStop: Number(this.hitStop.toFixed(3)), impactParticles: this.particles.filter(particle => particle.kind === 'spark'||particle.kind==='slash').length,
+      contactFx:this.particles.filter(particle=>particle.kind==='slash').map(particle=>({x:Number((particle.x-this.cameraX).toFixed(2)),y:Number((particle.y-particle.z).toFixed(2)),vx:Number(particle.vx.toFixed(2)),life:Number(particle.life.toFixed(3)),color:particle.color})),
       combatFraming: this.combatFramingSnapshot(),
       players: this.players.map(player => {
         const motionPose = resolvePlayerMotionPose(player);
         const reactionPose = resolvePlayerReactionPose(player);
-        return { id: player.id, hero: player.hero, x: Number(player.x.toFixed(2)), y: Number(player.y.toFixed(2)), z: Number(player.z.toFixed(2)), hp: Number(player.hp.toFixed(2)), maxHp: player.maxHp, special: Number(player.special.toFixed(2)), downed: player.downed, facing: player.facing, moving: player.moving, frame: reactionPose?.frame ?? motionPose.frame, walkPhase: motionPose.walkPhase, walkPhaseProgress: Number(motionPose.walkPhaseProgress.toFixed(3)), gaitDistance: Number(player.gaitDistance.toFixed(2)), attackPhase: motionPose.attackPhase, reactionPhase: reactionPose?.phase ?? null, reactionTimer: Number(player.reactionTimer.toFixed(3)), hitFlash: Number(player.hitFlash.toFixed(3)), pose: { offsetX: Number((reactionPose?.offsetX ?? motionPose.offsetX).toFixed(3)), offsetY: reactionPose?.offsetY ?? motionPose.offsetY, rotation: Number((reactionPose?.rotation ?? motionPose.rotation).toFixed(4)), scaleX: reactionPose?.scaleX ?? motionPose.scaleX, scaleY: reactionPose?.scaleY ?? motionPose.scaleY }, airborneAttack: player.z > 8 && player.attackTimer > 0, attackStep: player.attackStep, attackTimer: Number(player.attackTimer.toFixed(3)) };
+        return { id: player.id, hero: player.hero, x: Number(player.x.toFixed(2)), y: Number(player.y.toFixed(2)), z: Number(player.z.toFixed(2)), hp: Number(player.hp.toFixed(2)), maxHp: player.maxHp, special: Number(player.special.toFixed(2)), downed: player.downed, facing: player.facing, moving: player.moving, frame: reactionPose?.frame ?? motionPose.frame, motionAtlas: reactionPose ? 'reaction' : motionPose.atlas, walkPhase: motionPose.walkPhase, walkContact: motionPose.walkContact, walkFrameDurationMs: Number(playerWalkFrameDurationMs(player.hero, BRAWLER_HEROES[player.hero].speed).toFixed(2)), walkPhaseProgress: Number(motionPose.walkPhaseProgress.toFixed(3)), gaitDistance: Number(player.gaitDistance.toFixed(2)), attackPhase: motionPose.attackPhase, reactionPhase: reactionPose?.phase ?? null, reactionTimer: Number(player.reactionTimer.toFixed(3)), hitFlash: Number(player.hitFlash.toFixed(3)), pose: { offsetX: Number((reactionPose?.offsetX ?? motionPose.offsetX).toFixed(3)), offsetY: reactionPose?.offsetY ?? motionPose.offsetY, rotation: Number((reactionPose?.rotation ?? motionPose.rotation).toFixed(4)), scaleX: reactionPose?.scaleX ?? motionPose.scaleX, scaleY: reactionPose?.scaleY ?? motionPose.scaleY }, airborneAttack: player.z > 8 && player.attackTimer > 0, attackStep: player.attackStep, attackTimer: Number(player.attackTimer.toFixed(3)) };
       }),
       enemies: this.enemies.filter(enemy => !enemy.dead).map(enemy => {
         const pose = resolveEnemyMotionPose(enemy);
@@ -971,6 +1021,20 @@ export class BeatEmUpStage {
   }
 
   getStatus(): BrawlerStatus { return this.status; }
+  /** Test-only accelerator that still uses the production boss death, victory
+   * hold, finishReady and campaign transition path. */
+  debugCompleteVictory(): void {
+    if(this.status==='victory'||this.status==='defeat')return;
+    if(this.status==='intro'){this.status='running';this.introTimer=0;}
+    let boss=this.enemies.find(enemy=>enemy.kind==='boss'&&!enemy.dead);
+    if(!boss){
+      const bossWave=this.options.level.waves.findIndex(wave=>wave.enemies.includes('boss'));
+      if(bossWave>=0)this.spawnWave(bossWave,true);
+      boss=this.enemies.find(enemy=>enemy.kind==='boss'&&!enemy.dead);
+    }
+    const player=this.players.find(candidate=>!candidate.downed)??this.players[0];
+    if(boss&&player){boss.hp=0;this.defeatEnemy(boss,player);}
+  }
   getScore(): number { return this.score; }
   getDefeatedCount(): number { return this.defeatedCount; }
   getMaxCombo(): number { return this.maxCombo; }

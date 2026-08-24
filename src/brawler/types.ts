@@ -20,6 +20,8 @@ export interface BeatEmUpOptions {
   heroes: BrawlerHeroId[];
   debugBoss?: boolean;
   debugScene?: BrawlerDebugScene;
+  /** The district clear returns to the campaign's final rider act. */
+  campaignContinuation?: boolean;
 }
 
 export interface BrawlerPlayer {
@@ -90,7 +92,8 @@ export interface BrawlerParticle {
   maxLife: number;
   size: number;
   color: string;
-  kind: 'spark' | 'dust' | 'smoke' | 'star' | 'ring';
+  kind: 'spark' | 'dust' | 'smoke' | 'star' | 'ring' | 'slash';
+  angle?: number;
 }
 
 export interface BrawlerPickup {

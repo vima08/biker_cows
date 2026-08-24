@@ -1,6 +1,6 @@
 export type CampaignCheckpoint = {
   readonly levelId: string;
-  readonly stage: 1 | 2;
+  readonly stage: 1 | 2 | 3;
   readonly runtime: 'rider' | 'brawler';
 };
 

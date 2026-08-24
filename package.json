@@ -10,7 +10,13 @@
     "test:smoke": "node scripts/gauntlet.mjs",
     "test:wave18": "node scripts/gauntlet-iteration18.mjs",
     "test:brawler": "node scripts/gauntlet-brawler.mjs",
-    "test:continue": "node scripts/gauntlet-continue.mjs"
+    "test:brawler-combo": "node scripts/gauntlet-brawler-combo.mjs",
+    "test:enemy-facing": "node scripts/gauntlet-enemy-facing.mjs",
+    "test:boss-performance": "node scripts/gauntlet-boss-performance.mjs",
+    "test:outro": "node scripts/gauntlet-outro.mjs",
+    "test:brawler-gait": "node scripts/gauntlet-brawler-gait.mjs",
+    "test:continue": "node scripts/gauntlet-continue.mjs",
+    "test:campaign": "node scripts/gauntlet-three-act-campaign.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.62.1",

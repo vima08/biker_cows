@@ -67,13 +67,13 @@ node scripts/gauntlet-brawler-footing.mjs
 
 Последний независимый critic остаётся из Wave C: **8.4/10, AAA-era NO**; его blocker по длительному silhouette overlap был затем устранён Wave D и подтверждён измеримым alpha-mask contract. В iteration 25 новый независимый critic не запускался: пользователь явно попросил завершить работу из-за лимита. Эта итерация проверена builder-контрактами, полными маршрутами и отдельным integration/smoothing-прогоном.
 
-## Один крупнейший оставшийся недостаток
+## Последняя закрытая горячая точка
 
-**Открыт дефект просадки производительности shoot ’em up на минибоссе и боссе.** Он сохранён неотмеченным в `DEFECTS.md`: в этой итерации не было достаточно воспроизводимого performance-профиля, поэтому исправление не заявлено без доказательства.
+**Дефект просадки производительности shoot ’em up на минибоссе и боссе закрыт.** Production benchmark сохранён в `.gauntlet/boss-performance-production-final/report.json`: обе сцены держат около `60 FPS`, `p95 16.7–16.8 ms`, финальная boss-сцена больше не замедляет симуляцию до `0.35×` и работает на `0.975×`. Мини-босс усилен с `900` до `1400 HP`.
 
 ## Точная следующая итерация Gauntlet Loop
 
-1. На production build записать frame-time/FPS и число actors/projectiles/particles на обычной дороге, минибоссе и боссе при одинаковом viewport.
-2. Изолировать update/draw/asset bottleneck, задать измеримый бюджет кадра и оптимизировать только подтверждённую горячую точку.
+1. Ручным тестом проверить субъективную длительность боя с мини-боссом на `1400 HP` для всех трёх героинь.
+2. При следующем изменении эффектов повторить `npm run test:boss-performance` на production build.
 3. Повторить полный solo и co-op smoke, continue/defeat и boss victory без runtime errors.
 4. После integration/smoothing привлечь нового независимого visual critic со свежим контекстом для menu/select/movement/intense combat/обоих боссов и слепого A/B с 16-битными референсами.

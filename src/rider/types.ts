@@ -1,4 +1,4 @@
-export type GameMode = 'title' | 'select' | 'intro' | 'playing' | 'brawler' | 'paused' | 'continue' | 'win' | 'lose';
+export type GameMode = 'title' | 'select' | 'intro' | 'outro' | 'playing' | 'brawler' | 'paused' | 'continue' | 'win' | 'lose';
 export type HeroId = 'cassia' | 'bruna' | 'nova';
 export type Weapon = 'blaster' | 'spread' | 'laser' | 'rockets';
 export type RiderEnemyKind = 'rider' | 'tank' | 'drone' | 'skimmer' | 'mine' | 'miniboss' | 'boss' | 'pod';
@@ -86,6 +86,8 @@ export interface RiderEnemy {
   phase: number;
   flash: number;
   hitReact: number;
+  /** Coalesces cosmetic hit bursts on large targets without dropping damage events. */
+  impactFxCooldown?: number;
   score: number;
   /** Stage-one boss attack timeline; absent for ordinary enemies. */
   attackMode?: number;
