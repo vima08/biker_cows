@@ -1,5 +1,7 @@
 import { gameEvents } from '../core/GameEvents';
 import { ImageAsset } from '../core/ImageAsset';
+import { brawlerDebugControls } from '../debug/brawlerScenes';
+import { isArtEnabled } from '../debug/runtime';
 import { BRAWLER_HEROES } from './catalog';
 import { enemyAttackDuration, enemyAttackPhase, resolveEnemyMotionPose } from './enemyMotion';
 import { resolvePlayerMotionPose, resolvePlayerReactionPose } from './motion';
@@ -49,6 +51,7 @@ export class BeatEmUpStage {
   private contactFocusTimer = 0;
   private contactFocusX = 0;
   private enemySerial = 0;
+  private readonly attackKindCounts = new Map<string, number>();
   private score = 0;
   private combo = 0;
   private maxCombo = 0;
@@ -62,6 +65,7 @@ export class BeatEmUpStage {
   private readonly bossSheet: ImageAsset;
   private readonly backdrop: ImageAsset;
   private readonly floor: ImageAsset;
+  private readonly debugPulse = { jumpCycle: -1, attackCycle: -1 };
 
   constructor(
     private readonly ctx: CanvasRenderingContext2D,
@@ -83,7 +87,11 @@ export class BeatEmUpStage {
     this.bossSheet = new ImageAsset(options.level.assets.boss, 3, 2);
     this.backdrop = new ImageAsset(options.level.assets.backdrop);
     this.floor = new ImageAsset(options.level.assets.floor);
-    if (options.debugBoss) {
+    if (options.debugScene) {
+      this.status = 'running';
+      this.introTimer = 0;
+      for (const player of this.players) { player.x = 220 + (player.id - 1) * 84; player.y = 382 + (player.id - 1) * 36; }
+    } else if (options.debugBoss) {
       this.status = 'running';
       this.introTimer = 0;
       this.cameraX = Math.max(0, options.level.length - 1050);
@@ -131,8 +139,18 @@ export class BeatEmUpStage {
       return;
     }
 
-    for (let index = 0; index < this.players.length; index++) this.updatePlayer(this.players[index], controls[index] ?? controls[0], dt);
+    for (let index = 0; index < this.players.length; index++) {
+      const player = this.players[index];
+      const input = this.options.debugScene && index === 0
+        ? brawlerDebugControls(this.options.debugScene, this.elapsed, player, this.debugPulse)
+        : controls[index] ?? controls[0];
+      this.updatePlayer(player, input, dt);
+    }
     this.updateCamera(dt);
+    if (this.options.debugScene) {
+      this.updateParticles(dt);
+      return;
+    }
     this.updateEncounter();
     this.updateEnemies(dt);
     this.resolveActorBodySeparation();
@@ -318,8 +336,11 @@ export class BeatEmUpStage {
       const candidates = this.enemies.filter(enemy => !enemy.dead && targets.get(enemy.id)?.id === player.id && enemy.stun <= 0 && enemy.reactionTimer <= 0);
       const lead = candidates.reduce<BrawlerEnemy | null>((best, enemy) => {
         if (!best) return enemy;
-        const score = (enemy.attackTimer > 0 ? -10_000 : 0) + distance(enemy.x, enemy.y, player.x, player.y) + Math.max(0, enemy.cooldown) * 72;
-        const bestScore = (best.attackTimer > 0 ? -10_000 : 0) + distance(best.x, best.y, player.x, player.y) + Math.max(0, best.cooldown) * 72;
+        // Keep the active attacker locked, then hand the lead to a ready
+        // support enemy. Distance alone previously let the closest raider keep
+        // reclaiming the slot during cooldown, starving bruiser/shocker attacks.
+        const score = (enemy.attackTimer > 0 ? -1_000_000 : 0) + (enemy.cooldown > 0 ? 10_000 + enemy.cooldown * 20 : 0) + (this.attackKindCounts.get(`${player.id}:${enemy.kind}`) ?? 0) * 100_000 + distance(enemy.x, enemy.y, player.x, player.y);
+        const bestScore = (best.attackTimer > 0 ? -1_000_000 : 0) + (best.cooldown > 0 ? 10_000 + best.cooldown * 20 : 0) + (this.attackKindCounts.get(`${player.id}:${best.kind}`) ?? 0) * 100_000 + distance(best.x, best.y, player.x, player.y);
         return score < bestScore ? enemy : best;
       }, null);
       if (lead) leadByPlayer.set(player.id, lead);
@@ -331,7 +352,10 @@ export class BeatEmUpStage {
       if (enemy.dead) continue;
       const target = targets.get(enemy.id) ?? null;
       if (!target || enemy.stun > 0 || enemy.reactionTimer > 0) continue;
-      const reach = enemy.kind === 'boss' ? 92 : enemy.kind === 'bruiser' ? 64 : 50;
+      // Attack reach must clear the production body-separation radius below.
+      // A 50px reach made raider/shocker attacks unreachable once bodies were
+      // kept 56-58px apart: they walked forever but never entered anticipation.
+      const reach = enemy.kind === 'boss' ? 92 : enemy.kind === 'bruiser' ? 64 : enemy.kind === 'shocker' ? 58 : 60;
       const isLead = enemy.kind === 'boss' || leadByPlayer.get(target.id)?.id === enemy.id;
       const currentSide = enemy.x >= target.x ? 1 : -1;
       const slotIndex = (enemy.id - 1) % slotDepth.length;
@@ -359,6 +383,8 @@ export class BeatEmUpStage {
         enemy.attackSerial++;
         enemy.attackVariant = (enemy.attackVariant + 1) % 3;
         enemy.cooldown = enemy.kind === 'boss' ? 1.3 : enemy.kind === 'bruiser' ? 1.25 : .8;
+        const attackKindKey=`${target.id}:${enemy.kind}`;
+        this.attackKindCounts.set(attackKindKey,(this.attackKindCounts.get(attackKindKey)??0)+1);
         if (enemy.kind === 'boss') this.emitRing(enemy.x + enemy.facing * 38, enemy.y - 54, '#ff8b3d');
         audio(enemy.kind === 'boss' ? 'boss_cannon' : 'melee_swing', .45, enemy.kind === 'bruiser' ? .7 : 1);
       }
@@ -611,7 +637,7 @@ export class BeatEmUpStage {
     const ctx = this.ctx;
     ctx.fillStyle = '#120b20';
     ctx.fillRect(0, 0, W, H);
-    if (this.backdrop.state === 'ready' && this.backdrop.image) {
+    if (isArtEnabled() && this.backdrop.state === 'ready' && this.backdrop.image) {
       const image = this.backdrop.image;
       const cropWidth = Math.min(image.naturalWidth, Math.round(image.naturalHeight * (W / 320)));
       const travel = Math.max(0, image.naturalWidth - cropWidth);
@@ -628,7 +654,7 @@ export class BeatEmUpStage {
         ctx.fillStyle = '#5de4e0'; ctx.fillRect(x + 30, 160, 44, 4);
       }
     }
-    if (this.floor.state === 'ready' && this.floor.image) {
+    if (isArtEnabled() && this.floor.state === 'ready' && this.floor.image) {
       const tileWidth = Math.round(254 * this.floor.image.naturalWidth / this.floor.image.naturalHeight);
       const offset = -((this.cameraX * 1.04) % tileWidth);
       ctx.imageSmoothingEnabled = false;
@@ -656,7 +682,7 @@ export class BeatEmUpStage {
 
   private drawForeground(): void {
     const ctx = this.ctx;
-    if (this.floor.state === 'ready') {
+    if (isArtEnabled() && this.floor.state === 'ready') {
       ctx.fillStyle = '#07050c99'; ctx.fillRect(0, 532, W, 8);
       ctx.fillStyle = '#56334899'; ctx.fillRect(0, 532, W, 2);
       return;
@@ -674,7 +700,10 @@ export class BeatEmUpStage {
     const ctx = this.ctx;
     const spec = BRAWLER_HEROES[player.hero];
     const screenX = px(player.x - this.cameraX);
-    const screenY = px(player.y - player.z);
+    // The sheets retain a narrow transparent gutter below their lowest boot.
+    // Compensate it once at the sprite root while the shadow remains attached
+    // to world-space y. Airborne z therefore never drags the shadow upward.
+    const screenY = px(player.y - player.z + 3);
     ctx.save();
     ctx.globalAlpha = player.downed ? .68 : player.invuln > 0 && Math.floor(player.invuln * 18) % 2 ? .55 : 1;
     ctx.fillStyle = '#0008'; ctx.beginPath(); ctx.ellipse(screenX, player.y + 5, player.downed ? 50 : 36, 10, 0, 0, Math.PI * 2); ctx.fill();
@@ -736,11 +765,16 @@ export class BeatEmUpStage {
     const rootOffsetX = -enemy.facing * (enemy.kind === 'boss' ? 28 : 18);
     const screenX = px(enemy.x - this.cameraX + rootOffsetX);
     const screenY = px(enemy.y);
+    // Gang rows have different transparent bottom gutters in the shared
+    // atlas (raider 33px, bruiser 4px, shocker 15px at source resolution).
+    // Correct only the bitmap root; the shadow deliberately stays at the
+    // logical world ground regardless of gait/reaction offsets.
+    const spriteGroundCorrection = enemy.kind === 'raider' ? 20 : enemy.kind === 'bruiser' ? 3 : enemy.kind === 'shocker' ? 9 : 0;
     const motionPose = resolveEnemyMotionPose(enemy);
     ctx.save();
     ctx.globalAlpha = motionPose.alpha;
     ctx.fillStyle = '#0008'; ctx.beginPath(); ctx.ellipse(screenX, screenY + 4, enemy.kind === 'boss' ? 76 : 34, enemy.kind === 'boss' ? 16 : 9, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.translate(screenX + px(motionPose.offsetX), screenY + px(motionPose.offsetY));
+    ctx.translate(screenX + px(motionPose.offsetX), screenY + px(spriteGroundCorrection + motionPose.offsetY));
     ctx.rotate(motionPose.rotation);
     ctx.scale(motionPose.scaleX, motionPose.scaleY);
     if (enemy.kind === 'boss' && enemy.facing > 0) ctx.scale(-1, 1);
@@ -777,6 +811,7 @@ export class BeatEmUpStage {
   }
 
   private drawSheetFrame(asset: ImageAsset, frame: number, x: number, y: number, width: number, height: number, anchorX: number, anchorY: number): boolean {
+    if (!isArtEnabled()) return false;
     if (asset.state !== 'ready' || !asset.image) return false;
     const image = asset.image;
     const frameWidth = image.naturalWidth / asset.columns;
@@ -915,6 +950,7 @@ export class BeatEmUpStage {
     };
     return {
       status: this.status, elapsed: Number(this.elapsed.toFixed(2)), cameraX: Number(this.cameraX.toFixed(2)),
+      debugScene: this.options.debugScene ?? null,
       levelId: this.options.level.id, stageLength: this.options.level.length, wave: this.waveIndex, arenaLocked: this.arenaLocked, score: this.score, combo: this.combo, maxCombo: this.maxCombo, confirmedHits: this.confirmedHits,
       hitStop: Number(this.hitStop.toFixed(3)), impactParticles: this.particles.filter(particle => particle.kind === 'spark').length,
       combatFraming: this.combatFramingSnapshot(),

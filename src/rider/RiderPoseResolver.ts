@@ -7,7 +7,12 @@ import {
   HERO_SUSTAINED_FIRE_CYCLE,
   HEROES,
 } from './catalog';
-import { resolveRiderKinetics, type RiderKineticPose } from './RiderKinetics';
+import {
+  resolveRiderKinetics,
+  resolveRiderWheelMotion,
+  type RiderKineticPose,
+  type RiderWheelMotion,
+} from './RiderKinetics';
 import type { HeroBodySheet, HeroSourceMap, RiderPlayer } from './types';
 
 export interface RiderBodyPose {
@@ -49,6 +54,17 @@ export class RiderPoseResolver {
     const active = debugImpactStage === null && player.jump <= 1 && !player.fireHeld
       && player.fireReleaseElapsed < 0 && pose.sheet === 'authored' && pose.frame <= 1;
     return resolveRiderKinetics(player, active);
+  }
+
+  wheelMotion(
+    player: RiderPlayer,
+    debugImpactStage: number | null,
+    pose = this.bodyPose(player, debugImpactStage),
+  ): RiderWheelMotion {
+    const bodyKinetics = this.kinetics(player, debugImpactStage, pose);
+    const groundedMotion = debugImpactStage === null && player.jump <= 1
+      && (bodyKinetics.active || pose.sheet === 'sustained');
+    return resolveRiderWheelMotion(player, groundedMotion);
   }
 
   muzzle(

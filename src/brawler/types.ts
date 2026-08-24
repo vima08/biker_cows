@@ -1,4 +1,5 @@
 import type { BrawlerEnemyKind, BrawlerLevelDefinition } from '../levels/types';
+import type { BrawlerDebugScene } from '../debug/brawlerScenes';
 
 export type BrawlerHeroId = 'cassia' | 'bruna' | 'nova';
 export type BrawlerStatus = 'intro' | 'running' | 'victory' | 'defeat';
@@ -18,6 +19,7 @@ export interface BeatEmUpOptions {
   level: BrawlerLevelDefinition;
   heroes: BrawlerHeroId[];
   debugBoss?: boolean;
+  debugScene?: BrawlerDebugScene;
 }
 
 export interface BrawlerPlayer {

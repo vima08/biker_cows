@@ -148,16 +148,22 @@ export function resolvePlayerMotionPose(player: BrawlerPlayer): BrawlerMotionPos
   const walkPhase = Math.min(WALK_PHASE_COUNT - 1, Math.floor(phaseFloat));
   const walkPhaseProgress = phaseFloat - walkPhase;
   const phaseFrames = [0, 1, 2, 1] as const;
-  const lift = [0, -2, -3, 0] as const;
+  // All authored locomotion cells share a bottom-aligned planted boot. Keep
+  // that contact on the arena plane; lifting the whole bitmap made the cow
+  // appear to hop once per stride. Weight now travels through rotation and
+  // squash around the bottom anchor instead.
+  const lift = [0, 0, 0, 0] as const;
   // Phases one and three share the same authored travelling cel, but resolve
   // as a forward push and an upright heel strike respectively.
   const lean = [0, -.028, .016, .024] as const;
   const squashX = [1, 1.018, .988, .992] as const;
   const squashY = [1.006, .988, 1.012, 1.014] as const;
-  // A small backward drift during each beat keeps the planted boot from
-  // skating while the logical actor continues to move smoothly.
-  const footPlant = (0.5 - walkPhaseProgress) * 8;
-  const phaseBias = [2, 1, -2, -1] as const;
+  // Cancel the actor's complete quarter-stride while a cel is held. At the
+  // next authored contact the root advances and the other boot takes over,
+  // producing the deliberate planted-foot cadence of a 16-bit walk instead
+  // of a bitmap sliding continuously underneath the torso.
+  const footPlant = (0.5 - walkPhaseProgress) * (stride / WALK_PHASE_COUNT);
+  const phaseBias = [1, 0, -1, 0] as const;
 
   return pose(directionBase + phaseFrames[walkPhase], {
     walkPhase,

@@ -2,6 +2,9 @@ import './styles.css';
 import { VenusGame } from './game';
 import { AudioSystem } from './audio';
 import { AudioEventBridge } from './core/AudioEventBridge';
+import { configureDebugRuntime, setArtEnabled } from './debug/runtime';
+
+configureDebugRuntime(location.search);
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game');
 if (!canvas) throw new Error('Game canvas was not found');
@@ -26,6 +29,8 @@ declare global {
       setPlayerInput: (id: 1|2, state: Parameters<VenusGame['setDebugPlayerInput']>[1]) => ReturnType<VenusGame['snapshot']>;
       friendlyFireProbe: () => ReturnType<VenusGame['debugFriendlyFireProbe']>;
       damagePlayer: (id: 1|2, amount: number) => ReturnType<VenusGame['debugDamagePlayer']>;
+      defeatStage: (stage: 1|2) => ReturnType<VenusGame['debugDefeatStage']>;
+      setArtEnabled: (enabled: boolean) => ReturnType<VenusGame['snapshot']>;
     };
   }
 }
@@ -39,4 +44,6 @@ window.__BCFV_DEBUG__ = {
   setPlayerInput: (id: 1|2, state: Parameters<VenusGame['setDebugPlayerInput']>[1]) => game.setDebugPlayerInput(id,state),
   friendlyFireProbe: () => game.debugFriendlyFireProbe(),
   damagePlayer: (id: 1|2, amount: number) => game.debugDamagePlayer(id,amount),
+  defeatStage: (stage: 1|2) => game.debugDefeatStage(stage),
+  setArtEnabled: (enabled: boolean) => { setArtEnabled(enabled); return game.snapshot(); },
 };
