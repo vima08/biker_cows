@@ -16,7 +16,9 @@
     "test:outro": "node scripts/gauntlet-outro.mjs",
     "test:brawler-gait": "node scripts/gauntlet-brawler-gait.mjs",
     "test:continue": "node scripts/gauntlet-continue.mjs",
-    "test:campaign": "node scripts/gauntlet-three-act-campaign.mjs"
+    "test:campaign": "node scripts/gauntlet-three-act-campaign.mjs",
+    "test:debug-scenes": "node scripts/gauntlet-debug-scenes.mjs",
+    "test:road-rash": "npm run build && node scripts/gauntlet-road-rash.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.62.1",

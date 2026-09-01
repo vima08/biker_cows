@@ -2,7 +2,7 @@
 
 Архитектура, описание модулей и инструкция по добавлению уровней находятся в [docs/](docs/README.md).
 
-Законченная локальная браузерная игра из двух связанных уровней: скоростной motorcycle shoot ’em up сменяется полноценным side-scrolling beat ’em up в Furnace District. В обоих уровнях доступны три антропоморфные коровы-байкеры и локальный кооператив. Персонажи, мир, графика, музыка и звуки созданы специально для проекта. После установки зависимостей игра полностью автономна и не обращается к внешним API.
+Законченная локальная браузерная игра из связанных аркадных секций: скоростной motorcycle shoot ’em up, промежуточная combat-race в духе 16-битных Road Rash и полноценный side-scrolling beat ’em up в Furnace District. Доступны три антропоморфные коровы-байкеры и локальный кооператив. Персонажи, мир, графика, музыка и звуки созданы специально для проекта. После установки зависимостей игра полностью автономна и не обращается к внешним API.
 
 ## Запуск
 
@@ -24,7 +24,7 @@ npm run preview
 
 ## Управление
 
-В одиночной игре: `WASD` или стрелки — движение, `Z` — огонь на байке / серия ударов в Furnace District, `X` — прыжок, `C` — спецприём, `P`/`Esc` — пауза. На втором уровне можно свободно перемещаться по глубине арены; быстрые нажатия `Z` собираются в трёхударную комбинацию. Поддерживаются совместимые клавиши `J/K/L`, `Space`, `Shift`, `Ctrl` и Gamepad API.
+В одиночной игре: `WASD` или стрелки — движение; в Sulfur Run `W/S` отвечают за газ/тормоз, `A/D` за руление, `Z` за боковой удар; на байке `Z` стреляет, а в Furnace District собирает серию ударов. `X` — прыжок, `C` — спецприём, `P`/`Esc` — пауза. Поддерживаются совместимые клавиши `J/K/L`, `Space`, `Shift`, `Ctrl` и Gamepad API.
 
 На выборе персонажей `Tab` включает локальный режим на двоих.
 
@@ -54,6 +54,7 @@ npm run preview
 - наземные и воздушные враги, Magma Mauler Mk.IV и Sulfur Dreadnought;
 - несколько видов оружия, улучшения, pickups, combo, спецприёмы;
 - полностью отдельный Stage 2 — **Furnace District**: belt-scrolling арены, 8-направленное движение, трёхударные серии, воздушные атаки, area-special, три класса уличных врагов, pickups и The Forge Overseer;
+- промежуточный **Sulfur Run**: псевдо-3D combat-race, газ/тормоз, руление, боковые удары, трафик, масло, соперники, Road King и собственный continue-checkpoint;
 - отдельные 8-frame пешие atlas’ы Cassia/Bruna/Nova, 12-frame Venus gang, 6-frame boss и два авторских слоя индустриального окружения;
 - локальный кооператив без friendly fire;
 - пауза, победа, поражение и рестарт;
@@ -74,6 +75,9 @@ npm run dev -- --host 127.0.0.1 --port 4173 --strictPort
 npm run test:smoke
 npm run test:wave18
 npm run test:brawler
+npm run test:road-rash
+npm run test:campaign
+npm run test:debug-scenes
 ```
 
 Основной Gauntlet проходит solo и co-op маршруты первого уровня, проверяет 13/13 локальных atlas’ов, sustained/release/muzzle, impact chain, мини-босса, босса, победу и рестарт. `test:brawler` отдельно проверяет семь Stage-2 ассетов, реальный переход между уровнями, всех трёх героинь, co-op без friendly fire, шесть арен и The Forge Overseer. Обязательный gate — `runtimeErrors=[]`.
@@ -95,7 +99,32 @@ npm run test:brawler
 - `?scene=brawler-boss&hero=bruna`
 - `?scene=brawler-coop`
 - `?scene=brawler-coop-boss`
+- `?scene=brawler-walk&hero=cassia`
+- `?scene=brawler-jump&hero=bruna`
+- `?scene=brawler-air-attack&hero=nova`
+- `?scene=road-rash&hero=cassia`
+- `?scene=road-rash-combat&hero=cassia`
+- `?scene=road-rash-boss&hero=cassia`
 - `?scene=stage-transition&hero=bruna`
+
+`hero=cassia|bruna|nova` выбирает героиню в поддерживающих её debug-сценах. Brawler-сцены `brawler-walk`, `brawler-jump` и `brawler-air-attack` фиксируют соответственно ходьбу, прыжок и воздушную атаку для визуальной/анимационной проверки. Road Rash-сцены открывают обычное движение, гарантированный ближний бой и сразу битву с Road King. `npm run test:debug-scenes` автоматически открывает все три brawler-сцены для каждой героини, снимает кадры в `.gauntlet/debug-scenes/`, а также проверяет `?art=vector` и runtime-переключатель арта.
+
+### Runtime vector mode
+
+Добавьте `?art=vector` к любому URL сцены, чтобы запустить процедурный/vector fallback вместо production-атласов, например:
+
+```text
+http://localhost:5173/?scene=brawler-walk&hero=cassia&art=vector
+```
+
+Без перезагрузки режим переключается через debug API в консоли браузера:
+
+```js
+window.__BCFV_DEBUG__.setArtEnabled(false); // vector fallback
+window.__BCFV_DEBUG__.setArtEnabled(true);  // production authored art
+```
+
+Текущее состояние доступно в `window.__BCFV_DEBUG__.snapshot()` как `artEnabled` и `renderMode`.
 
 ## Арт-пайплайн
 

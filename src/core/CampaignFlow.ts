@@ -2,6 +2,7 @@ export type CampaignAct = 1 | 2 | 3;
 
 export type CampaignSegment =
   | 'rider-pre-miniboss'
+  | 'road-rash'
   | 'brawler'
   | 'rider-post-miniboss';
 

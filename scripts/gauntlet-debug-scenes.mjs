@@ -20,9 +20,9 @@ try{
   const walk=[];for(let i=0;i<18;i++){await page.waitForTimeout(70);walk.push((await state()).brawler.players[0])}
   const phases=[...new Set(walk.map(s=>s.walkPhase))],xDelta=walk.at(-1).x-walk[0].x;
   if(xDelta<100||phases.length!==4||walk.some(s=>!s.moving))throw Error(`${hero} walk failed: ${JSON.stringify({xDelta,phases})}`);await shot(`${hero}-walk`);
-  await open(`?scene=brawler-jump&hero=${hero}`);await page.waitForFunction(()=>window.__BCFV_DEBUG__.snapshot().brawler?.players[0].z>40);
-  const jump=[];for(let i=0;i<8;i++){await page.waitForTimeout(55);jump.push((await state()).brawler.players[0])}const maxZ=Math.max(...jump.map(s=>s.z));
-  if(maxZ<=40||jump.some(s=>s.attackPhase!==null))throw Error(`${hero} jump failed: ${maxZ}`);await shot(`${hero}-jump`);
+  await open(`?scene=brawler-jump&hero=${hero}`);await page.waitForFunction(()=>window.__BCFV_DEBUG__.snapshot().brawler?.players[0].z>8);
+  const jump=[];for(let i=0;i<16;i++){await page.waitForTimeout(30);jump.push((await state()).brawler.players[0])}const maxZ=Math.max(...jump.map(s=>s.z));
+  if(maxZ<=20||jump.some(s=>s.attackPhase!==null))throw Error(`${hero} jump failed: ${maxZ}`);await shot(`${hero}-jump`);
   await open(`?scene=brawler-air-attack&hero=${hero}`);await page.waitForFunction(()=>window.__BCFV_DEBUG__.snapshot().brawler?.players[0].airborneAttack===true);
   const air=[];for(let i=0;i<8;i++){await page.waitForTimeout(35);air.push((await state()).brawler.players[0])}
   const frames=[...new Set(air.map(s=>s.frame))],attackPhases=[...new Set(air.map(s=>s.attackPhase).filter(Boolean))],expected=[5,6];

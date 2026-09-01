@@ -18,12 +18,24 @@
 </head>
 <body><main>
   <h1>Biker Cows from Venus: Neon Stampede</h1>
-  <p class="lede">Компактная production-витрина. Здесь остаются только ключевые кадры текущей двухуровневой сборки; полные серии автоматических прогонов хранятся локально в <code>.gauntlet/</code>.</p>
-  <p><span class="tag">Stage 1 + Stage 2</span><span class="tag">solo + local co-op</span><span class="tag">Gauntlet Wave D</span></p>
+  <p class="lede">Компактная production-витрина полной кампании: rider → Road Rash → brawler → final rider. Полные серии автоматических прогонов хранятся локально в <code>.gauntlet/</code>.</p>
+  <p><span class="tag">4 campaign sections</span><span class="tag">solo + local co-op</span><span class="tag">Gauntlet iteration 26</span></p>
+
+  <section id="iteration-26-road-rash">
+    <h2>Gauntlet iteration 26 · Road Rash-интерлюдия</h2>
+    <p class="lede">Завершённая мотоциклетная melee-интерлюдия с authored-панорамой, восьмикадровой проверкой удара, трафиком, Road King и continue checkpoint. Production-прогон работает на реальном холсте 960×540.</p>
+    <p class="verdict"><strong>Статус:</strong> <span class="pass">build, Road Rash, full campaign: PASS</span>; 59 FPS, p95 16.8 ms, console errors <code>[]</code>, external requests <code>[]</code>. Последняя независимая оценка до финального smoothing: <strong>8.3/10</strong>, AAA-era <span class="gap">NO</span>; главный следующий разрыв — ещё более однозначный единственный contact-frame. Сырые доказательства: <code>.gauntlet/iteration-26/road-rash/</code>.</p>
+  <div class="grid">
+    <figure><img src="captures/iteration-26/road-rash-movement.png" alt="Sulfur Run movement"><figcaption>Sulfur Run: production movement, perspective road and speed layer</figcaption></figure>
+    <figure><img src="captures/iteration-26/road-rash-combat.png" alt="Sulfur Run melee combat"><figcaption>Six-phase side strike with separated player and rival silhouettes</figcaption></figure>
+    <figure><img src="captures/iteration-26/road-rash-boss.png" alt="Road King boss battle"><figcaption>Road King: enlarged boss silhouette, weapon telegraph and reaction pose</figcaption></figure>
+    <figure><img src="captures/iteration-26/road-rash-victory.png" alt="Sulfur Run victory"><figcaption>Road Rash interlude completed before Furnace District</figcaption></figure>
+  </div>
+  </section>
 
   <h2>Gauntlet iteration 26 · three-act campaign</h2>
-  <p class="lede">Кампания перестроена в цельный маршрут: rider до Magma Mauler → Furnace District beat ’em up → финальный rider-отрезок → Sulfur Dreadnought. Бывшие 320 секунд после минибосса воспроизводятся за 160 секунд с сохранением исходной временной шкалы 145→465. <span class="pass">Campaign, continue, full brawler, full smoke и production build: PASS.</span></p>
-  <p class="verdict"><strong>Порядок:</strong> ACT 1 <span class="pass">MINIBOSS</span> → ACT 2 <span class="pass">BRAWLER</span> → ACT 3 <span class="pass">FINAL RUN</span> → CAMPAIGN WIN. Co-op, выбранные герои, score, weapon/rank и оставшиеся попытки сохраняются между runtime.</p>
+  <p class="lede">Кампания перестроена в цельный маршрут: rider до Magma Mauler → Sulfur Run Road Rash → Furnace District beat ’em up → финальный rider-отрезок → Sulfur Dreadnought. <span class="pass">Campaign, Road Rash, continue, debug scenes и production build: PASS.</span></p>
+  <p class="verdict"><strong>Порядок:</strong> ACT 1 <span class="pass">MINIBOSS</span> → INTERLUDE <span class="pass">SULFUR RUN</span> → ACT 2 <span class="pass">BRAWLER</span> → ACT 3 <span class="pass">FINAL RUN</span> → CAMPAIGN WIN. Герои, score, weapon/rank и попытки сохраняются между runtime.</p>
   <div class="grid">
     <figure><img src="captures/iteration-26/act1.png" alt="Campaign Act 1"><figcaption>Act 1: внешний участок Venus Highway и таймер до минибосса</figcaption></figure>
     <figure><img src="captures/iteration-26/miniboss.png" alt="Magma Mauler miniboss"><figcaption>Act 1: Magma Mauler завершает первую shoot ’em up-секцию</figcaption></figure>
