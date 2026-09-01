@@ -7,6 +7,7 @@ const SOUND_EFFECTS: Record<string, SoundEffectName> = {
   menu_move: 'ui', menu_accept: 'ui', menu_back: 'ui', pause: 'ui',
   engine_start: 'jump', shoot: 'shoot', laser: 'shoot', rocket: 'explosion',
   melee_swing: 'melee', hit: 'hit', jump: 'jump', land: 'hit', special: 'boss',
+  road_attack: 'melee', melee_hit: 'hit', rider_hurt: 'hurt', boss_down: 'explosion',
   enemy_shoot: 'shoot', boss_cannon: 'explosion', warning: 'boss',
   player_hit: 'hurt', explode: 'explosion', boss_explode: 'explosion',
   pickup: 'pickup', stage_clear: 'victory', game_over: 'defeat',
@@ -54,7 +55,7 @@ export class AudioEventBridge {
       return;
     }
 
-    const mode: MusicMode = cue === 'boss' || cue === 'miniboss'
+    const mode: MusicMode = cue === 'boss' || cue === 'miniboss' || cue === 'road_boss'
       ? 'boss'
       : cue === 'brawler' ? 'brawler' : 'ride';
     void this.audio.resume();

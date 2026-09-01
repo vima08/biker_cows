@@ -19,9 +19,11 @@ main.ts
 
 `main.ts` — composition root. Он создаёт зависимости и публикует debug API, но не содержит игровую логику.
 
-`VenusGame` — координатор сцен и Stage 1. Он переключает title/select/intro/rider/brawler/end, запускает цикл кадра и передаёт управление активному runtime уровня.
+`VenusGame` — координатор сцен и Stage 1. Он переключает title/select/intro/rider/road-rash/brawler/end, запускает цикл кадра и передаёт управление активному runtime уровня.
 
 `BeatEmUpStage` — runtime belt-scrolling уровня. Геометрия, волны, подписи и пути к ассетам приходят через `BrawlerLevelDefinition`; класс не привязан к имени Furnace District.
+
+`RoadRashStage` — автономный pseudo-3D combat-race runtime Sulfur Run: перспектива, скорость, трафик, melee, Road King, snapshot и debug-переходы.
 
 ## Правила зависимостей
 

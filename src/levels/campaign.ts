@@ -1,5 +1,5 @@
 import { LevelRegistry } from './LevelRegistry';
-import type { BrawlerLevelDefinition, RiderLevelDefinition } from './types';
+import type { BrawlerLevelDefinition, RiderLevelDefinition, RoadRashLevelDefinition } from './types';
 import { assetUrl } from '../assetUrl';
 
 export const VENUS_HIGHWAY: RiderLevelDefinition = {
@@ -13,9 +13,22 @@ export const VENUS_HIGHWAY: RiderLevelDefinition = {
   minibossAtSeconds: 145,
 };
 
+export const SULFUR_RUN: RoadRashLevelDefinition = {
+  id: 'sulfur-run',
+  order: 2,
+  runtime: 'road-rash',
+  title: 'SULFUR RUN',
+  subtitle: 'KNOCK THE JACKALS OFF THE ROAD',
+  bossName: 'RAZORBACK REX',
+  musicCue: 'stage',
+  distance: 7200,
+  bossAt: 5900,
+  backdrop: assetUrl('assets/road-rash/venus-badlands-panorama-v1.png'),
+};
+
 export const FURNACE_DISTRICT: BrawlerLevelDefinition = {
   id: 'furnace-district',
-  order: 2,
+  order: 3,
   runtime: 'brawler',
   title: 'FURNACE DISTRICT',
   subtitle: 'THE FORGE OVERSEER',
@@ -40,4 +53,4 @@ export const FURNACE_DISTRICT: BrawlerLevelDefinition = {
   ],
 };
 
-export const campaign = new LevelRegistry([VENUS_HIGHWAY, FURNACE_DISTRICT]);
+export const campaign = new LevelRegistry([VENUS_HIGHWAY, SULFUR_RUN, FURNACE_DISTRICT]);

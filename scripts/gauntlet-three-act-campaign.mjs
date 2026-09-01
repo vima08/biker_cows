@@ -71,7 +71,7 @@ const completeAct = async () => page.evaluate(() => {
 
 const report = {
   ok: false,
-  contract: 'rider act 1 -> miniboss defeat -> brawler -> brawler victory -> rider act 3 -> final rider boss -> win',
+  contract: 'rider act 1 -> miniboss -> Road Rash interlude -> brawler -> rider final run -> boss -> win',
   observed: [],
   timing: null,
   continue: null,
@@ -131,13 +131,30 @@ try {
 
   await page.waitForFunction(() => {
     const snapshot = window.__BCFV_DEBUG__.snapshot();
+    return snapshot.state === 'road-rash' && (snapshot.act ?? snapshot.campaign?.act) === 2;
+  }, undefined, { timeout: 20_000 });
+  const roadRash = await state();
+  assert(segmentOf(roadRash) === 'road-rash', 'Road Rash interlude has the wrong campaign segment', roadRash.campaign);
+  assert(roadRash.roadRash, 'Road Rash runtime is missing from the campaign seam', roadRash);
+  assertCoop(roadRash, coopHeroes, 'road rash interlude');
+  record('road-rash', roadRash);
+  await capture('04-road-rash');
+
+  await completeAct();
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().roadRash?.status === 'victory');
+  const roadVictory = await state();
+  record('road-rash-victory', roadVictory);
+  await capture('05-road-rash-victory');
+
+  await page.waitForFunction(() => {
+    const snapshot = window.__BCFV_DEBUG__.snapshot();
     return snapshot.state === 'brawler' && (snapshot.act ?? snapshot.campaign?.act) === 2;
   }, undefined, { timeout: 20_000 });
   const brawler = await state();
   assert(segmentOf(brawler) === 'brawler', 'Act 2 has the wrong campaign segment', brawler.campaign);
   assertCoop(brawler, coopHeroes, 'brawler act 2');
   record('brawler-act-2', brawler);
-  await capture('04-brawler-act-2');
+  await capture('06-brawler-act-2');
 
   await completeAct();
   await page.waitForFunction(() => {
@@ -150,7 +167,7 @@ try {
   assert(brawlerVictory.brawler?.status === 'victory', 'Brawler completion did not enter the real victory state', brawlerVictory.brawler);
   assertCoop(brawlerVictory, coopHeroes, 'brawler victory');
   record('brawler-victory', brawlerVictory);
-  await capture('05-brawler-victory');
+  await capture('07-brawler-victory');
 
   await page.waitForFunction(() => {
     const snapshot = window.__BCFV_DEBUG__.snapshot();
@@ -167,7 +184,7 @@ try {
   assert(JSON.stringify(act3Loadout) === JSON.stringify(act1Loadout), 'Rider weapon loadout was reset across the brawler act', { act1Loadout, act3Loadout });
   report.loadout = { act1: act1Loadout, act3: act3Loadout, retained: true };
   record('rider-act-3', act3);
-  await capture('06-rider-act-3');
+  await capture('08-rider-act-3');
 
   await page.evaluate(() => window.__BCFV_DEBUG__.damagePlayer(1, 99_999));
   await page.evaluate(() => window.__BCFV_DEBUG__.damagePlayer(2, 99_999));
@@ -220,27 +237,27 @@ try {
   await capture('10c-campaign-win');
 
   const observedActs = report.observed.map(item => item.act);
-  assert(JSON.stringify(observedActs) === JSON.stringify([1, 1, 1, 2, 2, 3, 3, 3, 3]), 'Observed campaign order was not strictly 1 -> 2 -> 3', report.observed);
+  assert(JSON.stringify(observedActs) === JSON.stringify([1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3]), 'Observed campaign order did not include the Road Rash interlude', report.observed);
   assert(
-    JSON.stringify(win.campaign.history) === JSON.stringify(['miniboss-defeated', 'brawler-victory', 'boss-defeated', 'campaign-win']),
-    'Campaign history did not retain the exact three-act completion order',
+    JSON.stringify(win.campaign.history) === JSON.stringify(['miniboss-defeated', 'miniboss-to-sulfur-run', 'sulfur-run-cleared', 'sulfur-run-to-furnace', 'brawler-victory', 'boss-defeated', 'campaign-win']),
+    'Campaign history did not retain the Road Rash completion order',
     win.campaign,
   );
   report.history = win.campaign.history;
 
   // Legacy/debug routes are part of the production review harness. The old
-  // stage-transition route must now exercise the new miniboss -> brawler seam,
+  // stage-transition route must now exercise the new miniboss -> Road Rash seam,
   // while the standalone rider boss remains a self-contained victory route.
   await page.goto(`${baseURL}/?scene=stage-transition&hero=bruna`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.__BCFV_DEBUG__?.snapshot().boss?.kind === 'miniboss');
   await capture('11-stage-transition-miniboss');
   await page.waitForFunction(() => {
     const snapshot = window.__BCFV_DEBUG__.snapshot();
-    return snapshot.state === 'brawler' && (snapshot.act ?? snapshot.campaign?.act) === 2;
+    return snapshot.state === 'road-rash' && (snapshot.act ?? snapshot.campaign?.act) === 2;
   }, undefined, { timeout: 20_000 });
   const stageTransition = await state();
-  assert(stageTransition.segment === 'brawler', 'stage-transition did not enter the brawler act', stageTransition.campaign);
-  await capture('12-stage-transition-brawler');
+  assert(stageTransition.segment === 'road-rash', 'stage-transition did not enter the Road Rash interlude', stageTransition.campaign);
+  await capture('12-stage-transition-road-rash');
 
   await page.goto(`${baseURL}/?scene=boss&hero=bruna`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.__BCFV_DEBUG__?.snapshot().boss?.kind === 'boss');

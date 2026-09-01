@@ -1,4 +1,4 @@
-export type LevelRuntime = 'rider' | 'brawler';
+export type LevelRuntime = 'rider' | 'road-rash' | 'brawler';
 export type BrawlerEnemyKind = 'raider' | 'bruiser' | 'shocker' | 'boss';
 
 interface LevelMetadata {
@@ -14,6 +14,14 @@ export interface RiderLevelDefinition extends LevelMetadata {
   readonly runtime: 'rider';
   readonly bossAtSeconds: number;
   readonly minibossAtSeconds: number;
+}
+
+export interface RoadRashLevelDefinition extends LevelMetadata {
+  readonly runtime: 'road-rash';
+  readonly distance: number;
+  readonly bossAt: number;
+  readonly bossName: string;
+  readonly backdrop: string;
 }
 
 export interface BrawlerWaveDefinition {
@@ -38,4 +46,4 @@ export interface BrawlerLevelDefinition extends LevelMetadata {
   readonly waves: readonly BrawlerWaveDefinition[];
 }
 
-export type LevelDefinition = RiderLevelDefinition | BrawlerLevelDefinition;
+export type LevelDefinition = RiderLevelDefinition | RoadRashLevelDefinition | BrawlerLevelDefinition;

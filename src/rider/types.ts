@@ -1,4 +1,4 @@
-export type GameMode = 'title' | 'select' | 'intro' | 'outro' | 'playing' | 'brawler' | 'paused' | 'continue' | 'win' | 'lose';
+export type GameMode = 'title' | 'select' | 'intro' | 'outro' | 'playing' | 'road-rash' | 'brawler' | 'paused' | 'continue' | 'win' | 'lose';
 export type HeroId = 'cassia' | 'bruna' | 'nova';
 export type Weapon = 'blaster' | 'spread' | 'laser' | 'rockets';
 export type RiderEnemyKind = 'rider' | 'tank' | 'drone' | 'skimmer' | 'mine' | 'miniboss' | 'boss' | 'pod';

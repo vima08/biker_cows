@@ -13,6 +13,7 @@ import {
 import { drawHeroPortrait, preloadSelectPortraits } from './selectPortraits';
 import { drawSpriteFrame, getSpriteSheetStatus, preloadSpriteSheets } from './spriteAtlas';
 import { BeatEmUpStage, type BrawlerControls, type BrawlerHeroId } from './beatEmUp';
+import { RoadRashStage, type RoadRashControls } from './roadRash';
 import { gameEvents } from './core/GameEvents';
 import { HighScoreStore, type HighScore } from './core/HighScoreStore';
 import { assetUrl } from './assetUrl';
@@ -27,7 +28,7 @@ import {
 } from './core/CampaignFlow';
 import { parseBrawlerDebugScene, type BrawlerDebugScene } from './debug/brawlerScenes';
 import { getRenderMode, isArtEnabled } from './debug/runtime';
-import { campaign, FURNACE_DISTRICT, VENUS_HIGHWAY } from './levels/campaign';
+import { campaign, FURNACE_DISTRICT, SULFUR_RUN, VENUS_HIGHWAY } from './levels/campaign';
 import type { BrawlerLevelDefinition } from './levels/types';
 import {
   FIRE_RELEASE_DURATION,
@@ -170,7 +171,8 @@ export class VenusGame {
   private bossDefeated = false;
   private minibossDefeated = false;
   private brawler: BeatEmUpStage | null = null;
-  private pausedFrom: 'playing' | 'brawler' = 'playing';
+  private roadRash: RoadRashStage | null = null;
+  private pausedFrom: 'playing' | 'road-rash' | 'brawler' = 'playing';
   private currentLevelId = VENUS_HIGHWAY.id;
   private completedStage: CampaignAct = 1;
   private campaignAct: CampaignAct = 1;
@@ -178,6 +180,9 @@ export class VenusGame {
   private campaignHistory: string[] = [];
   private riderCheckpointLoadout: Array<{id:1|2;weapon:Weapon;weaponRank:number;special:number}> = [];
   private standaloneBrawler = false;
+  private standaloneRoadRash = false;
+  private roadRashScoreCommitted = false;
+  private debugRoadRashControls: RoadRashControls = {};
   private riderActIntroClock = 0;
   private debugStageOneOnly = false;
   private brawlerScoreCommitted = false;
@@ -250,6 +255,9 @@ export class VenusGame {
     else if(scene==='coop'||scene==='coop-ride'||scene==='coop-boss'){
       this.coopEnabled=true;this.beginRun();if(scene==='coop-boss')this.debugCoopBoss();
     }
+    else if (scene === 'road-rash' || scene === 'road-rash-combat' || scene === 'road-rash-boss') {
+      this.beginRoadRash(scene === 'road-rash-boss', true, scene === 'road-rash-combat');
+    }
     else if(scene==='rider-act-3'){
       this.beginRun();this.captureRiderLoadout();this.beginRiderAct(3,false);
       this.elapsed=clamp(Number(query.get('time'))||0,0,ACT_THREE_BOSS_TIME);if(this.elapsed>0)this.riderActIntroClock=0;if(this.elapsed>=ACT_THREE_BOSS_TIME)this.spawnFinalBoss();
@@ -292,6 +300,7 @@ export class VenusGame {
     else if (this.mode === 'intro') this.updateIntro(dt);
     else if (this.mode === 'outro') this.updateOutro(dt);
     else if (this.mode === 'playing') this.updatePlaying(dt);
+    else if (this.mode === 'road-rash') this.updateRoadRash(dt);
     else if (this.mode === 'brawler') this.updateBrawler(dt);
     else if (this.mode === 'paused') this.updatePause();
     else if (this.mode === 'continue') this.updateContinue(dt);
@@ -404,7 +413,7 @@ export class VenusGame {
   }
 
   private setCampaignAct(act:CampaignAct, transition:string) {
-    if (this.campaignAct !== act && this.campaignHistory.at(-1)!==transition) this.campaignHistory.push(transition);
+    if (transition!=='campaign-start'&&this.campaignHistory.at(-1)!==transition) this.campaignHistory.push(transition);
     this.campaignAct = act;
     this.campaignTransition = transition;
   }
@@ -447,15 +456,15 @@ export class VenusGame {
     }
     this.combo = 1; this.comboClock = 0;this.lastFriendlyFireProbe=null;this.hitStop=0;
     this.spawnClock = 1; this.obstacleClock = 4; this.minibossSpawned = act===3; this.minibossDefeated = act===3; this.bossSpawned = false; this.bossDefeated = false; this.debugBeat = false; this.debugWobblePose = null; this.debugImpactStage = null; this.debugSustainedFire = false; this.debugFireHeld = false; this.riderImpacts=[]; this.finishClock = 0;
-    this.brawler = null; this.currentLevelId = VENUS_HIGHWAY.id; this.completedStage = act; this.debugStageOneOnly = false; this.brawlerScoreCommitted = false; this.standaloneBrawler=false;this.pausedFrom = 'playing';
+    this.brawler = null; this.roadRash = null; this.currentLevelId = VENUS_HIGHWAY.id; this.completedStage = act; this.debugStageOneOnly = false; this.brawlerScoreCommitted = false; this.roadRashScoreCommitted=false;this.standaloneBrawler=false;this.standaloneRoadRash=false;this.pausedFrom = 'playing';
     this.riderActIntroClock = act === 3 ? 2.6 : 0;
     this.mode = 'playing';
     emitAudio('engine_start'); emitMusic('stage', .86);
   }
 
   private updatePause() {
-    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.mode = this.pausedFrom; emitAudio('menu_accept'); emitMusic(this.pausedFrom === 'brawler' ? (this.brawler?.snapshot().boss ? 'boss' : 'brawler') : this.bossSpawned ? 'boss' : 'stage'); }
-    if (this.input.tap('KeyR')) this.pausedFrom === 'brawler' ? this.beginBrawler(false) : this.beginRiderAct(this.campaignAct===3?3:1,false);
+    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.mode = this.pausedFrom; emitAudio('menu_accept'); emitMusic(this.pausedFrom === 'brawler' ? (this.brawler?.snapshot().boss ? 'boss' : 'brawler') : this.pausedFrom === 'road-rash' && this.roadRash?.snapshot().boss ? 'boss' : this.bossSpawned ? 'boss' : 'stage'); }
+    if (this.input.tap('KeyR')) this.pausedFrom === 'brawler' ? this.beginBrawler(false) : this.pausedFrom === 'road-rash' ? this.beginRoadRash(false,this.standaloneRoadRash) : this.beginRiderAct(this.campaignAct===3?3:1,false);
   }
 
   private updateEnd() {
@@ -536,11 +545,12 @@ export class VenusGame {
     const level = candidate?.runtime === 'brawler' ? candidate : FURNACE_DISTRICT;
     this.debugScene = debugScene;
     this.brawler = new BeatEmUpStage(this.ctx, { level, heroes, debugBoss, debugScene: debugScene ?? undefined, campaignContinuation: !standalone && !debugScene });
+    this.roadRash = null;
     this.mode = 'brawler';
     this.pausedFrom = 'brawler';
     this.currentLevelId = level.id;
     this.completedStage = 2;
-    this.setCampaignAct(2,'miniboss-defeated');
+    this.setCampaignAct(2,active.id===SULFUR_RUN.id?'sulfur-run-to-furnace':'miniboss-defeated');
     this.standaloneBrawler=standalone;
     const checkpoint:CampaignCheckpoint={levelId:level.id,stage:2,runtime:'brawler'};
     if(!this.continues.isActive)this.continues.startCampaign(checkpoint);else this.continues.setCheckpoint(checkpoint);
@@ -553,6 +563,63 @@ export class VenusGame {
     // Include any weapon pickup collected during the miniboss clear hold in
     // the Act 3 checkpoint loadout.
     this.captureRiderLoadout();
+    this.beginRoadRash(false, false);
+  }
+
+  private beginRoadRash(debugBoss = false, standalone = false, combatShowcase = false) {
+    const level = SULFUR_RUN;
+    this.debugScene = null;
+    this.brawler = null;
+    this.roadRash = new RoadRashStage({
+      seed: combatShowcase ? 0x51debeef : 0x9e3779b9,
+      courseLength: combatShowcase ? 2600 : level.distance,
+      debugBoss,
+      debugCombat: combatShowcase,
+      debugSkipIntro: debugBoss || combatShowcase,
+      playerName: HEROES[this.selectedHeroes[0]].name,
+    });
+    this.mode = 'road-rash';
+    this.pausedFrom = 'road-rash';
+    this.currentLevelId = level.id;
+    this.completedStage = 2;
+    this.setCampaignAct(2, 'miniboss-to-sulfur-run');
+    this.standaloneRoadRash = standalone;
+    this.standaloneBrawler = false;
+    this.roadRashScoreCommitted = false;
+    this.debugRoadRashControls = combatShowcase ? { accelerate: true, attack: true } : {};
+    this.finishClock = 0;
+    const checkpoint:CampaignCheckpoint={levelId:level.id,stage:2,runtime:'road-rash'};
+    if(!this.continues.isActive)this.continues.startCampaign(checkpoint);else this.continues.setCheckpoint(checkpoint);
+    emitMusic('stage', .98);
+  }
+
+  private roadRashControls(): RoadRashControls {
+    const left=this.debugRoadRashControls.left??this.input.down('KeyA','ArrowLeft','P1PadLeft');
+    const right=this.debugRoadRashControls.right??this.input.down('KeyD','ArrowRight','P1PadRight');
+    const accelerate=this.debugRoadRashControls.accelerate??this.input.down('KeyW','ArrowUp','P1PadUp');
+    const brake=this.debugRoadRashControls.brake??this.input.down('KeyS','ArrowDown','P1PadDown');
+    const attackKeys=['KeyZ','Space','P1PadFire'];
+    return {left,right,accelerate,brake,attack:this.debugRoadRashControls.attack??this.input.down(...attackKeys),attackPressed:this.input.tap(...attackKeys)};
+  }
+
+  private updateRoadRash(dt:number) {
+    if(!this.roadRash){this.beginRoadRash(false,this.standaloneRoadRash);return;}
+    if(this.input.tap('Escape','Enter','KeyP','P1PadStart')){this.pausedFrom='road-rash';this.mode='paused';emitAudio('pause');emitMusic('pause',.35);return;}
+    this.roadRash.update(dt,this.roadRashControls());
+    const state=this.roadRash.snapshot();
+    if(state.completed||state.defeated){
+      this.finishClock+=dt;
+      if(this.finishClock<1.8)return;
+      if(state.completed){
+        if(!this.roadRashScoreCommitted){this.score+=state.score;this.kills+=state.rivalsDefeated;this.roadRashScoreCommitted=true;}
+        if(this.standaloneRoadRash)this.finishRun(true);else this.completeRoadRashAct();
+      }else this.finishRun(false);
+    }
+  }
+
+  private completeRoadRashAct(){
+    if(!this.roadRash||!this.roadRash.completed)return;
+    this.setCampaignAct(2,'sulfur-run-cleared');
     this.beginBrawler(false);
   }
 
@@ -905,6 +972,7 @@ export class VenusGame {
 
   private restartCheckpoint(checkpoint:CampaignCheckpoint){
     if(checkpoint.runtime==='rider'){this.beginRiderAct(checkpoint.stage===3?3:1,false);return;}
+    if(checkpoint.runtime==='road-rash'){this.beginRoadRash(false,false);return;}
     const level=campaign.get(checkpoint.levelId);
     if(level.runtime==='brawler')this.beginBrawler(false,level);
     else this.beginRun(false);
@@ -918,7 +986,7 @@ export class VenusGame {
   }
 
   private finishRun(win:boolean){
-    if(this.mode!=='playing'&&this.mode!=='brawler')return;
+    if(this.mode!=='playing'&&this.mode!=='road-rash'&&this.mode!=='brawler')return;
     const wasBrawler=this.mode==='brawler';
     if(wasBrawler&&this.brawler&&!this.brawlerScoreCommitted){this.score+=this.brawler.getScore();this.kills+=this.brawler.getDefeatedCount();this.combo=Math.max(this.combo,this.brawler.getMaxCombo());this.brawlerScoreCommitted=true;}
     // Terminal screens stop the gameplay update loop.  Clear transient camera
@@ -972,6 +1040,8 @@ export class VenusGame {
   }
 
   setCoop(enabled:boolean){this.coopEnabled=enabled;this.selectReady=[false,false];if(this.mode==='playing')this.beginRiderAct(this.campaignAct===3?3:1,false);return this.snapshot();}
+  setRoadRashInput(state:RoadRashControls){this.debugRoadRashControls={...this.debugRoadRashControls,...state};return this.snapshot();}
+  debugDefeatRoadRash(){if(this.mode!=='road-rash'||!this.roadRash)this.beginRoadRash(false,true);this.roadRash?.debugDefeat();this.finishClock=1.8;return this.snapshot();}
   setDebugPlayerInput(id:1|2,state:Player['debugInput']){const p=this.players.find(p=>p.id===id);if(p)p.debugInput={...(p.debugInput??{}),...state};return this.snapshot();}
   debugFriendlyFireProbe(){
     if(!this.coopEnabled||this.players.length<2){this.coopEnabled=true;this.beginRun();}
@@ -1000,6 +1070,9 @@ export class VenusGame {
       if(!miniboss){this.minibossSpawned=true;this.spawnEnemy('miniboss',610,393);miniboss=this.enemies.at(-1);}
       if(miniboss){miniboss.hp=1;this.shots.push({ownerId:1,x:miniboss.x,y:miniboss.y,vx:0,vy:0,r:8,life:1,damage:2,friendly:true,color:'#fff',kind:'blaster',pierce:0,age:0,phase:0});this.handleCollisions();}
       return this.snapshot();
+    }
+    if(this.mode==='road-rash'&&this.roadRash){
+      this.roadRash.debugCompleteVictory();return this.snapshot();
     }
     if(this.campaignAct===2){
       this.brawler?.debugCompleteVictory();return this.snapshot();
@@ -1235,7 +1308,7 @@ export class VenusGame {
       const radius=px(particle.size*(.75+progress*.65));
       return {x:px(particle.x),y:px(particle.y),diameter:radius*2,lifeMs:Number((particle.life*1000).toFixed(1))};
     });
-    const segment=campaignSegment(this.campaignAct);
+    const segment=this.mode==='road-rash'?'road-rash':campaignSegment(this.campaignAct);
     const segmentDuration=riderSegmentDuration(this.campaignAct);
     const sourceElapsed=riderSourceElapsed(this.campaignAct,this.elapsed);
     return {
@@ -1286,6 +1359,7 @@ export class VenusGame {
         damageHoldMs:550,
       },
       brawler:this.brawler?.snapshot()??null,
+      roadRash:this.roadRash?.snapshot()??null,
       atlas: getSpriteSheetStatus()
     };
   }
@@ -1300,6 +1374,7 @@ export class VenusGame {
     else if (scene === 'brawler-boss') this.beginBrawler(true,undefined,null,true);
     else if (scene === 'brawler-coop') { this.coopEnabled=true; this.beginBrawler(false,undefined,null,true); }
     else if (scene === 'brawler-coop-boss') { this.coopEnabled=true; this.beginBrawler(true,undefined,null,true); }
+    else if(scene==='road-rash'||scene==='road-rash-combat'||scene==='road-rash-boss')this.beginRoadRash(scene==='road-rash-boss',true,scene==='road-rash-combat');
     else if (scene === 'rider-act-3') {
       if(this.campaignAct===3&&this.continues.isActive)this.beginRiderAct(3,false);
       else{this.beginRun();this.captureRiderLoadout();this.beginRiderAct(3,false);}
@@ -1359,19 +1434,21 @@ export class VenusGame {
   private draw(){
     const c=this.ctx;
     const brawlerScene=Boolean(this.brawler)&&(this.mode==='brawler'||(this.mode==='paused'&&this.pausedFrom==='brawler')||((this.mode==='continue'||this.mode==='win'||this.mode==='lose')&&this.completedStage===2));
+    const roadRashScene=Boolean(this.roadRash)&&(this.mode==='road-rash'||(this.mode==='paused'&&this.pausedFrom==='road-rash')||this.mode==='continue'||this.mode==='win'||this.mode==='lose');
     c.save();
     const sx=this.shake>0?rnd(-this.shake,this.shake):0,sy=this.shake>0?rnd(-this.shake*.55,this.shake*.55):0;c.translate(Math.round(sx),Math.round(sy));
     if(this.mode==='title')this.drawTitle();
     else if(this.mode==='select')this.drawSelect();
     else if(this.mode==='intro')this.drawIntro();
     else if(this.mode==='outro')this.drawOutro();
+    else if(roadRashScene)this.roadRash?.draw(c);
     else if(brawlerScene)this.brawler?.draw(!(this.mode==='continue'||this.mode==='win'||this.mode==='lose'));
     else this.drawWorld();
     c.restore();
     if(this.mode!=='title'&&this.mode!=='select'&&this.mode!=='intro'&&this.mode!=='outro'){
-      if(!brawlerScene){this.drawHud();if(this.bossSpawned&&!this.bossDefeated&&this.enemies.some(e=>e.kind==='boss'))this.drawWarningEdges();}
+      if(!brawlerScene&&!roadRashScene){this.drawHud();if(this.bossSpawned&&!this.bossDefeated&&this.enemies.some(e=>e.kind==='boss'))this.drawWarningEdges();}
       if(this.mode==='playing')this.drawCampaignTransition();
-      if(this.mode==='playing'||this.mode==='brawler')this.drawAttemptBadge();
+      if(this.mode==='playing'||this.mode==='road-rash'||this.mode==='brawler')this.drawAttemptBadge();
       if(this.mode==='paused')this.drawPause();else if(this.mode==='continue')this.drawContinue();else if(this.mode==='win'||this.mode==='lose')this.drawEnding();
     }
     if(this.flash>0){c.fillStyle=`rgba(255,245,210,${this.flash})`;c.fillRect(0,0,W,H);}
@@ -2117,6 +2194,10 @@ export class VenusGame {
 
   private drawAttemptBadge(){
     const c=this.ctx,state=this.continues.snapshot();
+    if(this.mode==='road-rash'){
+      const x=428,y=18;c.fillStyle='#080a18dc';c.fillRect(x,y,104,22);c.strokeStyle='#f4d13f';c.strokeRect(x+.5,y+.5,103,21);
+      this.text(`TRY ${state.attempts.current}/${state.attempts.total}`,480,y+15,10,'#fff2c2','center',true);return;
+    }
     if(this.mode==='brawler'){
       // Stage 2 already owns the centre-top score/status panel. Keep the
       // attempt counter inside P1's HUD instead of growing a second panel over
@@ -2140,7 +2221,7 @@ export class VenusGame {
     c.fillStyle='#12091fee';c.fillRect(x,y,w,h);c.strokeStyle='#ff456b';c.lineWidth=5;c.strokeRect(x,y,w,h);
     c.fillStyle='#ffe15a';c.fillRect(x+10,y+10,w-20,4);c.fillStyle='#5de4e0';c.fillRect(x+10,y+h-14,w-20,4);
     c.globalAlpha=pulse;this.text('CONTINUE?',480,163,48,'#fff16b','center',true);c.globalAlpha=1;
-    this.text(state.checkpoint.stage===2?'FURNACE DISTRICT':state.checkpoint.stage===3?'VENUS HIGHWAY // FINAL RUN':'VENUS HIGHWAY // OUTER RUN',480,192,13,'#d8c5df','center',true);
+    this.text(state.checkpoint.runtime==='road-rash'?'SULFUR RUN':state.checkpoint.runtime==='brawler'?'FURNACE DISTRICT':state.checkpoint.stage===3?'VENUS HIGHWAY // FINAL RUN':'VENUS HIGHWAY // OUTER RUN',480,192,13,'#d8c5df','center',true);
     c.fillStyle='#08030f';c.fillRect(400,213,160,123);c.strokeStyle='#6f476d';c.lineWidth=3;c.strokeRect(400,213,160,123);
     this.text(String(seconds),480,312,92,seconds<=3?'#ff526f':'#fff4c4','center',true);
     this.text(`ATTEMPT ${state.attempts.current} / ${state.attempts.total}`,480,366,18,'#fff','center',true);
@@ -2149,7 +2230,7 @@ export class VenusGame {
     this.text('ESC  RETURN TO TITLE',480,447,10,'#9e8fa9','center');
   }
 
-  private drawPause(){const c=this.ctx;c.fillStyle='#07040cbb';c.fillRect(0,0,W,H);c.fillStyle='#160d25ee';c.fillRect(278,166,404,205);c.strokeStyle='#f7cf4e';c.lineWidth=3;c.strokeRect(278,166,404,205);this.text('PAUSED',480,218,41,'#fff071','center',true);this.text('VENUS CAN WAIT',480,248,13,'#bfacc8','center');this.text('ENTER / P',390,294,15,'#64eadb','right',true);this.text('RESUME',410,294,15,'#fff');this.text('R',390,324,15,'#ff667f','right',true);this.text(this.pausedFrom==='brawler'?'RESTART STAGE':'RESTART RUN',410,324,15,'#fff');this.text('GAMEPAD: START TO RESUME',480,354,11,'#877b91','center');}
+  private drawPause(){const c=this.ctx;c.fillStyle='#07040cbb';c.fillRect(0,0,W,H);c.fillStyle='#160d25ee';c.fillRect(278,166,404,205);c.strokeStyle='#f7cf4e';c.lineWidth=3;c.strokeRect(278,166,404,205);this.text('PAUSED',480,218,41,'#fff071','center',true);this.text('VENUS CAN WAIT',480,248,13,'#bfacc8','center');this.text('ENTER / P',390,294,15,'#64eadb','right',true);this.text('RESUME',410,294,15,'#fff');this.text('R',390,324,15,'#ff667f','right',true);this.text(this.pausedFrom==='playing'?'RESTART RUN':'RESTART STAGE',410,324,15,'#fff');this.text('GAMEPAD: START TO RESUME',480,354,11,'#877b91','center');}
 
   private drawEnding(){
     const c=this.ctx,win=this.mode==='win',stageTwo=this.completedStage===2;c.fillStyle=win?'#09031cbb':'#100309c7';c.fillRect(0,0,W,H);

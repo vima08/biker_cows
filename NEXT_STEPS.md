@@ -1,6 +1,56 @@
-# NEXT STEPS — Gauntlet iteration 25 handoff
+# NEXT STEPS — Gauntlet iteration 26 handoff
 
-Дата handoff: 2026-08-24. Итерация остановлена по просьбе пользователя из-за лимита; проект оставлен в собираемом и проходимом состоянии.
+Дата handoff: 2026-09-01. Работа остановлена по просьбе пользователя при приближении к лимиту; проект оставлен в собираемом и полностью играбельном состоянии.
+
+## Что уже работает в iteration 26
+
+- Полная кампания проходит: Act 1 / Magma Mauler → `Sulfur Run` Road Rash → Furnace District brawler → Act 3 / Sulfur Dreadnought → campaign win.
+- Road Rash-секция использует authored 16-bit панораму и atlas v3, псевдо-3D дорогу, трафик, боковые удары, направленный recoil, Road King, victory/defeat и собственный continue checkpoint.
+- Terminal-состояния очищают attack/contact/recoil/flash; на victory игрок возвращается в neutral, оставшиеся боевые райдеры удаляются.
+- Debug-сцены `?scene=brawler-walk`, `?scene=brawler-jump`, `?scene=brawler-air-attack` работают для `hero=cassia|bruna|nova`.
+- Runtime vector mode: `?art=vector` и `window.__BCFV_DEBUG__.setArtEnabled(false|true)`; автоматический debug-scenes тест проверяет оба способа.
+- `test:road-rash`, `test:campaign`, `test:debug-scenes` и production build прошли. Последний Road Rash прогон: 59 FPS, p95 16.8 ms, `runtimeErrors=[]`, `externalRequests=[]`.
+
+## Как запустить
+
+```powershell
+npm install
+npm run dev
+```
+
+Открыть адрес Vite из терминала. Production и основные контракты:
+
+```powershell
+npm run build
+npm run test:road-rash
+npm run test:campaign
+npm run test:debug-scenes
+```
+
+## Последние скриншоты и отчёты
+
+- Workbench: `public/workbench/index.html`
+- Полная Road Rash-серия: `.gauntlet/iteration-26/road-rash/`
+- Лучшие кадры: `public/workbench/captures/iteration-26/road-rash-movement.png`, `road-rash-combat.png`, `road-rash-boss.png`, `road-rash-victory.png`
+- Road Rash report: `.gauntlet/iteration-26/road-rash/report.json`
+- Campaign report: `.gauntlet/iteration-26/campaign-contract/report.json`
+- Debug scenes report/captures: `.gauntlet/debug-scenes/`
+
+## Последнее заключение независимого критика
+
+Последняя независимая оценка до финального integration/smoothing: **8.3/10**, **AAA 16-bit era: NO**. Исправлены вечная contact-поза, искра на victory и пересечение стороны противником; финальный integration после этой оценки подтвердил читаемый направленный разлёт и чистый neutral victory.
+
+Один крупнейший оставшийся недостаток: момент удара всё ещё должен читаться ещё однозначнее одним уникальным contact-frame, а не только всей последовательностью.
+
+## Точная следующая итерация Gauntlet Loop
+
+Записать 60 fps capture полного замаха; выбрать реальный contact-frame; если рука/оружие не достигают силуэта противника, сдвинуть только contact cell/offset на 10–16 px и оставить компактную вспышку ровно на этом кадре. Затем переснять 8 последовательных кадров, отдать новому слепому критику рядом с Road Rash Genesis и, не меняя уже чистый victory, повторить `test:road-rash` + `test:campaign`.
+
+---
+
+# Архив: Gauntlet iteration 25 handoff
+
+Дата handoff: 2026-08-24.
 
 ## Что уже работает
 

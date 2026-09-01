@@ -27,6 +27,8 @@ declare global {
       setDebugFireHeld: (held: boolean) => ReturnType<VenusGame['snapshot']>;
       setCoop: (enabled: boolean) => ReturnType<VenusGame['snapshot']>;
       setPlayerInput: (id: 1|2, state: Parameters<VenusGame['setDebugPlayerInput']>[1]) => ReturnType<VenusGame['snapshot']>;
+      setRoadRashInput: (state: Parameters<VenusGame['setRoadRashInput']>[0]) => ReturnType<VenusGame['snapshot']>;
+      defeatRoadRash: () => ReturnType<VenusGame['debugDefeatRoadRash']>;
       friendlyFireProbe: () => ReturnType<VenusGame['debugFriendlyFireProbe']>;
       damagePlayer: (id: 1|2, amount: number) => ReturnType<VenusGame['debugDamagePlayer']>;
       defeatStage: (stage: 1|2|3) => ReturnType<VenusGame['debugDefeatStage']>;
@@ -43,6 +45,8 @@ window.__BCFV_DEBUG__ = {
   setDebugFireHeld: (held: boolean) => game.setDebugFireHeld(held),
   setCoop: (enabled: boolean) => game.setCoop(enabled),
   setPlayerInput: (id: 1|2, state: Parameters<VenusGame['setDebugPlayerInput']>[1]) => game.setDebugPlayerInput(id,state),
+  setRoadRashInput: (state: Parameters<VenusGame['setRoadRashInput']>[0]) => game.setRoadRashInput(state),
+  defeatRoadRash: () => game.debugDefeatRoadRash(),
   friendlyFireProbe: () => game.debugFriendlyFireProbe(),
   damagePlayer: (id: 1|2, amount: number) => game.debugDamagePlayer(id,amount),
   defeatStage: (stage: 1|2|3) => game.debugDefeatStage(stage),
