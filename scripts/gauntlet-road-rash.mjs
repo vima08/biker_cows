@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 
 const baseURL = new URL(process.env.BCFV_URL ?? 'http://127.0.0.1:4173/biker_cows/');
 const executablePath = process.env.BCFV_BROWSER ?? 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-const outputDir = path.resolve(process.env.BCFV_CAPTURE_DIR ?? '.gauntlet/iteration-26/road-rash');
+const outputDir = path.resolve(process.env.BCFV_CAPTURE_DIR ?? '.gauntlet/iteration-27/road-rash');
 const previewPort = Number(baseURL.port || (baseURL.protocol === 'https:' ? 443 : 80));
 const previewHost = baseURL.hostname;
 await mkdir(outputDir, { recursive: true });
@@ -94,8 +94,8 @@ const capture = async (name, settleMs = 100) => {
   await canvas.screenshot({ path: path.join(outputDir, filename) });
   report.captures.push(filename);
 };
-const openScene = async scene => {
-  const url = new URL(`?scene=${scene}&hero=cassia&gauntlet=${Date.now()}`, baseURL);
+const openScene = async (scene, hero = 'cassia') => {
+  const url = new URL(`?scene=${scene}&hero=${hero}&gauntlet=${Date.now()}`, baseURL);
   await page.goto(url.href, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => Boolean(window.__BCFV_DEBUG__?.snapshot));
   await page.waitForFunction(() => Boolean(window.__BCFV_DEBUG__.snapshot().roadRash));
@@ -104,6 +104,16 @@ const openScene = async scene => {
   assert(typeof roadOf(snapshot).status === 'string', `${scene}: roadRash.status is missing`, roadOf(snapshot));
   return snapshot;
 };
+const canvasSignature = () => page.locator('canvas').evaluate(canvas => {
+  const context = canvas.getContext('2d');
+  const { data } = context.getImageData(360, 330, 240, 210);
+  let hash = 2166136261;
+  for (let index = 0; index < data.length; index += 13) {
+    hash ^= data[index];
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+});
 const setInput = value => page.evaluate(input => {
   if (typeof window.__BCFV_DEBUG__.setRoadRashInput !== 'function') throw new Error('Debug API setRoadRashInput(partial) is missing');
   return window.__BCFV_DEBUG__.setRoadRashInput(input);
@@ -117,17 +127,24 @@ const fightUntilHit = async ({ boss = false, timeoutMs = 18_000, captureSequence
   while (Date.now() - started < timeoutMs) {
     const road = roadOf(await state());
     lastRoad = road;
+    if (boss && (Boolean(road?.bossDefeated) || Number(road?.hits ?? 0) > initialHits ||
+        (bossHealth(road) !== null && bossHealth(road) < initialBossHealth))) {
+      await setInput({ accelerate: false, brake: false, left: false, right: false, attack: false });
+      return road;
+    }
     const candidates = entitiesOf(road).filter(entity => entity.active !== false && (boss ? entity.kind === 'boss' : entity.kind === 'rival'));
     const target = candidates.sort((left, right) => Math.abs(left.relativeDistance) - Math.abs(right.relativeDistance))[0];
     if (!target) {
-      await setInput({ accelerate: true, left: false, right: false, attack: false });
+      await setInput({ accelerate: true, brake: false, left: false, right: false, attack: false });
       await page.waitForTimeout(80);
       continue;
     }
     const laneDelta = Number(target.lane) - Number(road.lane);
-    const inRange = Math.abs(Number(target.relativeDistance)) < 58 && Math.abs(laneDelta) < .48;
+    const longitudinalReach = boss ? 76 : 58;
+    const lateralReach = boss ? .62 : .48;
+    const inRange = Math.abs(Number(target.relativeDistance)) < longitudinalReach && Math.abs(laneDelta) < lateralReach;
     if (captureSequence && inRange && report.sequentialFrames.length === 0) {
-      await setInput({ accelerate: true, left: laneDelta < -.06, right: laneDelta > .06, attack: true });
+      await setInput({ accelerate: true, brake: false, left: laneDelta < -.06, right: laneDelta > .06, attack: true });
       for (let index = 0; index < 8; index++) {
         await page.waitForTimeout(25);
         const name = `03-road-rash-combat-${index}`;
@@ -136,12 +153,13 @@ const fightUntilHit = async ({ boss = false, timeoutMs = 18_000, captureSequence
       }
       const afterSequence = roadOf(await state());
       if (Number(afterSequence.hits ?? 0) > initialHits) {
-        await setInput({ accelerate: false, left: false, right: false, attack: false });
+        await setInput({ accelerate: false, brake: false, left: false, right: false, attack: false });
         return afterSequence;
       }
     }
     await setInput({
       accelerate: true,
+      brake: false,
       left: laneDelta < -.06,
       right: laneDelta > .06,
       attack: inRange,
@@ -149,14 +167,15 @@ const fightUntilHit = async ({ boss = false, timeoutMs = 18_000, captureSequence
     await page.waitForTimeout(65);
     const after = roadOf(await state());
     const confirmed = boss
-      ? bossHealth(after) !== null && bossHealth(after) < initialBossHealth
+      ? (bossHealth(after) !== null && bossHealth(after) < initialBossHealth) ||
+        Boolean(after?.bossDefeated) || Number(after?.hits ?? 0) > initialHits
       : Number(after.hits ?? 0) > initialHits;
     if (confirmed) {
-      await setInput({ accelerate: false, left: false, right: false, attack: false });
+      await setInput({ accelerate: false, brake: false, left: false, right: false, attack: false });
       return after;
     }
   }
-  await setInput({ accelerate: false, left: false, right: false, attack: false });
+  await setInput({ accelerate: false, brake: false, left: false, right: false, attack: false });
   throw new Error(`${boss ? 'Boss' : 'Combat'} autoplay did not confirm a hit within ${timeoutMs}ms\n${JSON.stringify({
     status: lastRoad?.status,
     health: lastRoad?.health,
@@ -168,6 +187,67 @@ const fightUntilHit = async ({ boss = false, timeoutMs = 18_000, captureSequence
   }, null, 2)}`);
 };
 
+const defeatBossWithRealInputs = async () => {
+  const healthSequence = [];
+  let road = roadOf(await state());
+  let previousHealth = bossHealth(road);
+  assert(previousHealth !== null && previousHealth > 0, 'Boss must be alive before the real-input fight', road?.boss);
+  healthSequence.push(previousHealth);
+  while (previousHealth > 0) {
+    road = await fightUntilHit({ boss: true, timeoutMs: 20_000 });
+    const nextHealth = road?.bossDefeated ? 0 : bossHealth(road);
+    assert(nextHealth !== null && nextHealth < previousHealth,
+      'Every boss exchange must confirm a new ordinary-input hit', { previousHealth, nextHealth, road });
+    healthSequence.push(nextHealth);
+    previousHealth = nextHealth;
+    if (previousHealth > 0) {
+      assert(road.status !== 'victory' && !road.finishReady && !road.finishVisible && !road.finishCrossed,
+        'Finish or victory appeared before Road King was defeated', road);
+    }
+  }
+  return { road, healthSequence };
+};
+
+const takeOneRoadKingHitWithOrdinaryInput = async (timeoutMs = 12_000) => {
+  const before = roadOf(await state());
+  const healthSequence = [Number(before.health)];
+  const attackTrace = [];
+  let capturedAttackFrames = 0;
+  const started = Date.now();
+  // No steering, attacking or debug damage: staying in Road King's lane is the
+  // deliberately poor defensive choice this contract is meant to punish.
+  await setInput({ accelerate: false, brake: false, left: false, right: false, attack: false });
+  while (Date.now() - started < timeoutMs) {
+    await page.waitForTimeout(50);
+    const road = roadOf(await state());
+    const health = Number(road.health);
+    if (healthSequence.at(-1) !== health) healthSequence.push(health);
+    if (road.boss?.attacking) attackTrace.push({
+      elapsedMs: Date.now() - started,
+      relativeDistance: road.boss.relativeDistance,
+      laneDelta: Number((Number(road.boss.lane) - Number(road.lane)).toFixed(3)),
+      health,
+    });
+    if (road.boss?.attacking && capturedAttackFrames < 6) {
+      await capture(`04b-road-king-attack-${capturedAttackFrames}`, 0);
+      capturedAttackFrames++;
+    }
+    if (health < Number(before.health)) {
+      assert(attackTrace.length > 0, 'Player damage happened without a visible Road King attack phase', { before, road, healthSequence });
+      return { before: Number(before.health), after: health, healthSequence, attackTrace };
+    }
+  }
+  const after = roadOf(await state());
+  throw new Error(`Road King did not damage an idle player through ordinary gameplay within ${timeoutMs}ms\n${JSON.stringify({
+    beforeHealth: before.health,
+    afterHealth: after.health,
+    boss: after.boss,
+    lane: after.lane,
+    healthSequence,
+    attackTrace,
+  }, null, 2)}`);
+};
+
 try {
   const initial = await openScene('road-rash');
   await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().roadRash?.status === 'racing');
@@ -176,12 +256,12 @@ try {
   assert(Number.isFinite(initialRoad.distance) && Number.isFinite(initialRoad.speed) && Number.isFinite(initialRoad.health),
     'road-rash must expose numeric distance, speed and health', initialRoad);
 
-  await setInput({ accelerate: true, left: false, right: false });
+  await setInput({ accelerate: true, brake: false, left: false, right: false, attack: false });
   await page.waitForTimeout(500);
   const acceleratedRoad = roadOf(await state());
-  await setInput({ accelerate: true, right: true });
+  await setInput({ accelerate: true, brake: false, left: false, right: true, attack: false });
   await page.waitForTimeout(240);
-  await setInput({ accelerate: false, right: false });
+  await setInput({ accelerate: false, brake: false, left: false, right: false, attack: false });
   const moved = await state();
   const movedRoad = roadOf(moved);
   await capture('02-road-rash-movement');
@@ -219,11 +299,33 @@ try {
   const healthBefore = bossHealth(bossBefore);
   assert(healthBefore !== null && healthBefore > 0, 'Road-rash boss needs positive health', bossBefore.boss);
   await capture('04-road-rash-boss');
-  const bossAfter = await fightUntilHit({ boss: true, timeoutMs: 20_000 });
-  const healthAfter = bossHealth(bossAfter);
-  await capture('05-road-rash-boss-exchange');
+  assert(!bossBefore.finishReady && !bossBefore.finishVisible && !bossBefore.finishCrossed,
+    'The finish must stay hidden while Road King is alive', bossBefore);
+  const bossDamageToPlayer = await takeOneRoadKingHitWithOrdinaryInput();
+  assert(bossDamageToPlayer.after === bossDamageToPlayer.before - 14,
+    'Road King ordinary attack must deal exactly 14 HP once', bossDamageToPlayer);
+  report.checkpoints.bossDamageToPlayer = bossDamageToPlayer;
+  const bossFight = await defeatBossWithRealInputs();
+  const bossAfter = bossFight.road;
+  const healthAfter = bossAfter.bossDefeated ? 0 : bossHealth(bossAfter);
+  assert(bossAfter.hits === 8, 'Road King must be defeated by exactly eight ordinary-input hits', bossAfter);
+  await page.waitForFunction(() => {
+    const road = window.__BCFV_DEBUG__.snapshot().roadRash;
+    return road?.bossDefeatAnimating === true && road.bossDefeatProgress >= .34;
+  });
+  const bossDefeat = roadOf(await state());
+  assert(bossDefeat.boss?.active && bossHealth(bossDefeat) === 0,
+    'Road King silhouette must remain active at zero HP during the defeat phase', bossDefeat);
+  assert(!bossDefeat.finishReady && !bossDefeat.finishVisible && !bossDefeat.finishCrossed,
+    'Finish must remain hidden throughout Road King defeat animation', bossDefeat);
+  await capture('05-road-rash-boss-defeat', 0);
   assert(healthAfter !== null && healthAfter < healthBefore, 'Real attack input did not damage the road-rash boss', { healthBefore, healthAfter, boss: bossAfter.boss });
-  report.checkpoints.bossDamage = { before: healthBefore, after: healthAfter, hits: bossAfter.hits };
+  report.checkpoints.bossDamage = {
+    before: healthBefore, after: healthAfter, hits: bossAfter.hits,
+    healthSequence: bossFight.healthSequence,
+    defeatFrame: { timer: bossDefeat.bossDefeatTimer, progress: bossDefeat.bossDefeatProgress, bossActive: bossDefeat.boss?.active },
+  };
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().roadRash?.bossDefeatAnimating === false);
 
   report.performance = await page.evaluate(async () => {
     const samples = [];
@@ -241,12 +343,13 @@ try {
   });
   assert(report.performance.p95Ms < 40, 'Road Rash boss scene is not smooth enough', report.performance);
 
-  await page.evaluate(() => window.__BCFV_DEBUG__.completeAct());
+  await setInput({ accelerate: true, brake: false, left: false, right: false, attack: false });
   await page.waitForFunction(() => {
     const snapshot = window.__BCFV_DEBUG__.snapshot();
     const status = String(snapshot.roadRash?.status ?? snapshot.state ?? '').toLowerCase();
     return ['victory', 'complete', 'completed', 'win', 'won'].includes(status) || snapshot.state === 'win';
   }, undefined, { timeout: 20_000 });
+  await setInput({ accelerate: false, brake: false, left: false, right: false, attack: false });
   const victory = await state();
   assert(victoryOf(victory), 'Road-rash boss completion did not reach victory', victory);
   await capture('06-road-rash-victory');
@@ -266,6 +369,20 @@ try {
   const continued = await state();
   assert(continued.roadRash?.health === continued.roadRash?.maxHealth, 'Road Rash continue did not construct a fresh stage', continued.roadRash);
   report.checkpoints.continue = { offer: continueOffer.continue, restartedStatus: continued.roadRash?.status };
+
+  const heroineSignatures = {};
+  for (const hero of ['cassia', 'bruna', 'nova']) {
+    const heroineScene = await openScene('road-rash', hero);
+    await page.waitForFunction(expected => window.__BCFV_DEBUG__.snapshot().roadRash?.playerHero === expected, hero);
+    await page.waitForTimeout(250);
+    const heroineRoad = roadOf(await state());
+    assert(heroineRoad.playerHero === hero, `Road Rash did not preserve selected heroine ${hero}`, heroineRoad);
+    heroineSignatures[hero] = await canvasSignature();
+    await capture(`07-road-rash-hero-${hero}`, 0);
+  }
+  assert(new Set(Object.values(heroineSignatures)).size === 3,
+    'Cassia, Bruna and Nova must render as three distinct road-rash silhouettes', heroineSignatures);
+  report.checkpoints.heroineIdentity = heroineSignatures;
 
   assert(report.runtimeErrors.length === 0, 'Console/page/request errors were recorded', report.runtimeErrors);
   assert(report.externalRequests.length === 0, 'Gameplay made external network requests', report.externalRequests);

@@ -18,24 +18,41 @@
 </head>
 <body><main>
   <h1>Biker Cows from Venus: Neon Stampede</h1>
-  <p class="lede">Компактная production-витрина полной кампании: rider → Road Rash → brawler → final rider. Полные серии автоматических прогонов хранятся локально в <code>.gauntlet/</code>.</p>
-  <p><span class="tag">4 campaign sections</span><span class="tag">solo + local co-op</span><span class="tag">Gauntlet iteration 26</span></p>
+  <p class="lede">Компактная production-витрина полной кампании: rider → brawler → final rider. Экспериментальная Road Rash-сцена проверяется отдельно; полные серии автоматических прогонов хранятся локально в <code>.gauntlet/</code>.</p>
+  <p><span class="tag">3 campaign sections</span><span class="tag">standalone Road Rash lab</span><span class="tag">solo + local co-op</span><span class="tag">Gauntlet iteration 27</span></p>
+
+  <section id="iteration-27-road-rash">
+    <h2>Gauntlet iteration 27 · Road Rash scale, boss offense and heroine identity</h2>
+    <p class="lede">Горизонт authored/vector сведён к одной точке схода, rider-слой уменьшен относительно car/tanker projection scale, три выбранные героини получили отдельные rear-view атласы и байки, а Road King теперь сам наносит проверяемый удар. Road Rash остаётся только standalone test scene.</p>
+    <p class="verdict"><strong>Статус:</strong> <span class="pass">build, Road Rash, campaign isolation, debug/vector: PASS</span>; 60 FPS, p95 16.8 ms, runtime errors <code>[]</code>, external requests <code>[]</code>. Контракты: King <code>100→86 HP</code>, boss <code>8→0</code> за восемь обычных ударов, finish скрыт до crash-анимации, три разные heroine signatures. Финальный независимый critic: <strong>7.3/10</strong>, AAA-era <span class="gap">NO</span>. Крупнейший остаток — полотно дороги всё ещё воспринимается статичнее, чем в Road Rash Genesis; визуальную цепочку замаха Кинга также нужно усилить.</p>
+    <div class="grid">
+      <figure><img src="captures/iteration-27/road-rash-movement.png" alt="Road Rash aligned horizon"><figcaption>Authored horizon и traffic projection сведены к y≈323; объекты возникают на полотне.</figcaption></figure>
+      <figure><img src="captures/iteration-27/road-rash-combat.png" alt="Road Rash separated combat"><figcaption>Уменьшенные player/rival silhouettes и близкий traffic в общей шкале.</figcaption></figure>
+      <figure><img src="captures/iteration-27/road-king-hit.png" alt="Road King damages Cassia"><figcaption>Реальная атака Кинга: 14 HP, lateral recoil и белый hit-flash героини.</figcaption></figure>
+      <figure><img src="captures/iteration-27/road-king-defeat.png" alt="Road King defeat"><figcaption>Boss crash остаётся видимым до открытия финиша.</figcaption></figure>
+      <figure><img src="captures/iteration-27/hero-cassia.png" alt="Cassia road heroine"><figcaption>Cassia: magenta/teal cruiser и светлая грива.</figcaption></figure>
+      <figure><img src="captures/iteration-27/hero-bruna.png" alt="Bruna road heroine"><figcaption>Bruna: тяжёлый синий байк, тёмная броня и cyber-arm.</figcaption></figure>
+      <figure><img src="captures/iteration-27/hero-nova.png" alt="Nova road heroine"><figcaption>Nova: компактный бело-красный sportbike и оранжевый visor.</figcaption></figure>
+      <figure><img src="captures/iteration-27/vector-road-rash.png" alt="Road Rash vector fallback"><figcaption>Полный runtime vector fallback после setArtEnabled(false), без перезагрузки.</figcaption></figure>
+    </div>
+  </section>
 
   <section id="iteration-26-road-rash">
-    <h2>Gauntlet iteration 26 · Road Rash-интерлюдия</h2>
-    <p class="lede">Завершённая мотоциклетная melee-интерлюдия с authored-панорамой, восьмикадровой проверкой удара, трафиком, Road King и continue checkpoint. Production-прогон работает на реальном холсте 960×540.</p>
-    <p class="verdict"><strong>Статус:</strong> <span class="pass">build, Road Rash, full campaign: PASS</span>; 59 FPS, p95 16.8 ms, console errors <code>[]</code>, external requests <code>[]</code>. Последняя независимая оценка до финального smoothing: <strong>8.3/10</strong>, AAA-era <span class="gap">NO</span>; главный следующий разрыв — ещё более однозначный единственный contact-frame. Сырые доказательства: <code>.gauntlet/iteration-26/road-rash/</code>.</p>
+    <h2>Gauntlet iteration 26 · standalone Road Rash lab</h2>
+    <p class="lede">Самостоятельная экспериментальная combat-race с authored open-road панорамой, отдельным traffic/roadside atlas, восьмикадровой проверкой удара, полноценным поражением Road King и собственным continue checkpoint. Она намеренно не входит в production-кампанию.</p>
+    <p class="verdict"><strong>Статус:</strong> <span class="pass">build, standalone Road Rash, production campaign: PASS</span>; 58.5 FPS, p95 16.8 ms, console errors <code>[]</code>, external requests <code>[]</code>. Независимая оценка: <strong>8.8/10</strong>, AAA-era <span class="pass">YES</span>. Крупнейший остаток — статичный дальний фон и почти прямая дорога с неизменным vanishing point. Сырые доказательства: <code>.gauntlet/iteration-26/road-rash/</code>.</p>
   <div class="grid">
-    <figure><img src="captures/iteration-26/road-rash-movement.png" alt="Sulfur Run movement"><figcaption>Sulfur Run: production movement, perspective road and speed layer</figcaption></figure>
+    <figure><img src="captures/iteration-26/road-rash-movement.png" alt="Sulfur Run movement"><figcaption>Sulfur Run standalone movement, perspective road and speed layer</figcaption></figure>
     <figure><img src="captures/iteration-26/road-rash-combat.png" alt="Sulfur Run melee combat"><figcaption>Six-phase side strike with separated player and rival silhouettes</figcaption></figure>
     <figure><img src="captures/iteration-26/road-rash-boss.png" alt="Road King boss battle"><figcaption>Road King: enlarged boss silhouette, weapon telegraph and reaction pose</figcaption></figure>
-    <figure><img src="captures/iteration-26/road-rash-victory.png" alt="Sulfur Run victory"><figcaption>Road Rash interlude completed before Furnace District</figcaption></figure>
+    <figure><img src="captures/iteration-26/road-rash-boss-defeat.png" alt="Road King defeated"><figcaption>Road King // Wrecked: real-input boss defeat before the finish opens</figcaption></figure>
+    <figure><img src="captures/iteration-26/road-rash-victory.png" alt="Sulfur Run victory"><figcaption>Standalone Road King victory with a clean neutral terminal pose</figcaption></figure>
   </div>
   </section>
 
   <h2>Gauntlet iteration 26 · three-act campaign</h2>
-  <p class="lede">Кампания перестроена в цельный маршрут: rider до Magma Mauler → Sulfur Run Road Rash → Furnace District beat ’em up → финальный rider-отрезок → Sulfur Dreadnought. <span class="pass">Campaign, Road Rash, continue, debug scenes и production build: PASS.</span></p>
-  <p class="verdict"><strong>Порядок:</strong> ACT 1 <span class="pass">MINIBOSS</span> → INTERLUDE <span class="pass">SULFUR RUN</span> → ACT 2 <span class="pass">BRAWLER</span> → ACT 3 <span class="pass">FINAL RUN</span> → CAMPAIGN WIN. Герои, score, weapon/rank и попытки сохраняются между runtime.</p>
+  <p class="lede">Production-кампания проходит цельным маршрутом: rider до Magma Mauler → Furnace District beat ’em up → финальный rider-отрезок → Sulfur Dreadnought. <span class="pass">Campaign, standalone Road Rash, continue, debug scenes и production build: PASS.</span></p>
+  <p class="verdict"><strong>Порядок:</strong> ACT 1 <span class="pass">MINIBOSS</span> → ACT 2 <span class="pass">BRAWLER</span> → ACT 3 <span class="pass">FINAL RUN</span> → CAMPAIGN WIN. Герои, score, weapon/rank и попытки сохраняются между production runtime; Road Rash state изолирован.</p>
   <div class="grid">
     <figure><img src="captures/iteration-26/act1.png" alt="Campaign Act 1"><figcaption>Act 1: внешний участок Venus Highway и таймер до минибосса</figcaption></figure>
     <figure><img src="captures/iteration-26/miniboss.png" alt="Magma Mauler miniboss"><figcaption>Act 1: Magma Mauler завершает первую shoot ’em up-секцию</figcaption></figure>

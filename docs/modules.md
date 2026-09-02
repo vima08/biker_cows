@@ -14,7 +14,7 @@
 | `src/rider/catalog.ts` | Герои, intro-панели, размеры и hardpoints атласов |
 | `src/rider/RiderPoseResolver.ts` | Кадры тела, muzzle/exhaust hardpoints |
 | `src/game.ts` | Оркестрация сцен и runtime Stage 1 |
-| `src/roadRash/` | Runtime Sulfur Run: pseudo-3D дорога, трафик, melee и Road King |
+| `src/roadRash/` | Экспериментальный standalone runtime Sulfur Run: pseudo-3D дорога, трафик, melee и Road King; не входит в кампанию |
 | `src/brawler/types.ts` | Состояние сущностей beat ’em up |
 | `src/brawler/catalog.ts` | Характеристики и atlas-пути героев |
 | `src/brawler/BeatEmUpStage.ts` | Симуляция и отображение brawler-уровня |

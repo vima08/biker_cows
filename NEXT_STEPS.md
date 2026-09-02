@@ -1,15 +1,70 @@
-# NEXT STEPS — Gauntlet iteration 26 handoff
+# NEXT STEPS — Gauntlet iteration 27 handoff
+
+Дата handoff: 2026-09-02. Проект оставлен в собираемом и полностью играбельном состоянии. Road Rash намеренно остаётся только standalone test scene и не входит в основную кампанию.
+
+## Что уже работает
+
+- Authored panorama и `?art=vector` используют один горизонт/vanishing point `y≈323`; машины, бензовозы, байкеры и roadside props проецируются от него и больше не возникают из воздуха.
+- Rider projection scale уменьшен до player `112×140`, rival `88×114`, Road King `108×134` против car `104` и tanker `132`; ближний бой дополнительно разводит экранные силуэты.
+- Cassia, Bruna и Nova имеют отдельные rear-view силуэты, одежду и байки из `public/assets/road-rash/road-rash-heroines-atlas-v1.png`; harness фиксирует три разные render signatures.
+- Road King самостоятельно сближается, телеграфирует удар и снимает ровно 14 HP. Босс честно побеждается восемью обычными вводами; финиш и victory закрыты до нулевого HP и завершения crash-анимации.
+- Полностью работают `?art=vector` и `window.__BCFV_DEBUG__.setArtEnabled(false|true)`, включая отключение actor atlas без reload.
+- Production campaign остаётся: rider Act 1 → brawler → rider Act 3 → final boss. Road Rash изолирован и имеет собственный continue.
+- Последняя проверка: production build PASS; `test:road-rash` PASS; `test:campaign` PASS; `test:debug-scenes` PASS; 60 FPS, p95 16.8 ms, `runtimeErrors=[]`, `externalRequests=[]`.
+
+## Как запустить
+
+```powershell
+npm install
+npm run dev
+```
+
+Открыть `http://localhost:5173/?scene=road-rash&hero=cassia` (также `bruna` или `nova`). Для боя: `?scene=road-rash-combat`; для босса: `?scene=road-rash-boss`. Полная проверка:
+
+```powershell
+npm run build
+npm run test:road-rash
+npm run test:campaign
+npm run test:debug-scenes
+```
+
+## Последние скриншоты и отчёты
+
+- Полный run и JSON: `.gauntlet/iteration-27/road-rash/`
+- Workbench: `public/workbench/index.html`, кадры `public/workbench/captures/iteration-27/`
+- Movement: `.gauntlet/iteration-27/road-rash/02-road-rash-movement.png`
+- Combat motion: `.gauntlet/iteration-27/road-rash/03-road-rash-combat-0.png` … `03-road-rash-combat-7.png`
+- King attack: `.gauntlet/iteration-27/road-rash/04b-road-king-attack-0.png` … `04b-road-king-attack-2.png`
+- Boss defeat/victory: `05-road-rash-boss-defeat.png`, `06-road-rash-victory.png`
+- Heroine comparison: `07-road-rash-hero-cassia.png`, `07-road-rash-hero-bruna.png`, `07-road-rash-hero-nova.png`
+- Vector proof: `.gauntlet/debug-scenes/vector-roadRash.png`, `vector-roadRashBoss.png`
+
+## Последнее заключение независимого критика
+
+Финальный свежий critic: **7.3/10, AAA-era NO**. Он подтвердил три отчётливо разные героини, механический урон Road King `100→86`, честные восемь попаданий и корректный finish gate. Согласование горизонта и уменьшение масштаба заметно улучшили глубину и читаемость, но motion road plane и attack choreography всё ещё уступают Road Rash Genesis и лучшим 16-bit action games.
+
+## Один крупнейший оставшийся недостаток
+
+Полотно дороги воспринимается слишком статичной иллюстрацией на высокой скорости: движущиеся рефлекторы и проекционные швы помогают, но крупная authored texture и центральная оранжевая секция визуально закреплены в кадре.
+
+## Точная следующая итерация Gauntlet Loop
+
+Разделить authored road foreground на 3–4 бесшовных perspective strips/texture bands и прокручивать их по `visualDistance`, сохраняя горизонт `y=323`. Затем записать 2–3 секунды одинакового 200+ KM/H движения в authored и vector режимах, провести слепое A/B рядом с Road Rash Genesis и усилить отдельными atlas/effect фазами Road King `anticipation → swing → contact → player recoil`. После integration/smoothing повторить `test:road-rash`, `test:campaign`, `test:debug-scenes` и новый независимый visual recheck. Не возвращать Road Rash в кампанию без явного решения пользователя.
+
+---
+
+# Архив — Gauntlet iteration 26 handoff
 
 Дата handoff: 2026-09-01. Работа остановлена по просьбе пользователя при приближении к лимиту; проект оставлен в собираемом и полностью играбельном состоянии.
 
 ## Что уже работает в iteration 26
 
-- Полная кампания проходит: Act 1 / Magma Mauler → `Sulfur Run` Road Rash → Furnace District brawler → Act 3 / Sulfur Dreadnought → campaign win.
-- Road Rash-секция использует authored 16-bit панораму и atlas v3, псевдо-3D дорогу, трафик, боковые удары, направленный recoil, Road King, victory/defeat и собственный continue checkpoint.
+- Полная production-кампания проходит: Act 1 / Magma Mauler → Furnace District brawler → Act 3 / Sulfur Dreadnought → campaign win. `Sulfur Run` намеренно исключён из campaign registry и доступен только как самостоятельная экспериментальная сцена.
+- Standalone Road Rash использует authored open-road 16-bit панораму, rider atlas v3 и отдельный traffic/roadside object atlas, псевдо-3D дорогу, боковые удары, направленный recoil, полноценное поражение Road King, victory/defeat и изолированный continue checkpoint.
 - Terminal-состояния очищают attack/contact/recoil/flash; на victory игрок возвращается в neutral, оставшиеся боевые райдеры удаляются.
 - Debug-сцены `?scene=brawler-walk`, `?scene=brawler-jump`, `?scene=brawler-air-attack` работают для `hero=cassia|bruna|nova`.
 - Runtime vector mode: `?art=vector` и `window.__BCFV_DEBUG__.setArtEnabled(false|true)`; автоматический debug-scenes тест проверяет оба способа.
-- `test:road-rash`, `test:campaign`, `test:debug-scenes` и production build прошли. Последний Road Rash прогон: 59 FPS, p95 16.8 ms, `runtimeErrors=[]`, `externalRequests=[]`.
+- `test:road-rash`, `test:campaign`, `test:debug-scenes` и production build прошли. Последний Road Rash прогон: 58.5 FPS, p95 16.8 ms, `runtimeErrors=[]`, `externalRequests=[]`.
 
 ## Как запустить
 
@@ -31,20 +86,20 @@ npm run test:debug-scenes
 
 - Workbench: `public/workbench/index.html`
 - Полная Road Rash-серия: `.gauntlet/iteration-26/road-rash/`
-- Лучшие кадры: `public/workbench/captures/iteration-26/road-rash-movement.png`, `road-rash-combat.png`, `road-rash-boss.png`, `road-rash-victory.png`
+- Лучшие кадры: `public/workbench/captures/iteration-26/road-rash-movement.png`, `road-rash-combat.png`, `road-rash-boss.png`, `road-rash-boss-defeat.png`, `road-rash-victory.png`
 - Road Rash report: `.gauntlet/iteration-26/road-rash/report.json`
 - Campaign report: `.gauntlet/iteration-26/campaign-contract/report.json`
 - Debug scenes report/captures: `.gauntlet/debug-scenes/`
 
 ## Последнее заключение независимого критика
 
-Последняя независимая оценка до финального integration/smoothing: **8.3/10**, **AAA 16-bit era: NO**. Исправлены вечная contact-поза, искра на victory и пересечение стороны противником; финальный integration после этой оценки подтвердил читаемый направленный разлёт и чистый neutral victory.
+Последняя независимая оценка: **8.8/10**, **AAA 16-bit era: YES**. Критик подтвердил цельные authored actors/traffic/roadside props, читаемую восьмифазную контактную серию, полноценный boss defeat и чистый neutral victory. Road Rash при этом остаётся standalone experimental-сценой и не возвращён в production campaign.
 
-Один крупнейший оставшийся недостаток: момент удара всё ещё должен читаться ещё однозначнее одним уникальным contact-frame, а не только всей последовательностью.
+Один крупнейший оставшийся недостаток: дальний фон остаётся статичным, а дорога — почти идеально прямой с неизменным vanishing point, поэтому на длинной дистанции глубина и вариативность движения уступают лучшим 16-bit дорожным играм.
 
 ## Точная следующая итерация Gauntlet Loop
 
-Записать 60 fps capture полного замаха; выбрать реальный contact-frame; если рука/оружие не достигают силуэта противника, сдвинуть только contact cell/offset на 10–16 px и оставить компактную вспышку ровно на этом кадре. Затем переснять 8 последовательных кадров, отдать новому слепому критику рядом с Road Rash Genesis и, не меняя уже чистый victory, повторить `test:road-rash` + `test:campaign`.
+Добавить два-три дальних параллакс-слоя и очень мягкое изменение точки схода/кривизны трассы без переработки authored foreground. Затем записать длинный speed capture, проверить отсутствие рассинхронизации roadside atlas с дорогой и повторить слепое сравнение рядом с Road Rash Genesis, `test:road-rash`, `test:campaign` и `test:debug-scenes`.
 
 ---
 
