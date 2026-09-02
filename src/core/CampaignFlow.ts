@@ -2,6 +2,7 @@ export type CampaignAct = 1 | 2 | 3;
 
 export type CampaignSegment =
   | 'rider-pre-miniboss'
+  // Standalone experimental scene; campaignSegment() never returns this.
   | 'road-rash'
   | 'brawler'
   | 'rider-post-miniboss';

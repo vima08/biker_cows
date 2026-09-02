@@ -550,7 +550,7 @@ export class VenusGame {
     this.pausedFrom = 'brawler';
     this.currentLevelId = level.id;
     this.completedStage = 2;
-    this.setCampaignAct(2,active.id===SULFUR_RUN.id?'sulfur-run-to-furnace':'miniboss-defeated');
+    this.setCampaignAct(2,'miniboss-defeated');
     this.standaloneBrawler=standalone;
     const checkpoint:CampaignCheckpoint={levelId:level.id,stage:2,runtime:'brawler'};
     if(!this.continues.isActive)this.continues.startCampaign(checkpoint);else this.continues.setCheckpoint(checkpoint);
@@ -563,10 +563,10 @@ export class VenusGame {
     // Include any weapon pickup collected during the miniboss clear hold in
     // the Act 3 checkpoint loadout.
     this.captureRiderLoadout();
-    this.beginRoadRash(false, false);
+    this.beginBrawler(false);
   }
 
-  private beginRoadRash(debugBoss = false, standalone = false, combatShowcase = false) {
+  private beginRoadRash(debugBoss = false, standalone = true, combatShowcase = false) {
     const level = SULFUR_RUN;
     this.debugScene = null;
     this.brawler = null;
@@ -577,13 +577,15 @@ export class VenusGame {
       debugCombat: combatShowcase,
       debugSkipIntro: debugBoss || combatShowcase,
       playerName: HEROES[this.selectedHeroes[0]].name,
+      playerHero: HEROES[this.selectedHeroes[0]].id,
     });
     this.mode = 'road-rash';
     this.pausedFrom = 'road-rash';
     this.currentLevelId = level.id;
     this.completedStage = 2;
-    this.setCampaignAct(2, 'miniboss-to-sulfur-run');
-    this.standaloneRoadRash = standalone;
+    // Experimental test scene only: do not mutate production campaign act or
+    // history. Keep its own continue route so playtesting remains practical.
+    this.standaloneRoadRash = true;
     this.standaloneBrawler = false;
     this.roadRashScoreCommitted = false;
     this.debugRoadRashControls = combatShowcase ? { accelerate: true, attack: true } : {};
@@ -612,15 +614,9 @@ export class VenusGame {
       if(this.finishClock<1.8)return;
       if(state.completed){
         if(!this.roadRashScoreCommitted){this.score+=state.score;this.kills+=state.rivalsDefeated;this.roadRashScoreCommitted=true;}
-        if(this.standaloneRoadRash)this.finishRun(true);else this.completeRoadRashAct();
+        this.finishRun(true);
       }else this.finishRun(false);
     }
-  }
-
-  private completeRoadRashAct(){
-    if(!this.roadRash||!this.roadRash.completed)return;
-    this.setCampaignAct(2,'sulfur-run-cleared');
-    this.beginBrawler(false);
   }
 
   private completeBrawlerAct() {
@@ -972,7 +968,7 @@ export class VenusGame {
 
   private restartCheckpoint(checkpoint:CampaignCheckpoint){
     if(checkpoint.runtime==='rider'){this.beginRiderAct(checkpoint.stage===3?3:1,false);return;}
-    if(checkpoint.runtime==='road-rash'){this.beginRoadRash(false,false);return;}
+    if(checkpoint.runtime==='road-rash'){this.beginRoadRash(false,true);return;}
     const level=campaign.get(checkpoint.levelId);
     if(level.runtime==='brawler')this.beginBrawler(false,level);
     else this.beginRun(false);

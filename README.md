@@ -2,7 +2,7 @@
 
 Архитектура, описание модулей и инструкция по добавлению уровней находятся в [docs/](docs/README.md).
 
-Законченная локальная браузерная игра из связанных аркадных секций: скоростной motorcycle shoot ’em up, промежуточная combat-race в духе 16-битных Road Rash и полноценный side-scrolling beat ’em up в Furnace District. Доступны три антропоморфные коровы-байкеры и локальный кооператив. Персонажи, мир, графика, музыка и звуки созданы специально для проекта. После установки зависимостей игра полностью автономна и не обращается к внешним API.
+Законченная локальная браузерная игра из связанных аркадных секций: скоростной motorcycle shoot ’em up и полноценный side-scrolling beat ’em up в Furnace District. Доступны три антропоморфные коровы-байкеры и локальный кооператив. Персонажи, мир, графика, музыка и звуки созданы специально для проекта. После установки зависимостей игра полностью автономна и не обращается к внешним API. Отдельная combat-race Sulfur Run пока доступна только как экспериментальная тестовая сцена и не входит в кампанию.
 
 ## Запуск
 
@@ -24,7 +24,7 @@ npm run preview
 
 ## Управление
 
-В одиночной игре: `WASD` или стрелки — движение; в Sulfur Run `W/S` отвечают за газ/тормоз, `A/D` за руление, `Z` за боковой удар; на байке `Z` стреляет, а в Furnace District собирает серию ударов. `X` — прыжок, `C` — спецприём, `P`/`Esc` — пауза. Поддерживаются совместимые клавиши `J/K/L`, `Space`, `Shift`, `Ctrl` и Gamepad API.
+В одиночной игре: `WASD` или стрелки — движение; на байке `Z` стреляет, а в Furnace District собирает серию ударов. `X` — прыжок, `C` — спецприём, `P`/`Esc` — пауза. Поддерживаются совместимые клавиши `J/K/L`, `Space`, `Shift`, `Ctrl` и Gamepad API. В экспериментальной Sulfur Run `W/S` отвечают за газ/тормоз, `A/D` за руление, `Z` за боковой удар.
 
 На выборе персонажей `Tab` включает локальный режим на двоих.
 
@@ -54,7 +54,7 @@ npm run preview
 - наземные и воздушные враги, Magma Mauler Mk.IV и Sulfur Dreadnought;
 - несколько видов оружия, улучшения, pickups, combo, спецприёмы;
 - полностью отдельный Stage 2 — **Furnace District**: belt-scrolling арены, 8-направленное движение, трёхударные серии, воздушные атаки, area-special, три класса уличных врагов, pickups и The Forge Overseer;
-- промежуточный **Sulfur Run**: псевдо-3D combat-race, газ/тормоз, руление, боковые удары, трафик, масло, соперники, Road King и собственный continue-checkpoint;
+- экспериментальная тестовая сцена **Sulfur Run** (вне кампании): псевдо-3D combat-race на authored open-road background, отдельный atlas трафика и roadside-объектов, газ/тормоз, руление, боковые удары, масло, соперники, Road King и собственный continue-checkpoint;
 - отдельные 8-frame пешие atlas’ы Cassia/Bruna/Nova, 12-frame Venus gang, 6-frame boss и два авторских слоя индустриального окружения;
 - локальный кооператив без friendly fire;
 - пауза, победа, поражение и рестарт;
@@ -103,11 +103,13 @@ npm run test:debug-scenes
 - `?scene=brawler-jump&hero=bruna`
 - `?scene=brawler-air-attack&hero=nova`
 - `?scene=road-rash&hero=cassia`
+- `?scene=road-rash&hero=bruna`
+- `?scene=road-rash&hero=nova`
 - `?scene=road-rash-combat&hero=cassia`
 - `?scene=road-rash-boss&hero=cassia`
 - `?scene=stage-transition&hero=bruna`
 
-`hero=cassia|bruna|nova` выбирает героиню в поддерживающих её debug-сценах. Brawler-сцены `brawler-walk`, `brawler-jump` и `brawler-air-attack` фиксируют соответственно ходьбу, прыжок и воздушную атаку для визуальной/анимационной проверки. Road Rash-сцены открывают обычное движение, гарантированный ближний бой и сразу битву с Road King. `npm run test:debug-scenes` автоматически открывает все три brawler-сцены для каждой героини, снимает кадры в `.gauntlet/debug-scenes/`, а также проверяет `?art=vector` и runtime-переключатель арта.
+`hero=cassia|bruna|nova` выбирает героиню в поддерживающих её debug-сценах. Brawler-сцены `brawler-walk`, `brawler-jump` и `brawler-air-attack` фиксируют соответственно ходьбу, прыжок и воздушную атаку для визуальной/анимационной проверки. Экспериментальные Road Rash-сцены открывают обычное движение, гарантированный ближний бой и сразу битву с Road King; каждая из трёх героинь имеет здесь собственный задний силуэт и байк. Эти сцены изолированы от основной кампании до следующего решения о качестве. `npm run test:road-rash` проверяет движение, обычный бой, реальный входящий удар Кинга, восемь ответных ударов, закрытый до победы финиш, три разных heroine-render signature и continue. `npm run test:debug-scenes` автоматически открывает все три brawler-сцены для каждой героини, снимает кадры в `.gauntlet/debug-scenes/`, а также проверяет `?art=vector` и runtime-переключатель арта.
 
 ### Runtime vector mode
 
@@ -115,6 +117,7 @@ npm run test:debug-scenes
 
 ```text
 http://localhost:5173/?scene=brawler-walk&hero=cassia&art=vector
+http://localhost:5173/?scene=road-rash-boss&hero=nova&art=vector
 ```
 
 Без перезагрузки режим переключается через debug API в консоли браузера:

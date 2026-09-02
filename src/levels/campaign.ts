@@ -53,4 +53,7 @@ export const FURNACE_DISTRICT: BrawlerLevelDefinition = {
   ],
 };
 
-export const campaign = new LevelRegistry([VENUS_HIGHWAY, SULFUR_RUN, FURNACE_DISTRICT]);
+// Sulfur Run remains available as an experimental standalone debug scene, but
+// is deliberately excluded from the production campaign until its combat and
+// finish pacing are ready for release.
+export const campaign = new LevelRegistry([VENUS_HIGHWAY, FURNACE_DISTRICT]);

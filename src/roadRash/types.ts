@@ -1,4 +1,5 @@
 export type RoadRashStatus = 'intro' | 'racing' | 'boss' | 'victory' | 'defeat';
+export type RoadRashHeroId = 'cassia' | 'bruna' | 'nova';
 
 /** Held inputs are booleans; attackPressed should only be true for one frame. */
 export interface RoadRashControls {
@@ -22,6 +23,7 @@ export interface RoadRashStageOptions {
   debugCombat?: boolean;
   debugSkipIntro?: boolean;
   playerName?: string;
+  playerHero?: RoadRashHeroId;
 }
 
 export interface RoadRashEntitySnapshot {
@@ -43,6 +45,8 @@ export interface RoadRashSnapshot {
   defeated: boolean;
   elapsed: number;
   distance: number;
+  /** Continuously advancing road odometer, including while the boss gate holds race progress. */
+  visualDistance: number;
   courseLength: number;
   progress: number;
   speed: number;
@@ -50,15 +54,23 @@ export interface RoadRashSnapshot {
   lane: number;
   health: number;
   maxHealth: number;
+  playerHero: RoadRashHeroId;
   score: number;
   rivalsDefeated: number;
   collisions: number;
   hits: number;
   finishReady: boolean;
+  finishCrossed: boolean;
+  finishVisible: boolean;
   bossSpawned: boolean;
   bossDefeated: boolean;
+  /** True while Road King is still visibly crashing after reaching zero HP. */
+  bossDefeatAnimating: boolean;
+  bossDefeatTimer: number;
+  bossDefeatProgress: number;
   boss: RoadRashEntitySnapshot | null;
   entities: RoadRashEntitySnapshot[];
   attackTimer: number;
   invulnerability: number;
+  bossArenaLocked: boolean;
 }
