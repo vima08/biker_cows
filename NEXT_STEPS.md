@@ -1,4 +1,22 @@
-# NEXT STEPS — Gauntlet iteration 27 handoff
+# NEXT STEPS — iteration 28 / 8 сентября 2026
+
+Работа завершена по просьбе пользователя при приближении к лимиту. Проект собирается и запускается. Road Rash возвращён в кампанию по явному решению пользователя; прежний запрет ниже относится только к архиву.
+
+Текущий маршрут: rider Act 1 / Magma Mauler → Sulfur Run / Road King → Furnace District / Forge Overseer → rider Act 3 / Sulfur Dreadnought → финал. В Road управляет P1; P2 возвращается в brawler, что явно обозначено в UI и README. Прямые debug URL остаются самостоятельными сценами.
+
+Запуск: `npm ci`, `npm run dev` и напечатанный Vite URL с базой `/biker_cows/`. Production: `npm run build`, `npm run preview`. Проверенный текущий preview: `http://127.0.0.1:4287/biker_cows/`.
+
+Проверено: production build и чистая offline-установка PASS; campaign contract PASS; полный Road обычными контролами — 43 с, 72 HP, King 8→0; полный brawler — 22 врага и Forge, Bruna 144/170 HP; standalone Road regression PASS; runtime/external errors отсутствуют. Остальные границы campaign ускорены debug completeAct — это не доказательство полного честного прохождения обоих shooter-актов. Повторный 12-секундный shooter benchmark: 59.91/59.89 FPS, p95 16.7/16.8 ms. Первый короткий замер не прошёл p95, оба отчёта сохранены.
+
+Последний независимый critic: **desktop demo 7/10, полный релиз 5/10, AAA-era NO**. Просмотрены реальные последовательные PNG всех секций и 16-bit референсы; субъективный звук не прослушан. Полный отзыв: `.gauntlet/iteration-28/critic/CRITIQUE.md`. В `DEFECTS.md` внесены 12 актуальных открытых пунктов с доказательствами и критериями; тряска при переходе закрыта, отдельная проблема паузы открыта.
+
+Последние кадры и проверки: `.gauntlet/iteration-28/readiness/index.html` (проигрывает серии), `readiness-miniboss/` (правильный минибосс), `campaign-contract/`, `road-regression/`, `brawler/`, `boss-performance-recheck/`. Лучшие кадры: `public/workbench/captures/iteration-28/`.
+
+**Один крупнейший остаток:** крупные швы и оранжевая разметка Road Rash остаются визуально неподвижными. **Следующая Gauntlet-итерация:** отделить ближнее полотно от панорамы, прокручивать от visualDistance, записать ≥2 с движения на постоянной скорости, дать новому критику сравнить с Road Rash Genesis; после integration/smoothing повторить Road и campaign regression. Не удалять Road из кампании на основании AAA-оценки: пользователь уже разрешил его возврат. Остальные приоритеты — в DEFECTS.md.
+
+---
+
+# Архив — Gauntlet iteration 27 handoff
 
 Дата handoff: 2026-09-02. Проект оставлен в собираемом и полностью играбельном состоянии. Road Rash намеренно остаётся только standalone test scene и не входит в основную кампанию.
 

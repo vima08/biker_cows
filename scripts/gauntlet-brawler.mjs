@@ -139,9 +139,8 @@ try {
   checkpoints.coop = { before: coopBefore, after: coopAfter, p2Attack, players: (await state()).brawler.players };
 
   await page.goto(`${baseURL}/?scene=stage-transition&hero=bruna`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'brawler', undefined, { timeout: 15_000 });
-  await waitAssets();
-  await canvasShot('stage-1-to-stage-2-transition');
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'road-rash', undefined, { timeout: 15_000 });
+  await canvasShot('stage-1-to-road-rash-transition');
   checkpoints.transition = { state: (await state()).state, stage: (await state()).stage };
 
   await page.goto(`${baseURL}/?scene=brawler-boss&hero=bruna`, { waitUntil: 'networkidle' });

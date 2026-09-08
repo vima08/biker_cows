@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const baseURL = process.env.BCFV_URL ?? 'http://127.0.0.1:4173';
 const executablePath = process.env.BCFV_BROWSER ?? 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-const outputDir = path.resolve(process.env.BCFV_CAPTURE_DIR ?? '.gauntlet/iteration-26/campaign-contract');
+const outputDir = path.resolve(process.env.BCFV_CAPTURE_DIR ?? '.gauntlet/iteration-28/campaign-contract');
 await mkdir(outputDir, { recursive: true });
 
 const browser = await chromium.launch({
@@ -68,10 +68,62 @@ const completeAct = async () => page.evaluate(() => {
   if (typeof api?.completeAct !== 'function') throw new Error('Debug API completeAct() is missing');
   return api.completeAct();
 });
+const setRoadInput = input => page.evaluate(value => window.__BCFV_DEBUG__.setRoadRashInput(value), input);
+
+// The road segment must be traversed and its boss beaten through the same held
+// controls as a human player. No teleport, health editing or completeAct here.
+const driveRoadWithOrdinaryInputs = async (prefix, timeoutMs = 100_000) => {
+  const result = await page.evaluate(async timeout => {
+    const api = window.__BCFV_DEBUG__;
+    const started = performance.now(), healthSequence = [], captures = [];
+    let previousHealth = null, crashCaptured = false;
+    const stop = () => api.setRoadRashInput({ accelerate: false, brake: false, left: false, right: false, attack: false });
+    const shot = label => captures.push({ label, data: document.querySelector('canvas').toDataURL() });
+    return await new Promise(resolve => {
+      const tick = () => {
+        const s = api.snapshot(), r = s.roadRash, boss = r?.boss;
+        const fail = message => { stop(); resolve({ error: message, road: r, healthSequence }); };
+        if (!r || s.state !== 'road-rash') return fail('Road exited before verified finish');
+        if (r.defeated || r.health <= 0) return fail('Ordinary-input road traversal lost the rider');
+        if (performance.now() - started > timeout) return fail('Ordinary-input road traversal timed out');
+        if (boss && previousHealth !== boss.hp) {
+          if (previousHealth !== null && boss.hp !== previousHealth - 1) return fail('Boss HP skipped an ordinary hit');
+          previousHealth = boss.hp; healthSequence.push(boss.hp);
+          if (healthSequence.length === 1) shot('boss');
+        }
+        if (!r.bossDefeated && (r.finishReady || r.finishVisible || r.finishCrossed || r.completed)) return fail('Premature finish');
+        if (r.bossDefeatAnimating && !crashCaptured) { shot('boss-crash'); crashCaptured = true; }
+        if (r.completed) {
+          stop(); shot('victory');
+          return resolve({ seconds: +((performance.now()-started)/1000).toFixed(1), road: r, healthSequence, captures });
+        }
+        const hazards = r.entities.filter(e => ['car','truck','oil'].includes(e.kind) && e.relativeDistance > -26 && e.relativeDistance < 300);
+        const targetLane = boss && boss.hp > 0 && Math.abs(boss.relativeDistance) < 90 ? boss.lane : r.lane;
+        const danger = lane => hazards.reduce((total,e) => {
+          const dz = Math.max(0,e.relativeDistance), clearance = e.kind === 'truck' ? .46 : .37;
+          const crossing = (e.lane-r.lane)*(e.lane-lane) <= 0;
+          return total + Math.max(0,clearance-Math.abs(lane-e.lane))*8000/(dz+24) + (crossing && dz<70 ? 50 : 0);
+        },Math.abs(lane-targetLane)*3);
+        const wanted = [-.88,-.6,-.3,0,.3,.6,.88,targetLane].sort((a,b)=>danger(a)-danger(b))[0];
+        const delta = wanted-r.lane;
+        api.setRoadRashInput({ accelerate:true,brake:false,left:delta<-.045,right:delta>.045,attack:true });
+        requestAnimationFrame(tick);
+      }; requestAnimationFrame(tick);
+    });
+  }, timeoutMs);
+  assert(!result.error, result.error, result);
+  assert(result.road.bossDefeated && result.road.finishCrossed && !result.road.bossDefeatAnimating,'Road victory bypassed its boss/finish gate',result.road);
+  assert(JSON.stringify(result.healthSequence) === JSON.stringify([8,7,6,5,4,3,2,1,0]),'Road King was not defeated with eight ordinary attacks',result.healthSequence);
+  for (const frame of result.captures) await writeFile(path.join(outputDir,`${prefix}-${frame.label}.png`),Buffer.from(frame.data.split(',')[1],'base64'));
+  delete result.captures;
+  return result;
+};
+
 
 const report = {
   ok: false,
-  contract: 'rider act 1 -> miniboss -> brawler -> rider final run -> boss -> win (Road Rash excluded)',
+  contract: 'rider act 1 -> miniboss -> Road Rash + Road King -> brawler -> rider final run -> boss -> win',
+  scope: 'Campaign routing/checkpoints/loadout; Road Rash traversal and King use ordinary controls. Other act boundaries use completeAct and are not full combat completion evidence.',
   observed: [],
   timing: null,
   continue: null,
@@ -131,11 +183,45 @@ try {
 
   await page.waitForFunction(() => {
     const snapshot = window.__BCFV_DEBUG__.snapshot();
-    return snapshot.state === 'brawler' && (snapshot.act ?? snapshot.campaign?.act) === 2;
+    return snapshot.state === 'road-rash' && (snapshot.act ?? snapshot.campaign?.act) === 2;
   }, undefined, { timeout: 20_000 });
+  const roadEntry = await state();
+  assertCoop(roadEntry, coopHeroes, 'road act 2 retained team');
+  assert(!roadEntry.campaign.standalone && roadEntry.campaign.activePlayers === 1, 'Campaign road should retain its route with P1 driving', roadEntry.campaign);
+  assert(roadEntry.roadRash.playerHero === coopHeroes[0], 'Road Rash changed the selected P1 heroine', roadEntry.roadRash);
+  const roadEntryScore = roadEntry.score;
+  record('road-rash-act-2', roadEntry);
+  await capture('03b-road-rash-entry');
+
+  await page.keyboard.press('KeyP');
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'paused');
+  await page.keyboard.press('KeyR');
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'road-rash');
+  const roadRestart = await state();
+  assert(!roadRestart.campaign.standalone && segmentOf(roadRestart) === 'road-rash', 'Pause restart converted campaign road to standalone', roadRestart.campaign);
+  assert(JSON.stringify(roadRestart.campaign.history) === JSON.stringify(roadEntry.campaign.history), 'Road restart duplicated campaign history', roadRestart.campaign);
+  assert(roadRestart.continue.attempts.current === roadEntry.continue.attempts.current, 'Pause restart consumed a continue', roadRestart.continue);
+
+  await page.evaluate(() => window.__BCFV_DEBUG__.defeatRoadRash());
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'continue');
+  const roadContinue = await state();
+  assert(segmentOf(roadContinue) === 'road-rash' && roadContinue.continue.checkpoint.runtime === 'road-rash', 'Road continue lost runtime identity', roadContinue);
+  assert(!roadContinue.campaign.standalone, 'Road continue lost campaign participation', roadContinue.campaign);
+  await capture('03c-road-rash-continue');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'road-rash');
+  const roadContinued = await state();
+  assertCoop(roadContinued, coopHeroes, 'road continue retained team');
+  assert(!roadContinued.campaign.standalone && roadContinued.roadRash.health === roadContinued.roadRash.maxHealth, 'Road continue did not restore a fresh campaign stage', roadContinued);
+  assert(roadContinued.score === roadEntryScore, 'Road continue changed the committed campaign score', { roadEntryScore, score: roadContinued.score });
+  report.roadContinue = { offered: roadContinue.continue, restarted: roadContinued.continue, standalone: roadContinued.campaign.standalone };
+  report.road = await driveRoadWithOrdinaryInputs('03d-road-rash');
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'brawler', undefined, { timeout: 15_000 });
   const brawler = await state();
   assert(segmentOf(brawler) === 'brawler', 'Act 2 has the wrong campaign segment', brawler.campaign);
   assertCoop(brawler, coopHeroes, 'brawler act 2');
+  assert(brawler.score === roadEntryScore + report.road.road.score, 'Road score was lost or committed more than once', { before: roadEntryScore, road: report.road.road.score, after: brawler.score });
+  assert(brawler.campaign.activePlayers === 2, 'P2 did not rejoin after Road Rash', brawler.campaign);
   record('brawler-act-2', brawler);
   await capture('04-brawler-act-2');
 
@@ -220,27 +306,36 @@ try {
   await capture('10c-campaign-win');
 
   const observedActs = report.observed.map(item => item.act);
-  assert(JSON.stringify(observedActs) === JSON.stringify([1, 1, 1, 2, 2, 3, 3, 3, 3]), 'Observed campaign order is not rider -> brawler -> rider', report.observed);
+  assert(JSON.stringify(observedActs) === JSON.stringify([1, 1, 1, 2, 2, 2, 3, 3, 3, 3]), 'Observed campaign order is not rider -> Road Rash -> brawler -> rider', report.observed);
   assert(
-    JSON.stringify(win.campaign.history) === JSON.stringify(['miniboss-defeated', 'brawler-victory', 'boss-defeated', 'campaign-win']),
+    JSON.stringify(win.campaign.history) === JSON.stringify(['miniboss-defeated', 'road-rash-victory', 'brawler-victory', 'boss-defeated', 'campaign-win']),
     'Campaign history contains an unexpected route',
     win.campaign,
   );
   report.history = win.campaign.history;
 
   // Legacy/debug routes are part of the production review harness. The
-  // stage-transition route must enter the brawler directly, while the
+  // stage-transition route must enter Road Rash, while the
   // standalone rider boss remains a self-contained victory route.
   await page.goto(`${baseURL}/?scene=stage-transition&hero=bruna`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.__BCFV_DEBUG__?.snapshot().boss?.kind === 'miniboss');
   await capture('11-stage-transition-miniboss');
   await page.waitForFunction(() => {
     const snapshot = window.__BCFV_DEBUG__.snapshot();
-    return snapshot.state === 'brawler' && (snapshot.act ?? snapshot.campaign?.act) === 2;
+    return snapshot.state === 'road-rash' && (snapshot.act ?? snapshot.campaign?.act) === 2;
   }, undefined, { timeout: 20_000 });
   const stageTransition = await state();
-  assert(stageTransition.segment === 'brawler', 'stage-transition did not enter the brawler', stageTransition.campaign);
-  await capture('12-stage-transition-brawler');
+  assert(stageTransition.segment === 'road-rash' && !stageTransition.campaign.standalone, 'stage-transition did not enter campaign Road Rash', stageTransition.campaign);
+  await capture('12-stage-transition-road-rash');
+
+  await page.goto(`${baseURL}/?scene=road-rash-boss&hero=nova`, { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => window.__BCFV_DEBUG__?.snapshot().roadRash?.boss);
+  const standaloneRoadEntry = await state();
+  assert(standaloneRoadEntry.campaign.standalone, 'Road debug scene must remain standalone', standaloneRoadEntry.campaign);
+  report.standaloneRoad = await driveRoadWithOrdinaryInputs('12b-standalone-road');
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'win');
+  const standaloneRoadWin = await state();
+  assert(standaloneRoadWin.campaign.standalone && standaloneRoadWin.brawler === null, 'Standalone road incorrectly advanced into the campaign', standaloneRoadWin);
 
   await page.goto(`${baseURL}/?scene=boss&hero=bruna`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => window.__BCFV_DEBUG__?.snapshot().boss?.kind === 'boss');
@@ -253,6 +348,7 @@ try {
   report.routes = {
     stageTransition: { state: stageTransition.state, act: actOf(stageTransition), segment: segmentOf(stageTransition) },
     standaloneBoss: { state: standaloneBossWin.state, bossDefeated: standaloneBossWin.bossDefeated },
+    standaloneRoad: { state: standaloneRoadWin.state, standalone: standaloneRoadWin.campaign.standalone },
   };
   assert(runtimeErrors.length === 0, 'Runtime/page/request errors were recorded', runtimeErrors);
 
