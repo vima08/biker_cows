@@ -19,11 +19,11 @@ export const SULFUR_RUN: RoadRashLevelDefinition = {
   runtime: 'road-rash',
   title: 'SULFUR RUN',
   subtitle: 'KNOCK THE JACKALS OFF THE ROAD',
-  bossName: 'RAZORBACK REX',
+  bossName: 'ROAD KING',
   musicCue: 'stage',
   distance: 7200,
   bossAt: 5900,
-  backdrop: assetUrl('assets/road-rash/venus-badlands-panorama-v1.png'),
+  backdrop: assetUrl('assets/road-rash/venus-badlands-panorama-v2-open-road.png'),
 };
 
 export const FURNACE_DISTRICT: BrawlerLevelDefinition = {
@@ -53,7 +53,4 @@ export const FURNACE_DISTRICT: BrawlerLevelDefinition = {
   ],
 };
 
-// Sulfur Run remains available as an experimental standalone debug scene, but
-// is deliberately excluded from the production campaign until its combat and
-// finish pacing are ready for release.
-export const campaign = new LevelRegistry([VENUS_HIGHWAY, FURNACE_DISTRICT]);
+export const campaign = new LevelRegistry([VENUS_HIGHWAY, SULFUR_RUN, FURNACE_DISTRICT]);

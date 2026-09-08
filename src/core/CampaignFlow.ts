@@ -2,7 +2,7 @@ export type CampaignAct = 1 | 2 | 3;
 
 export type CampaignSegment =
   | 'rider-pre-miniboss'
-  // Standalone experimental scene; campaignSegment() never returns this.
+  // Sulfur Run is the opening segment of Act 2, before the on-foot section.
   | 'road-rash'
   | 'brawler'
   | 'rider-post-miniboss';
@@ -15,7 +15,8 @@ export const CAMPAIGN_TIMING = Object.freeze({
   act3TimelineRate: 2,
 });
 
-export function campaignSegment(act: CampaignAct): CampaignSegment {
+export function campaignSegment(act: CampaignAct, runtime?: 'rider' | 'road-rash' | 'brawler'): CampaignSegment {
+  if (runtime === 'road-rash') return 'road-rash';
   if (act === 1) return 'rider-pre-miniboss';
   if (act === 2) return 'brawler';
   return 'rider-post-miniboss';

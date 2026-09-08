@@ -19,7 +19,7 @@ main.ts
 
 `main.ts` — composition root. Он создаёт зависимости и публикует debug API, но не содержит игровую логику.
 
-`VenusGame` — координатор кампании и тестовых сцен. Основная цепочка переключает title/select/intro/rider/brawler/end; экспериментальный road-rash запускается только через отдельные debug URL и не изменяет прогресс кампании.
+`VenusGame` — координатор кампании и тестовых сцен. Основная цепочка: title/select/intro → rider Act 1 → road-rash → brawler → rider Act 3 → outro/win. Sulfur Run имеет campaign и standalone lifecycle: в кампании победа ведёт в brawler, прямые debug URL заканчиваются самостоятельной победой. Continue и pause/restart сохраняют выбранный lifecycle.
 
 `BeatEmUpStage` — runtime belt-scrolling уровня. Геометрия, волны, подписи и пути к ассетам приходят через `BrawlerLevelDefinition`; класс не привязан к имени Furnace District.
 
