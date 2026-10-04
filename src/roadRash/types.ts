@@ -24,6 +24,8 @@ export interface RoadRashStageOptions {
   debugSkipIntro?: boolean;
   playerName?: string;
   playerHero?: RoadRashHeroId;
+  secondPlayerHero?: RoadRashHeroId;
+  secondPlayerName?: string;
 }
 
 export interface RoadRashEntitySnapshot {
@@ -55,6 +57,7 @@ export interface RoadRashSnapshot {
   health: number;
   maxHealth: number;
   playerHero: RoadRashHeroId;
+  players: Array<{ id: 1 | 2; hero: RoadRashHeroId; lane: number; health: number; speed: number; attackTimer: number; alive: boolean }>;
   score: number;
   rivalsDefeated: number;
   collisions: number;

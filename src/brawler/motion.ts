@@ -152,13 +152,13 @@ export function resolvePlayerMotionPose(player: BrawlerPlayer): BrawlerMotionPos
   const phaseFloat = cycle * WALK_PHASE_COUNT;
   const walkPhase = Math.min(WALK_PHASE_COUNT - 1, Math.floor(phaseFloat));
   const walkPhaseProgress = phaseFloat - walkPhase;
-  const contacts = ['left-contact', 'passing-right', 'right-contact', 'passing-left'] as const;
+  const contacts = ['right-contact', 'passing-left', 'left-contact', 'passing-right'] as const;
 
   // Do not fake silhouette changes with root translation, rotation or squash.
   // The renderer holds a stable baseline and the four bitmap cels carry the
-  // full gait. Phase 2 is explicitly the lowered right-foot contact requested
-  // by the visual strip contract.
-  return pose(walkPhase, {
+  // full gait. Near and far authored legs exchange lead/support independently.
+  // The second row is an authored rear view; never mirror Bruna's cyberarm.
+  return pose(walkPhase + (player.facing < 0 ? 4 : 0), {
     atlas: 'walk',
     walkPhase,
     walkContact: contacts[walkPhase],

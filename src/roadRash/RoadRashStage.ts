@@ -51,6 +51,22 @@ interface RoadEntity {
   color: string;
 }
 
+interface RoadPlayer {
+  id: 1 | 2;
+  name: string;
+  hero: RoadRashHeroId;
+  speed: number;
+  lane: number;
+  lean: number;
+  hp: number;
+  attackTimer: number;
+  attackSide: -1 | 1;
+  attackConnected: boolean;
+  playerRecoil: number;
+  invulnerability: number;
+  hitFlash: number;
+}
+
 interface Particle {
   x: number;
   y: number;
@@ -77,26 +93,16 @@ export class RoadRashStage {
   readonly height = H;
 
   private readonly courseLength: number;
-  private readonly playerName: string;
-  private readonly playerHero: RoadRashHeroId;
+  private riders: RoadPlayer[];
+  private rider: RoadPlayer;
   private statusValue: RoadRashStatus = 'intro';
   private elapsed = 0;
   private stateTimer = 0;
   private introTimer: number;
   private distance = 0;
   private visualDistance = 0;
-  private speed = 72;
-  private lane = 0;
-  private lean = 0;
-  private playerHp = 100;
-  private attackTimer = 0;
-  private attackSide: -1 | 1 = 1;
-  private attackConnected = false;
   private impactFreeze = 0;
   private impactFlash = 0;
-  private playerRecoil = 0;
-  private invulnerability = 0;
-  private hitFlash = 0;
   private shake = 0;
   private score = 0;
   private confirmedHits = 0;
@@ -121,8 +127,13 @@ export class RoadRashStage {
   constructor(options: RoadRashStageOptions = {}) {
     this.rngState = (options.seed ?? 0x9e3779b9) >>> 0;
     this.courseLength = Math.max(2400, options.courseLength ?? 6200);
-    this.playerName = (options.playerName ?? 'MOO RIDER').slice(0, 14).toUpperCase();
-    this.playerHero = options.playerHero ?? 'cassia';
+    const makePlayer = (id: 1 | 2, hero: RoadRashHeroId, name: string, lane: number): RoadPlayer => ({
+      id, hero, name: name.slice(0, 14).toUpperCase(), lane, speed: 72, lean: 0, hp: 100,
+      attackTimer: 0, attackSide: 1, attackConnected: false, playerRecoil: 0, invulnerability: 0, hitFlash: 0,
+    });
+    this.riders = [makePlayer(1, options.playerHero ?? 'cassia', options.playerName ?? 'MOO RIDER', options.secondPlayerHero ? -.32 : 0)];
+    if (options.secondPlayerHero) this.riders.push(makePlayer(2, options.secondPlayerHero, options.secondPlayerName ?? 'P2', .32));
+    this.rider = this.riders[0];
     this.introTimer = options.debugSkipIntro || options.debugBoss ? 0 : (options.introDuration ?? 2.3);
     this.panorama = typeof Image === 'undefined' ? null : new Image();
     if (this.panorama) this.panorama.src = assetUrl('assets/road-rash/venus-badlands-panorama-v2-open-road.png');
@@ -142,11 +153,12 @@ export class RoadRashStage {
     if (options.debugBoss) {
       this.distance = this.courseLength * .72;
       this.visualDistance = this.distance;
-      this.speed = 170;
+      for (const rider of this.riders) rider.speed = 170;
       this.nextSpawnAt = this.courseLength + 1000;
       this.spawnBoss(170);
     } else if(options.debugCombat){
-      this.statusValue='racing';this.introTimer=0;this.speed=142;
+      this.statusValue='racing';this.introTimer=0;
+      for (const rider of this.riders) rider.speed = 142;
       this.entities.push({id:++this.entitySerial,kind:'rival',lane:.28,distance:this.distance+76,speed:116,hp:5,maxHp:5,active:true,attackCooldown:1.1,attackTimer:0,hitFlash:0,reactionTimer:0,recoilSide:0,wobble:0,color:'#2dd4bf'});
     }
   }
@@ -159,7 +171,7 @@ export class RoadRashStage {
 
   /** Deterministic campaign/harness escape hatch; normal play never calls this. */
   debugCompleteVictory(): RoadRashSnapshot {
-    this.playerHp = Math.max(1, this.playerHp);
+    this.rider.hp = Math.max(1, this.rider.hp);
     this.bossSpawned = true;
     this.bossDefeated = true;
     this.bossDefeatTimer = 0;
@@ -172,12 +184,12 @@ export class RoadRashStage {
 
   /** Deterministic defeat path for continue-system integration tests. */
   debugDefeat(): RoadRashSnapshot {
-    this.playerHp = 0;
+    for (const rider of this.riders) rider.hp = 0;
     this.changeStatus('defeat');
     return this.snapshot();
   }
 
-  update(rawDt: number, controls: RoadRashControls = {}): void {
+  update(rawDt: number, controls: RoadRashControls = {}, secondControls: RoadRashControls = {}): void {
     const dt = clamp(Number.isFinite(rawDt) ? rawDt : 0, 0, .05);
     this.elapsed += dt;
     this.stateTimer += dt;
@@ -188,51 +200,64 @@ export class RoadRashStage {
       this.updateParticles(dt * .12);
       return;
     }
-    this.attackTimer = Math.max(0, this.attackTimer - dt);
-    const wasRecoiling = this.playerRecoil > 0;
-    this.playerRecoil = Math.max(0, this.playerRecoil - dt);
-    // Contact is a transient animation state, not a permanent pose. Without
-    // this edge reset the fourth atlas cell survived until the next attack.
-    if (wasRecoiling && this.playerRecoil === 0) this.attackConnected = false;
-    this.invulnerability = Math.max(0, this.invulnerability - dt);
-    this.hitFlash = Math.max(0, this.hitFlash - dt);
+    for (const rider of this.riders) {
+      this.rider = rider;
+      this.rider.attackTimer = Math.max(0, this.rider.attackTimer - dt);
+      const wasRecoiling = this.rider.playerRecoil > 0;
+      this.rider.playerRecoil = Math.max(0, this.rider.playerRecoil - dt);
+      // Contact is a transient animation state, not a permanent pose. Without
+      // this edge reset the fourth atlas cell survived until the next attack.
+      if (wasRecoiling && this.rider.playerRecoil === 0) this.rider.attackConnected = false;
+      this.rider.invulnerability = Math.max(0, this.rider.invulnerability - dt);
+      this.rider.hitFlash = Math.max(0, this.rider.hitFlash - dt);
+    }
+    this.rider = this.riders.find(rider => rider.hp > 0) ?? this.riders[0];
     this.shake = Math.max(0, this.shake - dt * 24);
 
     if (this.statusValue === 'intro') {
       this.introTimer -= dt;
-      this.speed = lerp(this.speed, 102, Math.min(1, dt * 1.8));
-      this.distance += this.speed * dt;
-      this.visualDistance += this.speed * dt;
+      for (const rider of this.riders) rider.speed = lerp(rider.speed, 102, Math.min(1, dt * 1.8));
+      this.distance += this.rider.speed * dt;
+      this.visualDistance += this.rider.speed * dt;
       if (this.introTimer <= 0) this.changeStatus('racing');
       this.updateParticles(dt);
       return;
     }
     if (this.statusValue === 'victory' || this.statusValue === 'defeat') {
-      this.speed = Math.max(0, this.speed - dt * (this.completed ? 18 : 70));
-      this.distance += this.speed * dt;
-      this.visualDistance += this.speed * dt;
+      for (const rider of this.riders) rider.speed = Math.max(0, rider.speed - dt * (this.completed ? 18 : 70));
+      this.distance += this.rider.speed * dt;
+      this.visualDistance += this.rider.speed * dt;
       this.updateParticles(dt);
       return;
     }
 
-    const steer = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
-    const accelerating = Boolean(controls.accelerate ?? controls.up);
-    const braking = Boolean(controls.brake ?? controls.down);
-    const throttle = accelerating ? 1 : 0;
-    const targetSpeed = braking ? 46 : throttle ? MAX_SPEED : 126;
-    const response = targetSpeed > this.speed ? 48 : braking ? 118 : 31;
-    this.speed += clamp(targetSpeed - this.speed, -response * dt, response * dt);
-    if (Math.abs(this.lane) > .94) this.speed = Math.max(52, this.speed - 54 * dt);
+    const primaryControls = controls;
+    const living = this.riders.filter(rider => rider.hp > 0);
+    for (const rider of living) {
+      this.rider = rider;
+      const controls = rider.id === 1 ? primaryControls : secondControls;
+      const steer = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
+      const accelerating = Boolean(controls.accelerate ?? controls.up);
+      const braking = Boolean(controls.brake ?? controls.down);
+      const throttle = accelerating ? 1 : 0;
+      const targetSpeed = braking ? 46 : throttle ? MAX_SPEED : 126;
+      const response = targetSpeed > this.rider.speed ? 48 : braking ? 118 : 31;
+      this.rider.speed += clamp(targetSpeed - this.rider.speed, -response * dt, response * dt);
+      if (Math.abs(this.rider.lane) > .94) this.rider.speed = Math.max(52, this.rider.speed - 54 * dt);
 
-    const steerPower = (.7 + this.speed / MAX_SPEED * .48) * dt;
-    this.lane = clamp(this.lane + steer * steerPower, -1.12, 1.12);
-    this.lean = lerp(this.lean, steer * .9, Math.min(1, dt * 10));
-    if (!steer) this.lean = lerp(this.lean, 0, Math.min(1, dt * 6));
-    this.distance += this.speed * dt;
-    this.visualDistance += this.speed * dt;
+      const steerPower = (.7 + this.rider.speed / MAX_SPEED * .48) * dt;
+      this.rider.lane = clamp(this.rider.lane + steer * steerPower, -1.12, 1.12);
+      this.rider.lean = lerp(this.rider.lean, steer * .9, Math.min(1, dt * 10));
+      if (!steer) this.rider.lean = lerp(this.rider.lean, 0, Math.min(1, dt * 6));
 
-    const attackPressed = Boolean(controls.attackPressed || controls.specialPressed || (controls.attack && this.attackTimer <= 0));
-    if (attackPressed && this.attackTimer <= 0) this.beginAttack();
+      const attackPressed = Boolean(controls.attackPressed || controls.specialPressed || (controls.attack && this.rider.attackTimer <= 0));
+      if (attackPressed && this.rider.attackTimer <= 0) this.beginAttack();
+
+    }
+    this.rider = living[0] ?? this.riders[0];
+    const roadSpeed = living.reduce((sum, rider) => sum + rider.speed, 0) / Math.max(1, living.length);
+    this.distance += roadSpeed * dt;
+    this.visualDistance += roadSpeed * dt;
 
     this.spawnTraffic();
     this.maybeSpawnBoss();
@@ -242,12 +267,13 @@ export class RoadRashStage {
       this.distance = Math.min(this.distance, this.courseLength * .9);
     }
     this.updateEntities(dt);
-    this.resolveContacts();
+    for (const rider of living) { this.rider = rider; this.resolveContacts(); }
+    this.rider = living[0] ?? this.riders[0];
     this.updateBossDefeat(dt);
     this.updateParticles(dt);
 
     this.entities = this.entities.filter(entity => entity.active && entity.distance > this.distance - 95);
-    if (this.playerHp <= 0) this.changeStatus('defeat');
+    if (this.riders.every(rider => rider.hp <= 0)) this.changeStatus('defeat');
     // The last stretch is a boss arena. Race progress waits below the finish,
     // while visualDistance keeps the asphalt and roadside parallax moving.
     if (this.bossSpawned && !this.bossDefeatResolved) {
@@ -269,11 +295,11 @@ export class RoadRashStage {
       Math.abs(entity.distance - this.distance) < (entity.kind === 'boss' ? 76 : 58),
     );
     if (nearbyRivals.length) {
-      const closest = nearbyRivals.reduce((a, b) => Math.abs(a.lane - this.lane) < Math.abs(b.lane - this.lane) ? a : b);
-      this.attackSide = closest.lane < this.lane ? -1 : 1;
-    } else this.attackSide = this.lean < 0 ? -1 : 1;
-    this.attackTimer = .72;
-    this.attackConnected = false;
+      const closest = nearbyRivals.reduce((a, b) => Math.abs(a.lane - this.rider.lane) < Math.abs(b.lane - this.rider.lane) ? a : b);
+      this.rider.attackSide = closest.lane < this.rider.lane ? -1 : 1;
+    } else this.rider.attackSide = this.rider.lean < 0 ? -1 : 1;
+    this.rider.attackTimer = .72;
+    this.rider.attackConnected = false;
     this.emitSound('road_attack', .72, .9 + this.random() * .16);
   }
 
@@ -305,7 +331,7 @@ export class RoadRashStage {
     this.changeStatus('boss');
     this.entities.push({
       id: ++this.entitySerial, kind: 'boss', lane: .18, distance: this.distance + ahead,
-      speed: Math.max(156, this.speed * .92), hp: 8, maxHp: 8, active: true,
+      speed: Math.max(156, this.rider.speed * .92), hp: 8, maxHp: 8, active: true,
       attackCooldown: 1.4, attackTimer: 0, hitFlash: 0, reactionTimer: 0, recoilSide: 0, wobble: 0, color: '#facc15',
     });
     this.emitMusic('road_boss', 1);
@@ -313,8 +339,10 @@ export class RoadRashStage {
   }
 
   private updateEntities(dt: number): void {
+    const lead = this.rider;
     for (const entity of this.entities) {
       if (!entity.active) continue;
+      this.rider = this.riders.filter(rider => rider.hp > 0).reduce((nearest, rider) => Math.abs(entity.lane - rider.lane) < Math.abs(entity.lane - nearest.lane) ? rider : nearest, lead);
       entity.hitFlash = Math.max(0, entity.hitFlash - dt);
       entity.reactionTimer = Math.max(0, entity.reactionTimer - dt);
       entity.attackTimer = Math.max(0, entity.attackTimer - dt);
@@ -327,7 +355,7 @@ export class RoadRashStage {
       if (entity.kind === 'boss' && entity.hp <= 0 && this.bossDefeatAnimating) {
         entity.attackTimer = 0;
         entity.attackCooldown = Number.POSITIVE_INFINITY;
-        entity.speed = this.speed;
+        entity.speed = this.rider.speed;
         entity.distance = lerp(entity.distance, this.distance + 24, Math.min(1, dt * 7));
         entity.lane = clamp(entity.lane + entity.recoilSide * dt * .22, -1.02, 1.02);
         continue;
@@ -345,8 +373,8 @@ export class RoadRashStage {
         const desiredGap = isBoss && entity.attackTimer > .12 ? 28 : isBoss ? 38 : 46;
         const correction = clamp((desiredGap - relative) * .16, -30, 28);
         const chaseSpeed = isBoss
-          ? clamp(this.speed + correction, 128, 216)
-          : clamp(this.speed + correction, 105, 198);
+          ? clamp(this.rider.speed + correction, 128, 216)
+          : clamp(this.rider.speed + correction, 105, 198);
         const chaseResponse = isBoss && entity.attackTimer > .12 ? 4.8 : 1.5;
         entity.speed = lerp(entity.speed, chaseSpeed, Math.min(1, dt * chaseResponse));
         // Preserve the rider's current side. Periodically flipping the target
@@ -356,17 +384,17 @@ export class RoadRashStage {
           // Stay inside the player's authored weapon reach. The previous .55
           // boss spacing exceeded the .49 hit window and made repeat hits fail.
           const spacing = isBoss ? (entity.attackTimer > .12 ? .34 : .4) : .43;
-          const currentDelta = entity.lane - this.lane;
+          const currentDelta = entity.lane - this.rider.lane;
           const side = entity.reactionTimer > 0
             ? entity.recoilSide
             : Math.abs(currentDelta) > .08 ? Math.sign(currentDelta) : (Math.sin(entity.wobble) > 0 ? 1 : -1);
           const preferredSide = side * (entity.reactionTimer > 0 ? (isBoss ? .58 : .66) : spacing);
-          const targetLane = clamp(this.lane + preferredSide, -.85, .85);
+          const targetLane = clamp(this.rider.lane + preferredSide, -.85, .85);
           const response = entity.reactionTimer > 0 ? 7.5 : isBoss && entity.attackTimer > .12 ? 5.4 : isBoss ? 1.7 : 1.15;
           entity.lane = lerp(entity.lane, targetLane, Math.min(1, dt * response));
         }
         if (entity.attackTimer <= 0 && entity.reactionTimer <= 0 && Math.abs(relative) < (isBoss ? 58 : 48) &&
-            Math.abs(entity.lane - this.lane) < (isBoss ? .48 : .42) && entity.attackCooldown <= 0) {
+            Math.abs(entity.lane - this.rider.lane) < (isBoss ? .48 : .42) && entity.attackCooldown <= 0) {
           // A longer wind-up gives the mace/baton silhouette a readable warning
           // before the active frames begin, especially for the oversized boss.
           entity.attackTimer = isBoss ? .82 : .54;
@@ -389,13 +417,13 @@ export class RoadRashStage {
     for (const entity of this.entities) {
       if (!entity.active) continue;
       const dz = entity.distance - this.distance;
-      const lateral = Math.abs(entity.lane - this.lane);
+      const lateral = Math.abs(entity.lane - this.rider.lane);
 
       const isBoss = entity.kind === 'boss';
       const hitLongitudinalReach = isBoss ? 76 : 57;
       const hitLateralReach = isBoss ? .62 : .49;
-      const targetOnAttackSide = this.attackSide * (entity.lane - this.lane) >= -.08;
-      if (!this.attackConnected && entity.hp > 0 && (entity.kind === 'rival' || isBoss) && this.attackTimer > .27 && this.attackTimer < .4 &&
+      const targetOnAttackSide = this.rider.attackSide * (entity.lane - this.rider.lane) >= -.08;
+      if (!this.rider.attackConnected && entity.hp > 0 && (entity.kind === 'rival' || isBoss) && this.rider.attackTimer > .27 && this.rider.attackTimer < .4 &&
           Math.abs(dz) < hitLongitudinalReach && lateral < hitLateralReach && targetOnAttackSide) {
         entity.hp -= entity.kind === 'boss' ? 1 : 2;
         this.confirmedHits++;
@@ -403,17 +431,17 @@ export class RoadRashStage {
         // follows carries the motion without hiding both riders in one flash.
         entity.hitFlash = .065;
         entity.reactionTimer = entity.kind === 'boss' ? .68 : .54;
-        entity.recoilSide = this.attackSide;
-        entity.lane = clamp(entity.lane + this.attackSide * (entity.kind === 'boss' ? .15 : .23), -1.05, 1.05);
-        this.attackConnected = true;
-        this.attackTimer = .48;
-        this.playerRecoil = .48;
+        entity.recoilSide = this.rider.attackSide;
+        entity.lane = clamp(entity.lane + this.rider.attackSide * (entity.kind === 'boss' ? .15 : .23), -1.05, 1.05);
+        this.rider.attackConnected = true;
+        this.rider.attackTimer = .48;
+        this.rider.playerRecoil = .48;
         this.impactFreeze = entity.kind === 'boss' ? .085 : .065;
         this.impactFlash = .085;
         this.score += entity.kind === 'boss' ? 400 : 180;
         this.shake = Math.max(this.shake, 5);
         const impact = this.project(dz, entity.lane);
-        this.emitImpact(lerp(480 + this.lane * 215, impact.x, .58), impact.y - 88 * impact.scale, entity.kind === 'boss' ? '#fde047' : '#fef08a');
+        this.emitImpact(lerp(480 + this.rider.lane * 215, impact.x, .58), impact.y - 88 * impact.scale, entity.kind === 'boss' ? '#fde047' : '#fef08a');
         this.emitSound('melee_hit', .9, entity.kind === 'boss' ? .72 : .94);
         if (entity.hp <= 0) this.defeatRival(entity);
       }
@@ -428,7 +456,7 @@ export class RoadRashStage {
         // Dropping below the active range makes each committed swing deal at
         // most one hit. Invulnerability remains a second line of protection.
         entity.attackTimer = isBoss ? .1 : .14;
-        this.damagePlayer(isBoss ? 14 : 10, entity.lane < this.lane ? 1 : -1);
+        this.damagePlayer(isBoss ? 14 : 10, entity.lane < this.rider.lane ? 1 : -1);
       }
 
       const collisionWidth = entity.kind === 'truck' ? .38 : entity.kind === 'oil' ? .24 : .3;
@@ -436,12 +464,12 @@ export class RoadRashStage {
           Math.abs(dz) < (entity.kind === 'oil' ? 14 : 25) && lateral < collisionWidth) {
         entity.active = false;
         if (entity.kind === 'oil') {
-          this.lane = clamp(this.lane + (this.random() > .5 ? .62 : -.62), -1.1, 1.1);
-          this.speed *= .72;
+          this.rider.lane = clamp(this.rider.lane + (this.random() > .5 ? .62 : -.62), -1.1, 1.1);
+          this.rider.speed *= .72;
           this.damagePlayer(6, 0);
         } else {
-          this.speed *= entity.kind === 'truck' ? .36 : .52;
-          this.damagePlayer(entity.kind === 'truck' ? 24 : 16, entity.lane < this.lane ? 1 : -1);
+          this.rider.speed *= entity.kind === 'truck' ? .36 : .52;
+          this.damagePlayer(entity.kind === 'truck' ? 24 : 16, entity.lane < this.rider.lane ? 1 : -1);
         }
         this.collisions++;
       }
@@ -452,7 +480,7 @@ export class RoadRashStage {
     this.rivalsDefeated++;
     this.score += entity.kind === 'boss' ? 5000 : 900;
     for (let index = 0; index < 14; index++) {
-      this.particles.push({ x: 480 + (entity.lane - this.lane) * 190, y: 360, vx: (this.random() - .5) * 190,
+      this.particles.push({ x: 480 + (entity.lane - this.rider.lane) * 190, y: 360, vx: (this.random() - .5) * 190,
         vy: -35 - this.random() * 145, life: .5 + this.random() * .45, maxLife: 1, size: 2 + this.random() * 4,
         color: index % 3 ? entity.color : '#fff7ae', kind: index % 4 ? 'spark' : 'star' });
     }
@@ -464,7 +492,7 @@ export class RoadRashStage {
       entity.attackTimer = 0;
       entity.attackCooldown = Number.POSITIVE_INFINITY;
       entity.reactionTimer = 0;
-      entity.recoilSide = this.attackSide;
+      entity.recoilSide = this.rider.attackSide;
       this.emitSound('boss_down', 1, .7);
     } else {
       entity.active = false;
@@ -498,21 +526,21 @@ export class RoadRashStage {
   }
 
   private damagePlayer(amount: number, push: number): void {
-    if (this.invulnerability > 0) return;
-    this.playerHp = Math.max(0, this.playerHp - amount);
-    this.invulnerability = .72;
-    this.hitFlash = .25;
-    this.attackConnected = false;
-    this.attackSide = push >= 0 ? -1 : 1;
-    this.playerRecoil = .48;
+    if (this.rider.invulnerability > 0) return;
+    this.rider.hp = Math.max(0, this.rider.hp - amount);
+    this.rider.invulnerability = .72;
+    this.rider.hitFlash = .25;
+    this.rider.attackConnected = false;
+    this.rider.attackSide = push >= 0 ? -1 : 1;
+    this.rider.playerRecoil = .48;
     this.shake = Math.max(this.shake, amount > 15 ? 10 : 6);
-    this.lane = clamp(this.lane + push * .16, -1.1, 1.1);
-    this.emitImpact(480 + this.lane * 215, 405, '#fb7185');
+    this.rider.lane = clamp(this.rider.lane + push * .16, -1.1, 1.1);
+    this.emitImpact(480 + this.rider.lane * 215, 405, '#fb7185');
     this.emitSound('rider_hurt', .85, .8);
   }
 
   private updateParticles(dt: number): void {
-    if (this.speed > 100 && this.random() < dt * 16) {
+    if (this.rider.speed > 100 && this.random() < dt * 16) {
       this.particles.push({ x: 480 + (this.random() - .5) * 220, y: 430, vx: (this.random() - .5) * 18,
         vy: 38 + this.random() * 44, life: .28, maxLife: .28, size: 2 + this.random() * 3,
         color: '#d7c9a1', kind: 'smoke' });
@@ -539,9 +567,11 @@ export class RoadRashStage {
     this.statusValue = status;
     this.stateTimer = 0;
     if (status === 'victory' || status === 'defeat') {
-      this.attackTimer = 0;
-      this.attackConnected = false;
-      this.playerRecoil = 0;
+      for (const rider of this.riders) {
+        rider.attackTimer = 0;
+        rider.attackConnected = false;
+        rider.playerRecoil = 0;
+      }
       this.impactFreeze = 0;
       this.impactFlash = 0;
       for (const entity of this.entities) {
@@ -551,7 +581,13 @@ export class RoadRashStage {
       }
     }
     if (status === 'racing' && this.elapsed < 4) this.emitMusic('road_rash', .9);
-    if (status === 'victory') { this.speed = Math.min(this.speed, 108); this.score += Math.round(this.playerHp * 50); this.emitMusic('victory', 1); this.emitSound('stage_clear', 1, 1); }
+    if (status === 'victory') {
+      for (const rider of this.riders) {
+        rider.speed = Math.min(rider.speed, 108);
+        this.score += Math.round(rider.hp * 50);
+      }
+      this.emitMusic('victory', 1); this.emitSound('stage_clear', 1, 1);
+    }
     if (status === 'defeat') { this.emitMusic('defeat', 1); this.emitSound('game_over', 1, .82); }
   }
 
@@ -580,7 +616,12 @@ export class RoadRashStage {
     this.drawRoad(ctx);
     this.drawForegroundMotion(ctx);
     this.drawWorldObjects(ctx);
-    this.drawPlayer(ctx);
+    const lead = this.rider;
+    for (const rider of this.riders) {
+      this.rider = rider;
+      if (rider.hp > 0) this.drawPlayer(ctx);
+    }
+    this.rider = lead;
     this.drawParticles(ctx);
     ctx.restore();
     this.drawHud(ctx);
@@ -672,10 +713,10 @@ export class RoadRashStage {
       }
     }
     ctx.globalAlpha = 1;
-    const speedLines = Math.floor(clamp((this.speed - 105) / 11, 0, 11));
+    const speedLines = Math.floor(clamp((this.rider.speed - 105) / 11, 0, 11));
     for (let index = 0; index < speedLines; index++) {
       const side = index % 2 ? 1 : -1;
-      const phase = ((this.elapsed * (240 + this.speed * 2.2) + index * 73) % 245) / 245;
+      const phase = ((this.elapsed * (240 + this.rider.speed * 2.2) + index * 73) % 245) / 245;
       const y = HORIZON + 28 + phase * 228;
       const spread = 34 + phase * 430;
       ctx.strokeStyle = index % 3 ? '#ffd36a70' : '#65e8e670';
@@ -684,7 +725,7 @@ export class RoadRashStage {
       ctx.beginPath(); ctx.moveTo(roadCenter + side * spread, y); ctx.lineTo(roadCenter + side * (spread + 18 + phase * 42), y + 12 + phase * 28); ctx.stroke();
     }
     // Player shadow anchors the sprite to the road.
-    ctx.fillStyle = '#0808138f'; ctx.beginPath(); ctx.ellipse(480 + this.lane * 215, 516, 38, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0808138f'; ctx.beginPath(); ctx.ellipse(480 + this.rider.lane * 215, 516, 38, 8, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   /**
@@ -890,7 +931,7 @@ export class RoadRashStage {
   }
 
   private drawHeroineAtlasFrame(ctx:CanvasRenderingContext2D,frame:number,x:number,y:number,width:number,height:number,flip=false):boolean{
-    const row = this.playerHero === 'cassia' ? 0 : this.playerHero === 'bruna' ? 1 : 2;
+    const row = this.rider.hero === 'cassia' ? 0 : this.rider.hero === 'bruna' ? 1 : 2;
     return this.drawAtlasFrame(ctx,this.heroinesAtlasCanvas,row,frame,x,y,width,height,flip);
   }
 
@@ -933,18 +974,18 @@ export class RoadRashStage {
     const recoil = entity.reactionTimer > 0
       ? ((1 - reactionPhase) * 14 + Math.sin(clamp(reactionPhase, 0, 1) * Math.PI) * recoilDistance) * entity.recoilSide
       : 0;
-    const attacking=entity.attackTimer>0,side=entity.lane<this.lane?1:-1;
+    const attacking=entity.attackTimer>0,side=entity.lane<this.rider.lane?1:-1;
     const telegraphSplit=boss ? .43 : .34;
     const atlasFrame=entity.hitFlash>0?3:entity.reactionTimer>0?(reactionPhase<.62?4:5):attacking?(entity.attackTimer>telegraphSplit?1:2):0;
     const atlasWidth=(boss?BOSS_ATLAS_WIDTH:RIVAL_ATLAS_WIDTH)*scale;
     const atlasHeight=(boss?BOSS_ATLAS_HEIGHT:RIVAL_ATLAS_HEIGHT)*scale;
     // Road combat is side-by-side. Preserve a small screen-space gap at close
     // depth so authored silhouettes never collapse into one unreadable stack.
-    const playerX = 480 + this.lane * 215;
+    const playerX = 480 + this.rider.lane * 215;
     const rawRenderX = x + recoil * s;
     const closeEnough = Math.abs(entity.distance - this.distance) < 86;
     const minimumGap = (PLAYER_ATLAS_WIDTH + (boss ? BOSS_ATLAS_WIDTH : RIVAL_ATLAS_WIDTH)) * scale * .29;
-    const separationSide = Math.sign(rawRenderX - playerX) || Math.sign(entity.lane - this.lane) || 1;
+    const separationSide = Math.sign(rawRenderX - playerX) || Math.sign(entity.lane - this.rider.lane) || 1;
     const renderX = closeEnough && Math.abs(rawRenderX - playerX) < minimumGap
       ? playerX + separationSide * minimumGap
       : rawRenderX;
@@ -973,7 +1014,7 @@ export class RoadRashStage {
     ctx.fillStyle = '#343341'; ctx.fillRect(-5, -28, 10, 36); ctx.fillStyle = '#9ca5a4'; ctx.fillRect(-2, -25, 4, 31);
     ctx.fillStyle = '#0b0912'; ctx.fillRect(-31, -24, 14, 8); ctx.fillRect(17, -24, 14, 8);
     ctx.fillStyle = '#d6c9a4'; ctx.fillRect(-29, -22, 12, 4); ctx.fillRect(17, -22, 12, 4);
-    if (this.speed > 138) {
+    if (this.rider.speed > 138) {
       const flame = 5 + ((Math.floor(this.elapsed * 18) + entity.id) % 3) * 3;
       ctx.fillStyle = boss ? '#ff9d22' : '#65eadb'; ctx.fillRect(-28, -15, 7, flame);
       ctx.fillStyle = '#fff0a0'; ctx.fillRect(-26, -13, 3, Math.max(3, flame - 4));
@@ -1035,27 +1076,27 @@ export class RoadRashStage {
   }
 
   private drawPlayer(ctx: CanvasRenderingContext2D): void {
-    const x = 480 + this.lane * 215;
-    const leanPose = this.lean > .24 ? 1 : this.lean < -.24 ? -1 : 0;
-    const suspensionPose = Math.floor(this.elapsed * (8 + this.speed * .025)) % 3;
+    const x = 480 + this.rider.lane * 215;
+    const leanPose = this.rider.lean > .24 ? 1 : this.rider.lean < -.24 ? -1 : 0;
+    const suspensionPose = Math.floor(this.elapsed * (8 + this.rider.speed * .025)) % 3;
     const bob = suspensionPose === 0 ? -3 : suspensionPose === 1 ? 2 : 0;
-    const recoilPhase = this.playerRecoil > 0 ? 1 - this.playerRecoil / .48 : 0;
-    const recoilShift = this.playerRecoil > 0
-      ? -this.attackSide * ((1 - recoilPhase) * 8 + Math.sin(recoilPhase * Math.PI) * 29)
+    const recoilPhase = this.rider.playerRecoil > 0 ? 1 - this.rider.playerRecoil / .48 : 0;
+    const recoilShift = this.rider.playerRecoil > 0
+      ? -this.rider.attackSide * ((1 - recoilPhase) * 8 + Math.sin(recoilPhase * Math.PI) * 29)
       : 0;
     let atlasFrame=0;
-    if(this.attackConnected)atlasFrame=recoilPhase<.12?3:recoilPhase<.62?4:5;
-    else if(this.attackTimer>.58)atlasFrame=1;else if(this.attackTimer>.39)atlasFrame=2;else if(this.attackTimer>0)atlasFrame=3;
-    ctx.save();ctx.translate(px(x+recoilShift),px(514+bob));ctx.rotate(leanPose*.055+this.lean*.02);
-    if (this.hitFlash > 0) ctx.filter = 'brightness(2.8) saturate(0)';
-    const atlasDrawn=this.drawHeroineAtlasFrame(ctx,atlasFrame,0,0,PLAYER_ATLAS_WIDTH,PLAYER_ATLAS_HEIGHT,this.attackTimer>0&&this.attackSide<0);
+    if(this.rider.attackConnected)atlasFrame=recoilPhase<.12?3:recoilPhase<.62?4:5;
+    else if(this.rider.attackTimer>.58)atlasFrame=1;else if(this.rider.attackTimer>.39)atlasFrame=2;else if(this.rider.attackTimer>0)atlasFrame=3;
+    ctx.save();ctx.translate(px(x+recoilShift),px(514+bob));ctx.rotate(leanPose*.055+this.rider.lean*.02);
+    if (this.rider.hitFlash > 0) ctx.filter = 'brightness(2.8) saturate(0)';
+    const atlasDrawn=this.drawHeroineAtlasFrame(ctx,atlasFrame,0,0,PLAYER_ATLAS_WIDTH,PLAYER_ATLAS_HEIGHT,this.rider.attackTimer>0&&this.rider.attackSide<0);
     ctx.restore();
     if(atlasDrawn){
-      if(this.speed>132){ctx.fillStyle='#58efe0';const flame=7+(Math.floor(this.elapsed*20)%3)*4;ctx.fillRect(px(x+recoilShift-7),510,5,flame);ctx.fillStyle='#fff18c';ctx.fillRect(px(x+recoilShift-6),510,2,Math.max(3,flame-4));}
+      if(this.rider.speed>132){ctx.fillStyle='#58efe0';const flame=7+(Math.floor(this.elapsed*20)%3)*4;ctx.fillRect(px(x+recoilShift-7),510,5,flame);ctx.fillStyle='#fff18c';ctx.fillRect(px(x+recoilShift-6),510,2,Math.max(3,flame-4));}
       return;
     }
-    ctx.save(); ctx.translate(px(x + recoilShift), px(514 + bob)); ctx.rotate(leanPose * .075 + this.lean * .025);
-    if (this.speed > 145) {
+    ctx.save(); ctx.translate(px(x + recoilShift), px(514 + bob)); ctx.rotate(leanPose * .075 + this.rider.lean * .025);
+    if (this.rider.speed > 145) {
       ctx.fillStyle = '#73f0e34d';
       for (let index = 0; index < 5; index++) ctx.fillRect(-13 + index * 7, 2 + index % 2 * 4, 3, 22 + index * 6);
     }
@@ -1063,22 +1104,22 @@ export class RoadRashStage {
     ctx.fillStyle = '#3c3945'; ctx.fillRect(-6, -31, 12, 40); ctx.fillStyle = '#bec8c5'; ctx.fillRect(-2, -29, 4, 35);
     ctx.fillStyle = '#100b16'; ctx.fillRect(-38, -27, 17, 10); ctx.fillRect(21, -27, 17, 10);
     ctx.fillStyle = '#d8d2bb'; ctx.fillRect(-37, -24, 16, 5); ctx.fillRect(21, -24, 16, 5);
-    if (this.speed > 132) {
+    if (this.rider.speed > 132) {
       const flame = 7 + (Math.floor(this.elapsed * 20) % 3) * 4;
       ctx.fillStyle = '#55e8dc'; ctx.fillRect(-34, -18, 8, flame); ctx.fillStyle = '#fff18c'; ctx.fillRect(-32, -16, 3, Math.max(3, flame - 5));
     }
-    const fallbackPalette = this.playerHero === 'cassia'
+    const fallbackPalette = this.rider.hero === 'cassia'
       ? { bike: '#d63b6b', jacket: '#632155', stripe: '#65eadb', hair: '#f4d13f', visor: '#7ff4e3' }
-      : this.playerHero === 'bruna'
+      : this.rider.hero === 'bruna'
         ? { bike: '#318ac6', jacket: '#24384f', stripe: '#86d9ff', hair: '#d8dde3', visor: '#67e8ff' }
         : { bike: '#f0ebe3', jacket: '#9b294d', stripe: '#ff785f', hair: '#f1e7ed', visor: '#ff9b43' };
-    ctx.fillStyle = this.hitFlash > 0 ? '#fff' : fallbackPalette.bike;
+    ctx.fillStyle = this.rider.hitFlash > 0 ? '#fff' : fallbackPalette.bike;
     ctx.beginPath(); ctx.moveTo(-29, -45); ctx.lineTo(-17, -61); ctx.lineTo(17, -61); ctx.lineTo(29, -45);
     ctx.lineTo(16, -31); ctx.lineTo(-17, -31); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#ffd849'; ctx.fillRect(-8, -42, 16, 7); ctx.fillStyle = '#4f1743'; ctx.fillRect(-4, -57, 8, 19);
     ctx.fillStyle = '#16101b'; ctx.fillRect(-20, -60, 11, 28); ctx.fillRect(9, -60, 11, 28);
     // Hero jacket uses the same neon-magenta/teal/yellow hierarchy as the core game.
-    ctx.fillStyle = this.hitFlash > 0 ? '#fff' : fallbackPalette.jacket;
+    ctx.fillStyle = this.rider.hitFlash > 0 ? '#fff' : fallbackPalette.jacket;
     ctx.beginPath(); ctx.moveTo(-29, -105); ctx.lineTo(-17, -115); ctx.lineTo(18, -115); ctx.lineTo(31, -102);
     ctx.lineTo(20, -61); ctx.lineTo(-20, -61); ctx.closePath(); ctx.fill();
     ctx.fillStyle = fallbackPalette.bike; ctx.fillRect(-25, -103, 50, 8); ctx.fillStyle = fallbackPalette.stripe; ctx.fillRect(-5, -108, 10, 43);
@@ -1096,19 +1137,19 @@ export class RoadRashStage {
     ctx.fillStyle = fallbackPalette.bike; ctx.fillRect(-25 - leanPose * 3, -138, 9, 4); ctx.fillRect(-34 - leanPose * 6, -136, 12, 3);
     ctx.fillStyle = '#171421'; ctx.fillRect(-14, -132, 28, 7); ctx.fillStyle = fallbackPalette.visor; ctx.fillRect(-8, -129, 5, 3); ctx.fillRect(4, -129, 5, 3);
     ctx.fillStyle = '#f0d0a2';
-    if (this.attackTimer > 0) {
+    if (this.rider.attackTimer > 0) {
       let reach = 16; let angle = -.16;
-      if (this.attackConnected) {
+      if (this.rider.attackConnected) {
         if (recoilPhase < .22) { reach = 69; angle = -.7; }
         else if (recoilPhase < .68) { reach = lerp(69, 27, (recoilPhase - .22) / .46); angle = lerp(-.7, .2, (recoilPhase - .22) / .46); }
         else { reach = lerp(27, 10, (recoilPhase - .68) / .32); angle = .2; }
-      } else if (this.attackTimer > .58) { reach = 20; angle = .48; }
-      else if (this.attackTimer > .39) { const p = (.58 - this.attackTimer) / .19; reach = lerp(20, 69, p); angle = lerp(.48, -.7, p); }
+      } else if (this.rider.attackTimer > .58) { reach = 20; angle = .48; }
+      else if (this.rider.attackTimer > .39) { const p = (.58 - this.rider.attackTimer) / .19; reach = lerp(20, 69, p); angle = lerp(.48, -.7, p); }
       else { reach = 69; angle = -.7; }
-      ctx.save(); ctx.translate(0, -105); ctx.rotate(this.attackSide * angle);
-      ctx.fillRect(this.attackSide > 0 ? 17 : -17, 0, this.attackSide * reach, 10);
-      ctx.fillStyle = '#d7e0e2'; ctx.fillRect(this.attackSide * (reach + 9), -5, this.attackSide * 42, 6);
-      ctx.fillStyle = '#fff4a3'; ctx.fillRect(this.attackSide * (reach + 44), -8, this.attackSide * 10, 12);
+      ctx.save(); ctx.translate(0, -105); ctx.rotate(this.rider.attackSide * angle);
+      ctx.fillRect(this.rider.attackSide > 0 ? 17 : -17, 0, this.rider.attackSide * reach, 10);
+      ctx.fillStyle = '#d7e0e2'; ctx.fillRect(this.rider.attackSide * (reach + 9), -5, this.rider.attackSide * 42, 6);
+      ctx.fillStyle = '#fff4a3'; ctx.fillRect(this.rider.attackSide * (reach + 44), -8, this.rider.attackSide * 10, 12);
       ctx.restore();
     } else { ctx.fillRect(-39, -105, 18, 9); ctx.fillRect(22, -105, 18, 9); }
     ctx.restore();
@@ -1130,10 +1171,16 @@ export class RoadRashStage {
     ctx.save(); ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#080a18d9'; ctx.fillRect(18, 17, 302, 75); ctx.fillRect(718, 17, 224, 75);
     ctx.strokeStyle = '#56d8c8'; ctx.lineWidth = 3; ctx.strokeRect(18.5, 17.5, 302, 75); ctx.strokeRect(718.5, 17.5, 224, 75);
-    ctx.font = 'bold 15px monospace'; ctx.textAlign = 'left'; ctx.fillStyle = '#f8df71'; ctx.fillText(this.playerName, 32, 40);
-    ctx.fillStyle = '#261529'; ctx.fillRect(32, 50, 248, 17); ctx.fillStyle = this.playerHp > 30 ? '#39c59f' : '#ef476f'; ctx.fillRect(35, 53, px(242 * this.playerHp / 100), 11);
-    ctx.fillStyle = '#e8ecde'; ctx.font = 'bold 12px monospace'; ctx.fillText(`HP ${this.playerHp.toString().padStart(3, '0')}`, 32, 84);
-    ctx.textAlign = 'right'; ctx.font = 'bold 25px monospace'; ctx.fillStyle = '#fff0a3'; ctx.fillText(`${Math.round(this.speed).toString().padStart(3, '0')} KM/H`, 927, 48);
+    this.riders.forEach((rider, index) => {
+      const coop = this.riders.length === 2;
+      const x = 32 + index * 144, width = coop ? 130 : 248;
+      ctx.font = `bold ${coop ? 12 : 15}px monospace`; ctx.textAlign = 'left'; ctx.fillStyle = index ? '#65d9ff' : '#f8df71';
+      ctx.fillText(coop ? `P${rider.id} ${rider.name}` : rider.name, x, 40);
+      ctx.fillStyle = '#261529'; ctx.fillRect(x, 50, width, 17);
+      ctx.fillStyle = rider.hp > 30 ? '#39c59f' : '#ef476f'; ctx.fillRect(x + 3, 53, px((width - 6) * rider.hp / 100), 11);
+      ctx.fillStyle = '#e8ecde'; ctx.font = 'bold 12px monospace'; ctx.fillText(rider.hp ? `HP ${rider.hp}` : 'WRECKED', x, 84);
+    });
+    ctx.textAlign = 'right'; ctx.font = 'bold 25px monospace'; ctx.fillStyle = '#fff0a3'; ctx.fillText(`${Math.round(this.rider.speed).toString().padStart(3, '0')} KM/H`, 927, 48);
     ctx.font = 'bold 12px monospace'; ctx.fillStyle = '#85eee0'; ctx.fillText(`${Math.min(100, Math.floor(this.distance / this.courseLength * 100))}%  SCORE ${this.score}`, 927, 77);
 
     const boss = this.entities.find(entity => entity.kind === 'boss' && entity.active);
@@ -1185,9 +1232,10 @@ export class RoadRashStage {
       status: this.statusValue, completed: this.completed, defeated: this.defeated,
       elapsed: Number(this.elapsed.toFixed(3)), distance: Number(this.distance.toFixed(2)),
       visualDistance: Number(this.visualDistance.toFixed(2)), courseLength: this.courseLength,
-      progress: Number(clamp(this.distance / this.courseLength, 0, 1).toFixed(4)), speed: Number(this.speed.toFixed(2)),
-      speedKph: Math.round(this.speed), lane: Number(this.lane.toFixed(3)), health: this.playerHp, maxHealth: 100,
-      playerHero: this.playerHero,
+      progress: Number(clamp(this.distance / this.courseLength, 0, 1).toFixed(4)), speed: Number(this.rider.speed.toFixed(2)),
+      speedKph: Math.round(this.rider.speed), lane: Number(this.rider.lane.toFixed(3)), health: this.rider.hp, maxHealth: 100,
+      playerHero: this.riders[0].hero,
+      players: this.riders.map(rider => ({ id: rider.id, hero: rider.hero, lane: Number(rider.lane.toFixed(3)), health: rider.hp, speed: Number(rider.speed.toFixed(2)), attackTimer: Number(rider.attackTimer.toFixed(3)), alive: rider.hp > 0 })),
       score: this.score, rivalsDefeated: this.rivalsDefeated, collisions: this.collisions,
       hits: this.confirmedHits, finishReady: this.bossDefeatResolved && this.distance >= this.courseLength * .94,
       finishCrossed: this.finishCrossed,
@@ -1197,8 +1245,8 @@ export class RoadRashStage {
       bossDefeatTimer: Number(this.bossDefeatTimer.toFixed(3)),
       bossDefeatProgress: Number((this.bossDefeated ? clamp(1 - this.bossDefeatTimer / BOSS_DEFEAT_DURATION, 0, 1) : 0).toFixed(3)),
       boss: boss ? serialize(boss) : null,
-      entities: this.entities.filter(entity => entity.active).map(serialize), attackTimer: Number(this.attackTimer.toFixed(3)),
-      invulnerability: Number(this.invulnerability.toFixed(3)),
+      entities: this.entities.filter(entity => entity.active).map(serialize), attackTimer: Number(this.rider.attackTimer.toFixed(3)),
+      invulnerability: Number(this.rider.invulnerability.toFixed(3)),
       bossArenaLocked: this.bossSpawned && !this.bossDefeatResolved && this.distance >= this.courseLength * .9 - .01,
     };
   }

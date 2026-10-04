@@ -14,7 +14,7 @@
     "test:enemy-facing": "node scripts/gauntlet-enemy-facing.mjs",
     "test:boss-performance": "node scripts/gauntlet-boss-performance.mjs",
     "test:outro": "node scripts/gauntlet-outro.mjs",
-    "test:brawler-gait": "node scripts/gauntlet-brawler-gait.mjs",
+    "test:brawler-gait": "node scripts/gauntlet-wave29.mjs",
     "test:continue": "node scripts/gauntlet-continue.mjs",
     "test:campaign": "node scripts/gauntlet-three-act-campaign.mjs",
     "test:debug-scenes": "node scripts/gauntlet-debug-scenes.mjs",

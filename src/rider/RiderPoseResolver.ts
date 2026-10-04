@@ -13,7 +13,30 @@ import {
   type RiderKineticPose,
   type RiderWheelMotion,
 } from './RiderKinetics';
-import type { HeroBodySheet, HeroSourceMap, RiderPlayer } from './types';
+import type { HeroBodySheet, HeroId, HeroSourceMap, RiderPlayer } from './types';
+
+// Source-cell attachment points, inspected against the unchanged hero PNGs.
+// Upper is Cassia/Nova's scarf knot or Bruna's hair; lower is the tail/vest hem.
+// Airborne cels move the torso independently inside the atlas cell, so a fixed
+// world offset cannot keep these pieces attached throughout a jump.
+export type RiderSecondaryAnchors = readonly [number, number, number, number];
+const SECONDARY_ANCHORS: Readonly<Record<HeroId, Readonly<Record<HeroBodySheet, readonly RiderSecondaryAnchors[]>>>> = {
+  cassia: {
+    authored: [[99, 54, 77, 103], [118, 61, 85, 104], [99, 44, 76, 91], [137, 76, 89, 106], [115, 80, 75, 112], [82, 63, 91, 121], [89, 61, 91, 118], [116, 64, 83, 104]],
+    sustained: [[107, 59, 79, 104], [108, 59, 79, 104], [105, 59, 79, 104], [110, 60, 79, 104]],
+    release: [[109, 60, 79, 104], [102, 60, 79, 104], [110, 61, 79, 104]],
+  },
+  bruna: {
+    authored: [[89, 37, 72, 100], [104, 39, 84, 102], [92, 44, 84, 99], [124, 69, 88, 107], [98, 73, 66, 111], [105, 44, 97, 115], [100, 43, 93, 114], [93, 41, 76, 103]],
+    sustained: [[98, 42, 75, 101], [100, 42, 76, 104], [99, 41, 75, 102], [100, 43, 76, 103]],
+    release: [[91, 41, 74, 102], [90, 41, 74, 102], [100, 43, 76, 103]],
+  },
+  nova: {
+    authored: [[113, 60, 83, 100], [125, 73, 83, 104], [107, 52, 87, 91], [128, 79, 94, 102], [154, 115, 73, 120], [101, 67, 113, 129], [108, 53, 102, 115], [126, 90, 95, 109]],
+    sustained: [[110, 61, 86, 102], [110, 67, 84, 107], [107, 61, 85, 104], [110, 63, 85, 104]],
+    release: [[104, 55, 85, 105], [103, 56, 85, 104], [112, 65, 84, 104]],
+  },
+};
 
 export interface RiderBodyPose {
   sheet: HeroBodySheet;
@@ -53,7 +76,12 @@ export class RiderPoseResolver {
   ): RiderKineticPose {
     const active = debugImpactStage === null && player.jump <= 1 && !player.fireHeld
       && player.fireReleaseElapsed < 0 && pose.sheet === 'authored' && pose.frame <= 1;
-    return resolveRiderKinetics(player, active);
+    return resolveRiderKinetics(player, active, debugImpactStage === null && player.alive);
+  }
+
+  secondaryAnchors(player: RiderPlayer, pose = this.bodyPose(player, null)): RiderSecondaryAnchors {
+    const frames = SECONDARY_ANCHORS[HEROES[player.heroIndex].id][pose.sheet];
+    return frames[Math.min(frames.length - 1, Math.max(0, pose.frame))];
   }
 
   wheelMotion(
@@ -63,7 +91,7 @@ export class RiderPoseResolver {
   ): RiderWheelMotion {
     const bodyKinetics = this.kinetics(player, debugImpactStage, pose);
     const groundedMotion = debugImpactStage === null && player.jump <= 1
-      && (bodyKinetics.active || pose.sheet === 'sustained');
+      && (bodyKinetics.active || pose.sheet === 'sustained' || pose.sheet === 'release');
     return resolveRiderWheelMotion(player, groundedMotion);
   }
 

@@ -153,7 +153,7 @@ const SHEET_DEFINITIONS: Readonly<Record<SpriteSheetId, {
 });
 
 interface RuntimeSheet {
-  image: HTMLImageElement | null;
+  image: HTMLImageElement | HTMLCanvasElement | null;
   state: SpriteSheetLoadState;
   frameWidth: number;
   frameHeight: number;
@@ -175,6 +175,34 @@ const runtime: Record<SpriteSheetId, RuntimeSheet> = {
   aerials: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
   enemyRoster: { image: null, state: "idle", frameWidth: 0, frameHeight: 0, promise: null },
 };
+
+/** Remove the enclosed matte pockets, without touching Bruna's white highlights. */
+function prepareBrunaTransparency(image: HTMLImageElement, pockets: readonly (readonly number[])[]): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(image, 0, 0);
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = pixels.data;
+  for (const [left, top, right, bottom, seedX, seedY] of pockets) {
+    const queue = [seedY * canvas.width + seedX];
+    const seen = new Set<number>();
+    for (let head = 0; head < queue.length; head++) {
+      const index = queue[head], x = index % canvas.width, y = Math.floor(index / canvas.width);
+      if (seen.has(index) || x < left || x > right || y < top || y > bottom) continue;
+      seen.add(index);
+      const offset = index * 4;
+      const low = Math.min(data[offset], data[offset + 1], data[offset + 2]);
+      const high = Math.max(data[offset], data[offset + 1], data[offset + 2]);
+      if (!data[offset + 3] || low < 210 || high - low > 14) continue;
+      data[offset + 3] = 0;
+      queue.push(index - 1, index + 1, index - canvas.width, index + canvas.width);
+    }
+  }
+  ctx.putImageData(pixels, 0, 0);
+  return canvas;
+}
 
 function loadSpriteSheet(id: SpriteSheetId): Promise<void> {
   const entry = runtime[id];
@@ -215,6 +243,12 @@ function loadSpriteSheet(id: SpriteSheetId): Promise<void> {
         && frameHeight * definition.rows === image.naturalHeight;
 
       if (dimensionsAreValid) {
+        if (id === 'bruna' && image.naturalWidth === 1024 && image.naturalHeight === 384) {
+          // Firing arm and outstretched arm in the original eight poses.
+          entry.image = prepareBrunaTransparency(image, [[620, 80, 662, 104, 634, 98], [388, 270, 408, 286, 398, 278]]);
+        } else if (id === 'sustainedFire' && image.naturalWidth === 1024 && image.naturalHeight === 576) {
+          entry.image = prepareBrunaTransparency(image, [[374, 272, 426, 296, 400, 282]]);
+        }
         entry.frameWidth = frameWidth;
         entry.frameHeight = frameHeight;
         entry.state = "ready";

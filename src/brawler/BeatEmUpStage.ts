@@ -80,9 +80,9 @@ export class BeatEmUpStage {
       nova: new ImageAsset(BRAWLER_HEROES.nova.sprites, 4, 4),
     };
     this.heroWalkSheets = {
-      cassia: new ImageAsset(BRAWLER_HEROES.cassia.walkSprites, 4, 1),
-      bruna: new ImageAsset(BRAWLER_HEROES.bruna.walkSprites, 4, 1),
-      nova: new ImageAsset(BRAWLER_HEROES.nova.walkSprites, 4, 1),
+      cassia: new ImageAsset(BRAWLER_HEROES.cassia.walkSprites, 4, 2),
+      bruna: new ImageAsset(BRAWLER_HEROES.bruna.walkSprites, 4, 2),
+      nova: new ImageAsset(BRAWLER_HEROES.nova.walkSprites, 4, 2),
     };
     this.heroReactionSheets = {
       cassia: new ImageAsset(BRAWLER_HEROES.cassia.reactions, 4, 2),
@@ -96,7 +96,7 @@ export class BeatEmUpStage {
     if (options.debugScene) {
       this.status = 'running';
       this.introTimer = 0;
-      for (const player of this.players) { player.x = 220 + (player.id - 1) * 84; player.y = 382 + (player.id - 1) * 36; }
+      for (const player of this.players) { player.x = (options.debugScene === 'brawler-walk-left' ? 880 : 220) + (player.id - 1) * 84; player.y = 382 + (player.id - 1) * 36; }
     } else if (options.debugBoss) {
       this.status = 'running';
       this.introTimer = 0;
@@ -752,7 +752,6 @@ export class BeatEmUpStage {
       ctx.restore();
     } else if (motionPose.atlas === 'walk') {
       ctx.save();
-      if (player.facing < 0) ctx.scale(-1, 1);
       drawn = this.drawSheetFrame(this.heroWalkSheets[player.hero], frame, 0, 12, authoredSize.width, authoredSize.height, .5, 1);
       ctx.restore();
       // Keep a graceful loading/error fallback without pretending the repeated

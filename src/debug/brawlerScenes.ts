@@ -1,6 +1,6 @@
 import type { BrawlerControls, BrawlerPlayer } from '../brawler/types';
 
-export const BRAWLER_DEBUG_SCENES = ['brawler-walk', 'brawler-jump', 'brawler-air-attack'] as const;
+export const BRAWLER_DEBUG_SCENES = ['brawler-walk', 'brawler-walk-left', 'brawler-jump', 'brawler-air-attack'] as const;
 export type BrawlerDebugScene = typeof BRAWLER_DEBUG_SCENES[number];
 
 export function parseBrawlerDebugScene(value: string | null): BrawlerDebugScene | null {
@@ -23,8 +23,9 @@ export function brawlerDebugControls(
   const cycleDuration = 1.55;
   const cycle = Math.floor(elapsed / cycleDuration);
   const cycleTime = elapsed - cycle * cycleDuration;
-  if (scene === 'brawler-walk') {
-    controls.right = true;
+  if (scene === 'brawler-walk' || scene === 'brawler-walk-left') {
+    controls.right = scene === 'brawler-walk';
+    controls.left = scene === 'brawler-walk-left';
     return controls;
   }
   if (cycle !== pulse.jumpCycle && cycleTime < .12 && player.z === 0) {

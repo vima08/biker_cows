@@ -173,6 +173,7 @@ export class VenusGame {
   private brawler: BeatEmUpStage | null = null;
   private roadRash: RoadRashStage | null = null;
   private pausedFrom: 'playing' | 'road-rash' | 'brawler' = 'playing';
+  private readonly pausedFrame = document.createElement('canvas');
   private currentLevelId = VENUS_HIGHWAY.id;
   private completedStage: CampaignAct = 1;
   private campaignAct: CampaignAct = 1;
@@ -218,6 +219,8 @@ export class VenusGame {
     ctx.imageSmoothingEnabled = false;
     this.bossBackgroundCache.width = this.bossForegroundCache.width = W;
     this.bossBackgroundCache.height = this.bossForegroundCache.height = H;
+    this.pausedFrame.width = W;
+    this.pausedFrame.height = H;
     this.input = new InputController(canvas);
     // Atlas loading is deliberately non-blocking. Until every individual PNG is
     // ready, its existing procedural counterpart remains the renderer of record.
@@ -255,8 +258,9 @@ export class VenusGame {
     else if(scene==='coop'||scene==='coop-ride'||scene==='coop-boss'){
       this.coopEnabled=true;this.beginRun();if(scene==='coop-boss')this.debugCoopBoss();
     }
-    else if (scene === 'road-rash' || scene === 'road-rash-combat' || scene === 'road-rash-boss') {
-      this.beginRoadRash(scene === 'road-rash-boss', true, scene === 'road-rash-combat');
+    else if (scene === 'road-rash' || scene === 'road-rash-combat' || scene === 'road-rash-boss' || scene === 'road-rash-coop' || scene === 'road-rash-coop-boss') {
+      if (scene.includes('coop')) this.coopEnabled = true;
+      this.beginRoadRash(scene.endsWith('boss'), true, scene === 'road-rash-combat');
     }
     else if(scene==='rider-act-3'){
       this.beginRun();this.captureRiderLoadout();this.beginRiderAct(3,false);
@@ -268,6 +272,7 @@ export class VenusGame {
       this.beginBrawler(scene.endsWith('boss'), undefined, null, true);
     }
     else if (scene === 'stage-transition') this.debugStageTransition();
+    else if (scene === 'miniboss') this.debugMiniboss();
     else if (scene === 'game' || scene === 'boss' || scene === 'sustain') {
       this.beginRun();
       if (scene === 'boss') this.debugBoss();
@@ -286,7 +291,7 @@ export class VenusGame {
     const dt = Math.min(.034, rawDt);
     this.last = now;
     this.frameInterval = rawDt;
-    this.time += dt;
+    if (this.mode !== 'paused') this.time += dt;
     this.input.pollGamepads();
     this.update(dt);
     this.draw();
@@ -463,6 +468,16 @@ export class VenusGame {
     emitAudio('engine_start'); emitMusic('stage', .86);
   }
 
+  private enterPause(from: 'playing' | 'road-rash' | 'brawler') {
+    // Freeze the completed frame, including particles and camera feedback.
+    // Re-rendering a paused world would still sample random shake/exhaust and
+    // advance renderer-owned animation even though its simulation is stopped.
+    this.pausedFrame.getContext('2d')!.drawImage(this.canvas, 0, 0);
+    this.pausedFrom = from;
+    this.mode = 'paused';
+    emitAudio('pause'); emitMusic('pause', .35);
+  }
+
   private updatePause() {
     if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.mode = this.pausedFrom; emitAudio('menu_accept'); emitMusic(this.pausedFrom === 'brawler' ? (this.brawler?.snapshot().boss ? 'boss' : 'brawler') : this.pausedFrom === 'road-rash' && this.roadRash?.snapshot().boss ? 'boss' : this.bossSpawned ? 'boss' : 'stage'); }
     if (this.input.tap('KeyR')) this.pausedFrom === 'brawler' ? this.beginBrawler(false,undefined,null,this.standaloneBrawler) : this.pausedFrom === 'road-rash' ? this.beginRoadRash(false,this.standaloneRoadRash) : this.beginRiderAct(this.campaignAct===3?3:1,false);
@@ -490,7 +505,7 @@ export class VenusGame {
   }
 
   private updatePlaying(dt: number) {
-    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.pausedFrom = 'playing'; this.mode = 'paused'; emitAudio('pause'); emitMusic('pause', .35); return; }
+    if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) { this.enterPause('playing'); return; }
     this.riderActIntroClock = Math.max(0, this.riderActIntroClock - dt);
     if(this.hitStop>0){this.hitStop=Math.max(0,this.hitStop-dt);return;}
     // The twelve production impact frames are frozen authored instants.  They
@@ -584,6 +599,8 @@ export class VenusGame {
       debugSkipIntro: debugBoss || combatShowcase,
       playerName: HEROES[this.selectedHeroes[0]].name,
       playerHero: HEROES[this.selectedHeroes[0]].id,
+      secondPlayerHero: this.coopEnabled ? HEROES[this.selectedHeroes[1]].id : undefined,
+      secondPlayerName: this.coopEnabled ? HEROES[this.selectedHeroes[1]].name : undefined,
     });
     this.mode = 'road-rash';
     this.pausedFrom = 'road-rash';
@@ -600,7 +617,15 @@ export class VenusGame {
     emitMusic('stage', .98);
   }
 
-  private roadRashControls(): RoadRashControls {
+  private roadRashControls(id: 1 | 2 = 1): RoadRashControls {
+    if (id === 2) {
+      const attackKeys = ['Numpad1','NumpadDivide','Slash','P2PadFire'];
+      return {
+        left: this.input.down('ArrowLeft','P2PadLeft'), right: this.input.down('ArrowRight','P2PadRight'),
+        accelerate: this.input.down('ArrowUp','P2PadUp'), brake: this.input.down('ArrowDown','P2PadDown'),
+        attack: this.input.down(...attackKeys), attackPressed: this.input.tap(...attackKeys),
+      };
+    }
     const solo=!this.coopEnabled;
     const left=this.debugRoadRashControls.left??this.input.down('KeyA','P1PadLeft',...(solo?['ArrowLeft']:[]));
     const right=this.debugRoadRashControls.right??this.input.down('KeyD','P1PadRight',...(solo?['ArrowRight']:[]));
@@ -612,8 +637,8 @@ export class VenusGame {
 
   private updateRoadRash(dt:number) {
     if(!this.roadRash){this.beginRoadRash(false,this.standaloneRoadRash);return;}
-    if(this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')){this.pausedFrom='road-rash';this.mode='paused';emitAudio('pause');emitMusic('pause',.35);return;}
-    this.roadRash.update(dt,this.roadRashControls());
+    if(this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')){this.enterPause('road-rash');return;}
+    this.roadRash.update(dt,this.roadRashControls(),this.coopEnabled ? this.roadRashControls(2) : {});
     const state=this.roadRash.snapshot();
     if(state.completed||state.defeated){
       this.finishClock+=dt;
@@ -656,7 +681,7 @@ export class VenusGame {
   private updateBrawler(dt: number) {
     if (!this.brawler) { this.beginBrawler(false); return; }
     if (this.input.tap('Escape','Enter','KeyP','P1PadStart','P2PadStart')) {
-      this.pausedFrom = 'brawler'; this.mode = 'paused'; emitAudio('pause'); emitMusic('pause', .35); return;
+      this.enterPause('brawler'); return;
     }
     const controls = this.coopEnabled ? [this.brawlerControls(1), this.brawlerControls(2)] : [this.brawlerControls(1)];
     this.brawler.update(dt, controls);
@@ -710,17 +735,18 @@ export class VenusGame {
     const muzzle=this.riderPose.muzzle(p,this.debugImpactStage),x=muzzle.x,y=muzzle.y;
     p.lastMuzzle={x,y,sheet:muzzle.sheet,frame:muzzle.frame};
     if(p.id===1)this.lastProjectileOrigin={x,y,barrelX:muzzle.x,barrelY:muzzle.y,hero:hero.id,sheet:muzzle.sheet,frame:muzzle.frame};
-    // Every Stage 1 player weapon leaves the visible authored barrel on a
-    // genuinely horizontal lane. Multi-shot weapons may start on parallel
-    // lanes, but never receive an invisible aim correction. Rockets are also
-    // horizontal at launch; their explicit homing update may steer afterwards.
-    const add = (vx:number, laneOffset:number, damage:number, r:number, color:string, kind:Weapon, pierce=0, homing=false) => this.shots.push({x,y:y+laneOffset,vx,vy:0,r,life:2,damage,friendly:true,color,kind,pierce,homing,age:0,phase:rnd(0,Math.PI*2),ownerId:p.id});
+    // Spread pellets fan out from the authored barrel; other weapons retain
+    // their horizontal launch and rockets steer during their homing update.
+    const add = (vx:number, laneOffset:number, damage:number, r:number, color:string, kind:Weapon, pierce=0, homing=false, vy=0) => this.shots.push({x,y:y+laneOffset,vx,vy,r,life:2,damage,friendly:true,color,kind,pierce,homing,age:0,phase:rnd(0,Math.PI*2),ownerId:p.id});
     if (p.weapon === 'blaster') {
       add(690, p.weaponRank >= 2 ? -7 : 0, 11 + p.weaponRank * 3, 4, '#ffe45d', 'blaster', p.weaponRank >= 3 ? 1 : 0);
       if (p.weaponRank >= 2) add(690, 7, 10 + p.weaponRank * 2, 3, '#ff8a35', 'blaster');
     } else if (p.weapon === 'spread') {
       const count = 3 + (p.weaponRank >= 3 ? 2 : 0);
-      for (let i=0;i<count;i++) add(575, (i-(count-1)/2)*7, 8+p.weaponRank*2, 3.5, '#6ff7ff', 'spread');
+      for (let i=0;i<count;i++) {
+        const angle = (i-(count-1)/2) * .14;
+        add(575*Math.cos(angle), 0, 8+p.weaponRank*2, 3.5, '#6ff7ff', 'spread', 0, false, 575*Math.sin(angle));
+      }
     } else if (p.weapon === 'laser') {
       add(900, 0, 9+p.weaponRank*3, 3, '#ff4aa8', 'laser', 2+p.weaponRank);
       if (p.weaponRank >= 3) { add(850,-6,8,2,'#fff','laser',1); add(850,6,8,2,'#fff','laser',1); }
@@ -1032,7 +1058,15 @@ export class VenusGame {
     }
     return this.snapshot();
   }
-  debugMiniboss(){if(this.mode!=='playing')this.debugStart();this.debugBeat=false;this.debugWobblePose=null;this.debugImpactStage=null;this.debugSustainedFire=false;this.debugFireHeld=false;this.elapsed=145;this.enemies=[];this.shots=[];this.particles=[];this.floaters=[];}
+  debugMiniboss(){
+    // URL and gotoScene share one complete setup, preserving the selected
+    // P1/P2 heroes while clearing flags left by any previous encounter.
+    this.beginRun();
+    this.elapsed=CAMPAIGN_TIMING.minibossAtSeconds;
+    this.minibossSpawned=true;
+    this.spawnEnemy('miniboss',1010,393);
+    emitMusic('miniboss');
+  }
   debugBoss(){
     if(this.mode!=='playing')this.debugStart();
     this.debugStageOneOnly=true;
@@ -1062,6 +1096,9 @@ export class VenusGame {
     return this.snapshot();
   }
   debugCompleteCurrentAct(){
+    if(this.mode==='road-rash'&&this.roadRash){
+      this.roadRash.debugCompleteVictory();return this.snapshot();
+    }
     if(this.debugStageOneOnly&&this.enemies.some(enemy=>enemy.kind==='boss')){
       const boss=this.enemies.find(enemy=>enemy.kind==='boss')!;
       boss.x=610;boss.y=350;boss.hp=1;
@@ -1073,9 +1110,6 @@ export class VenusGame {
       if(!miniboss){this.minibossSpawned=true;this.spawnEnemy('miniboss',610,393);miniboss=this.enemies.at(-1);}
       if(miniboss){miniboss.hp=1;this.shots.push({ownerId:1,x:miniboss.x,y:miniboss.y,vx:0,vy:0,r:8,life:1,damage:2,friendly:true,color:'#fff',kind:'blaster',pierce:0,age:0,phase:0});this.handleCollisions();}
       return this.snapshot();
-    }
-    if(this.mode==='road-rash'&&this.roadRash){
-      this.roadRash.debugCompleteVictory();return this.snapshot();
     }
     if(this.campaignAct===2){
       this.brawler?.debugCompleteVictory();return this.snapshot();
@@ -1279,7 +1313,7 @@ export class VenusGame {
       projectileOrigin:projectileOrigin?{x:Number(projectileOrigin.x.toFixed(2)),y:Number(projectileOrigin.y.toFixed(2)),hero:projectileOrigin.hero,sheet:projectileOrigin.sheet,frame:projectileOrigin.frame}:null,
       lastProjectileOriginX:projectileOrigin?Number(projectileOrigin.x.toFixed(2)):null,lastProjectileOriginY:projectileOrigin?Number(projectileOrigin.y.toFixed(2)):null,
       projectileOriginDeltaPx:projectileOriginDeltaPx===null?null:Number(projectileOriginDeltaPx.toFixed(3)),
-      kineticPose:{active:kinetics.active,signature:kinetics.signature,cycleIndex:kinetics.cycleIndex,wheelAngleIndex:kinetics.wheelAngleIndex,
+      kineticPose:{active:kinetics.active,secondaryActive:kinetics.secondaryActive,signature:kinetics.signature,cycleIndex:kinetics.cycleIndex,wheelAngleIndex:kinetics.wheelAngleIndex,
         suspensionY:kinetics.suspensionY,chassisPitch:Number(kinetics.chassisPitch.toFixed(4)),scaleX:kinetics.scaleX,scaleY:kinetics.scaleY,
         secondaryA:kinetics.secondaryA,secondaryB:kinetics.secondaryB},
       wheelMotion:{active:wheelMotion.active,angleIndex:wheelMotion.angleIndex,angle:Number(wheelMotion.angle.toFixed(4)),
@@ -1320,7 +1354,7 @@ export class VenusGame {
       campaign:{
         act:this.campaignAct,segment,levelId:this.currentLevelId,transition:this.campaignTransition,history:[...this.campaignHistory],
         standalone:this.roadRash?this.standaloneRoadRash:this.brawler?this.standaloneBrawler:this.debugStageOneOnly,
-        activePlayers:this.roadRash?1:this.coopEnabled?2:1,
+        activePlayers:this.coopEnabled?2:1,
         rider:this.campaignAct===2||this.roadRash?null:{elapsed:Number(this.elapsed.toFixed(2)),duration:segmentDuration,sourceElapsed:Number(sourceElapsed.toFixed(2)),
           sourceStart:this.campaignAct===3?CAMPAIGN_TIMING.minibossAtSeconds:0,
           sourceEnd:this.campaignAct===3?CAMPAIGN_TIMING.originalBossAtSeconds:CAMPAIGN_TIMING.minibossAtSeconds,
@@ -1379,7 +1413,10 @@ export class VenusGame {
     else if (scene === 'brawler-boss') this.beginBrawler(true,undefined,null,true);
     else if (scene === 'brawler-coop') { this.coopEnabled=true; this.beginBrawler(false,undefined,null,true); }
     else if (scene === 'brawler-coop-boss') { this.coopEnabled=true; this.beginBrawler(true,undefined,null,true); }
-    else if(scene==='road-rash'||scene==='road-rash-combat'||scene==='road-rash-boss')this.beginRoadRash(scene==='road-rash-boss',true,scene==='road-rash-combat');
+    else if(scene==='road-rash'||scene==='road-rash-combat'||scene==='road-rash-boss'||scene==='road-rash-coop'||scene==='road-rash-coop-boss'){
+      if(scene.includes('coop'))this.coopEnabled=true;
+      this.beginRoadRash(scene.endsWith('boss'),true,scene==='road-rash-combat');
+    }
     else if (scene === 'rider-act-3') {
       if(this.campaignAct===3&&this.continues.isActive)this.beginRiderAct(3,false);
       else{this.beginRun();this.captureRiderLoadout();this.beginRiderAct(3,false);}
@@ -1438,8 +1475,13 @@ export class VenusGame {
 
   private draw(){
     const c=this.ctx;
-    const brawlerScene=Boolean(this.brawler)&&(this.mode==='brawler'||(this.mode==='paused'&&this.pausedFrom==='brawler')||((this.mode==='continue'||this.mode==='win'||this.mode==='lose')&&this.completedStage===2));
-    const roadRashScene=Boolean(this.roadRash)&&(this.mode==='road-rash'||(this.mode==='paused'&&this.pausedFrom==='road-rash')||this.mode==='continue'||this.mode==='win'||this.mode==='lose');
+    if(this.mode==='paused'){
+      c.drawImage(this.pausedFrame,0,0);
+      this.drawPause();
+      return;
+    }
+    const brawlerScene=Boolean(this.brawler)&&(this.mode==='brawler'||((this.mode==='continue'||this.mode==='win'||this.mode==='lose')&&this.completedStage===2));
+    const roadRashScene=Boolean(this.roadRash)&&(this.mode==='road-rash'||this.mode==='continue'||this.mode==='win'||this.mode==='lose');
     c.save();
     const sx=this.shake>0?rnd(-this.shake,this.shake):0,sy=this.shake>0?rnd(-this.shake*.55,this.shake*.55):0;c.translate(Math.round(sx),Math.round(sy));
     if(this.mode==='title')this.drawTitle();
@@ -1454,11 +1496,7 @@ export class VenusGame {
       if(!brawlerScene&&!roadRashScene){this.drawHud();if(this.bossSpawned&&!this.bossDefeated&&this.enemies.some(e=>e.kind==='boss'))this.drawWarningEdges();}
       if(this.mode==='playing')this.drawCampaignTransition();
       if(this.mode==='playing'||this.mode==='road-rash'||this.mode==='brawler')this.drawAttemptBadge();
-      if(this.mode==='road-rash'&&this.coopEnabled){
-        c.fillStyle='#120c1edb';c.fillRect(294,76,372,21);
-        this.text('P1 DRIVES // P2 REJOINS IN FURNACE',480,90,10,'#f1d1a4','center',true);
-      }
-      if(this.mode==='paused')this.drawPause();else if(this.mode==='continue')this.drawContinue();else if(this.mode==='win'||this.mode==='lose')this.drawEnding();
+      if(this.mode==='continue')this.drawContinue();else if(this.mode==='win'||this.mode==='lose')this.drawEnding();
     }
     if(this.flash>0){c.fillStyle=`rgba(255,245,210,${this.flash})`;c.fillRect(0,0,W,H);}
   }
@@ -1511,8 +1549,8 @@ export class VenusGame {
     for(const f of this.floaters){c.globalAlpha=clamp(f.life*2,0,1);this.text(f.text,f.x,f.y,17,f.color,'center',true);c.globalAlpha=1;}
   }
 
-  private drawRiderSecondaryMotion(hero:HeroId,size:{width:number;height:number;anchorX:number;anchorY:number},kinetics:RiderKineticPose,bodyX:number,bodyY:number){
-    if(!kinetics.active)return;
+  private drawRiderSecondaryMotion(hero:HeroId,size:{width:number;height:number;anchorX:number;anchorY:number},kinetics:RiderKineticPose,bodyX:number,bodyY:number,anchors:readonly [number,number,number,number],reactionAngle=0,reactionScaleX=1,reactionScaleY=1){
+    if(!kinetics.secondaryActive)return;
     const c=this.ctx;
     const colors=hero==='cassia'
       ?{upper:'#ed413f',upperLight:'#ff9d45',lower:'#6f3128',lowerLight:'#d78b35'}
@@ -1542,11 +1580,16 @@ export class VenusGame {
       blocks(inner,innerWidth,4);
       const tip=points.at(-1)!;c.fillStyle=outer;c.fillRect(Math.round(tip[0]/2)*2-3,Math.round(tip[1]/2)*2-3,6,6);
     };
-    c.save();c.translate(bodyX,bodyY+kinetics.suspensionY);c.rotate(kinetics.chassisPitch);c.scale(kinetics.scaleX,kinetics.scaleY);
+    c.save();c.translate(bodyX,bodyY+kinetics.suspensionY);c.rotate(kinetics.chassisPitch+reactionAngle);c.scale(kinetics.scaleX*reactionScaleX,kinetics.scaleY*reactionScaleY);
     c.globalAlpha=.92;
     const a=kinetics.secondaryA,b=kinetics.secondaryB;
-    ribbon([[-27,-72],[-48,-73+a],[-66,-68-a*.45],[-82,-64+a*.35]],colors.upper,colors.upperLight,8,4);
-    ribbon([[-39,-39],[-55,-33+b],[-70,-25-b*.45],[-79,-20+b*.3]],colors.lower,colors.lowerLight,7,3);
+    const upperX=(anchors[0]/256-size.anchorX)*size.width,upperY=(anchors[1]/192-size.anchorY)*size.height;
+    const lowerX=(anchors[2]/256-size.anchorX)*size.width,lowerY=(anchors[3]/192-size.anchorY)*size.height;
+    // Draw behind the original atlas: roots overlap the authored knot/hem and
+    // only the trailing silhouette extends out. Bruna's upper piece stays dark
+    // hair, not an invented scarf. No rider/bike pixels are redrawn or warped.
+    ribbon([[upperX,upperY],[upperX-21,upperY-1+a],[upperX-39,upperY+4-a*.45],[upperX-55,upperY+8+a*.35]],colors.upper,colors.upperLight,8,4);
+    ribbon([[lowerX,lowerY],[lowerX-16,lowerY+6+b],[lowerX-31,lowerY+14-b*.45],[lowerX-40,lowerY+19+b*.3]],colors.lower,colors.lowerLight,7,3);
     c.restore();
   }
 
@@ -1616,7 +1659,7 @@ export class VenusGame {
     const reactionScaleX=1-.025*reactionEnvelope,reactionScaleY=1+.028*reactionEnvelope;
     const bodyX=x-playerKick-fireState.recoilOffset-6*reactionEnvelope;
     const bodyY=y+38+(playerKick>0?2:0)-2*reactionEnvelope;
-    this.drawRiderSecondaryMotion(h.id,size,kinetics,bodyX,bodyY);
+    this.drawRiderSecondaryMotion(h.id,size,kinetics,bodyX,bodyY,this.riderPose.secondaryAnchors(p,pose),reactionAngle,reactionScaleX,reactionScaleY);
     let usedAtlas=false;
     if(kinetics.active){
       c.save();c.translate(bodyX,bodyY+kinetics.suspensionY);c.rotate(kinetics.chassisPitch+reactionAngle);c.scale(kinetics.scaleX*reactionScaleX,kinetics.scaleY*reactionScaleY);
@@ -1629,7 +1672,7 @@ export class VenusGame {
       if(!usedAtlas&&recovering)usedAtlas=drawSpriteFrame(c,'fireRelease',p.heroIndex*3+pose.frame,drawX,drawY,{...size,alpha:hitFlash>0?.62:1});
       if(!usedAtlas)usedAtlas=drawSpriteFrame(c,h.id,authoredFrame,drawX,drawY,{...size,alpha:hitFlash>0?.62:1});
       if(reactionActive)c.restore();
-      if(usedAtlas&&sustained)this.drawRiderWheelMotion(h.id,size,wheelMotion,kinetics,bodyX,bodyY);
+      if(usedAtlas&&(sustained||recovering))this.drawRiderWheelMotion(h.id,size,wheelMotion,kinetics,bodyX,bodyY);
     }
     if(!usedAtlas){
       c.scale(2,2);
@@ -2054,12 +2097,15 @@ export class VenusGame {
 
   private drawHud(){
     const c=this.ctx,p=this.player,h=HEROES[this.selected];
+    const boss=this.enemies.find(e=>e.kind==='boss'||e.kind==='miniboss');
+    const targetDuration=riderSegmentDuration(this.campaignAct)??LEVEL_BOSS_TIME;
+    const targetName=this.campaignAct===1?'MINIBOSS':'DREADNOUGHT';
+    const objective=boss?.kind==='miniboss'?'DEFEAT MAGMA MAULER':this.bossSpawned?'FINAL ASSAULT':`${Math.max(0,targetDuration-this.elapsed)|0}s TO ${targetName}`;
     if(this.coopEnabled){
       const drawRiderHud=(r:Player,x:number)=>{const rh=HEROES[r.heroIndex],w=286;c.fillStyle='#080913e8';c.fillRect(x,9,w,57);c.strokeStyle=r.id===1?'#ffe65c':'#5de4e0';c.lineWidth=2;c.strokeRect(x+1,10,w-2,55);this.text(`P${r.id} ${rh.name}${r.downed?'  DOWN':''}`,x+10,29,13,r.downed?'#777':rh.accent,'left',true);this.text(`${r.weapon.toUpperCase()} ${r.weaponRank}`,x+w-10,29,10,'#ffd55d','right',true);this.text(`HP ${Math.ceil(r.hp)}`,x+10,47,9,'#ffafba','left',true);this.meter(x+58,38,76,9,r.hp/rh.maxHp,'#ef425f','#521b2e');this.text(`AR ${Math.ceil(r.armor)}`,x+143,47,9,'#c1f5ff','left',true);this.meter(x+191,38,48,9,r.armor/rh.maxArmor,'#57d6ff','#15334c');this.text(`SP ${Math.floor(r.special)}`,x+w-10,48,9,rh.accent,'right',true);};
       drawRiderHud(this.players[0],14);if(this.players[1])drawRiderHud(this.players[1],660);
-      const targetDuration=riderSegmentDuration(this.campaignAct)??LEVEL_BOSS_TIME,targetName=this.campaignAct===1?'MINIBOSS':'DREADNOUGHT';
-      c.fillStyle='#05050be6';c.fillRect(321,12,318,48);c.strokeStyle='#6e4c88';c.strokeRect(322,13,316,46);this.text(this.score.toString().padStart(8,'0'),480,34,16,'#fff','center',true);this.text(`ACT ${this.campaignAct} // TEAM x${this.combo.toFixed(1)} // ${this.bossSpawned?'FINAL ASSAULT':`${Math.max(0,targetDuration-this.elapsed)|0}s TO ${targetName}`}`,480,53,10,'#ff7fb1','center',true);
-      const boss=this.enemies.find(e=>e.kind==='boss'||e.kind==='miniboss');if(boss){c.fillStyle='#090613e6';c.fillRect(212,486,536,40);this.text(boss.kind==='boss'?'SULFUR DREADNOUGHT':'MAGMA MAULER MK.IV',480,501,14,boss.kind==='boss'?'#df76ff':'#ff7f5c','center',true);this.meter(229,507,502,10,boss.hp/boss.maxHp,boss.kind==='boss'?'#bd45e9':'#ff554b','#30152b');}
+      c.fillStyle='#05050be6';c.fillRect(321,12,318,48);c.strokeStyle='#6e4c88';c.strokeRect(322,13,316,46);this.text(this.score.toString().padStart(8,'0'),480,34,16,'#fff','center',true);this.text(`ACT ${this.campaignAct} // TEAM x${this.combo.toFixed(1)} // ${objective}`,480,53,10,'#ff7fb1','center',true);
+      if(boss){c.fillStyle='#090613e6';c.fillRect(212,486,536,40);this.text(boss.kind==='boss'?'SULFUR DREADNOUGHT':'MAGMA MAULER MK.IV',480,501,14,boss.kind==='boss'?'#df76ff':'#ff7f5c','center',true);this.meter(229,507,502,10,boss.hp/boss.maxHp,boss.kind==='boss'?'#bd45e9':'#ff554b','#30152b');}
       return;
     }
     c.fillStyle='#080913df';c.fillRect(14,9,264,47);c.strokeStyle=h.accent;c.lineWidth=2;c.strokeRect(15,10,262,45);
@@ -2069,9 +2115,8 @@ export class VenusGame {
     c.fillStyle='#080913df';c.fillRect(708,9,238,47);c.strokeStyle='#6e4c88';c.strokeRect(709,10,236,45);
     this.text(`${p.weapon.toUpperCase()} LV.${p.weaponRank}`,720,28,13,'#ffd55d','left',true);this.text(`x${this.combo.toFixed(1)}`,934,29,18,this.combo>=4?'#fff26c':'#ff6fab','right',true);
     this.text(`SP ${Math.floor(p.special)}%`,720,47,9,h.accent,'left',true);this.meter(770,37,164,9,p.special/100,h.accent,'#30223d');
-    const targetDuration=riderSegmentDuration(this.campaignAct)??LEVEL_BOSS_TIME;
-    const progress=this.bossSpawned?1:this.elapsed/targetDuration;c.fillStyle='#05050bd9';c.fillRect(299,12,388,10);c.fillStyle='#593457';c.fillRect(302,15,382,4);c.fillStyle='#ff784c';c.fillRect(302,15,382*clamp(progress,0,1),4);c.fillStyle='#fff';c.fillRect(302+382*clamp(progress,0,1),10,2,14);this.text(this.bossSpawned?(this.campaignAct===3?'ACT 3 // FINAL ASSAULT':'FINAL ASSAULT'):`ACT ${this.campaignAct} // ${Math.max(0,targetDuration-this.elapsed)|0}s TO ${this.campaignAct===1?'MINIBOSS':'DREADNOUGHT'}`,493,40,11,'#ead9ee','center',true);
-    const boss=this.enemies.find(e=>e.kind==='boss'||e.kind==='miniboss');if(boss){c.fillStyle='#090613e6';c.fillRect(212,486,536,40);this.text(boss.kind==='boss'?'SULFUR DREADNOUGHT':'MAGMA MAULER MK.IV',480,501,14,boss.kind==='boss'?'#df76ff':'#ff7f5c','center',true);this.meter(229,507,502,10,boss.hp/boss.maxHp,boss.kind==='boss'?'#bd45e9':'#ff554b','#30152b');}
+    const progress=boss||this.bossSpawned?1:this.elapsed/targetDuration;c.fillStyle='#05050bd9';c.fillRect(299,12,388,10);c.fillStyle='#593457';c.fillRect(302,15,382,4);c.fillStyle='#ff784c';c.fillRect(302,15,382*clamp(progress,0,1),4);c.fillStyle='#fff';c.fillRect(302+382*clamp(progress,0,1),10,2,14);this.text(`ACT ${this.campaignAct} // ${objective}`,493,40,11,'#ead9ee','center',true);
+    if(boss){c.fillStyle='#090613e6';c.fillRect(212,486,536,40);this.text(boss.kind==='boss'?'SULFUR DREADNOUGHT':'MAGMA MAULER MK.IV',480,501,14,boss.kind==='boss'?'#df76ff':'#ff7f5c','center',true);this.meter(229,507,502,10,boss.hp/boss.maxHp,boss.kind==='boss'?'#bd45e9':'#ff554b','#30152b');}
   }
 
   private meter(x:number,y:number,w:number,h:number,value:number,color:string,bg:string){const c=this.ctx;c.fillStyle=bg;c.fillRect(x,y,w,h);c.fillStyle=color;c.fillRect(x+2,y+2,(w-4)*clamp(value,0,1),h-4);c.fillStyle='#ffffff55';c.fillRect(x+2,y+2,(w-4)*clamp(value,0,1),2);}
@@ -2177,7 +2222,7 @@ export class VenusGame {
       c.fillStyle=active?'#0b0715f2':'#08060fdc';c.fillRect(x+7,portraitBottom,w-14,hh-portraitH-8);c.fillStyle=active?h.accent:'#3a2e44';c.fillRect(x+7,portraitBottom,w-14,3);
       if(active){c.fillStyle='#0b0715';c.fillRect(x+8,y+8,w-16,17);if(p1){c.fillStyle='#ffe65c';c.fillRect(x+8,y+8,5,17);this.text(this.coopEnabled?(this.selectReady[0]?'P1 READY':'P1'):'SELECTED',cx-(p2?34:0),y+21,9,'#ffe65c','center',true);}if(p2){c.fillStyle='#5de4e0';c.fillRect(x+w-13,y+8,5,17);this.text(this.selectReady[1]?'P2 READY':'P2',cx+(p1?35:0),y+21,9,'#5de4e0','center',true);}}
       const nameY=portraitBottom+30;this.text(h.name,cx,nameY,active?27:23,active?h.accent:'#b0a6b7','center',true);this.text(h.epithet,cx,nameY+17,10,active?'#f1e3f3':'#9f94a6','center');
-      const names=['POWER','SPEED','ARMOR'],statsY=nameY+31;names.forEach((name,n)=>{const yy=statsY+n*14;this.text(name,x+18,yy+8,9,active?'#baadbf':'#817686');for(let s=0;s<5;s++){c.fillStyle=s<h.stats[n]?(active?h.accent:'#665b70'):'#27212f';c.fillRect(x+w-126+s*20,yy,14,8);if(active&&s<h.stats[n]){c.fillStyle='#ffffff66';c.fillRect(x+w-124+s*20,yy+1,10,2);}}});
+      const names=['POWER','SPEED','ARMOR'],statsY=nameY+31;names.forEach((name,n)=>{const yy=statsY+n*14;this.text(name,x+18,yy+8,9,'#baadbf');for(let s=0;s<5;s++){c.fillStyle=s<h.stats[n]?h.accent:'#27212f';c.fillRect(x+w-126+s*20,yy,14,8);if(s<h.stats[n]){c.fillStyle=active?'#ffffff66':'#ffffff33';c.fillRect(x+w-124+s*20,yy+1,10,2);}}});
       const arsenalY=y+hh-31;c.fillStyle=active?'#160d22':'#0d0914';c.fillRect(x+8,arsenalY-14,w-16,38);c.fillStyle=active?h.accent:'#3c3047';c.fillRect(x+8,arsenalY-14,3,38);this.text(h.weapon.toUpperCase(),x+18,arsenalY,11,'#ffd861','left',true);this.text(h.special,x+w-17,arsenalY+18,10,active?'#92f4e5':'#766f7c','right',true);
       c.fillStyle=active?h.accent:'#4a3a53';c.fillRect(x,portraitBottom-1,16,3);c.fillRect(x+w-16,portraitBottom-1,16,3);
       c.restore();

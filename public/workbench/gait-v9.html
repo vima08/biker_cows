@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ходьба v2 → v9</title>
+<style>
+body{margin:24px;background:#171923;color:#e9eaf3;font:16px system-ui}h1{font-size:24px}button,select{font:inherit;margin:4px;padding:8px;background:#292e40;color:inherit;border:1px solid #67708d;border-radius:6px}section{border-top:1px solid #475169;padding:16px 0}.views{display:flex;flex-wrap:wrap;gap:16px}figure{margin:0;flex:1;min-width:240px;max-width:512px}canvas{background:repeating-conic-gradient(#252a37 0% 25%,#2c3241 0% 50%) 0 0/24px 24px;image-rendering:pixelated;width:100%;height:auto}figcaption{margin:8px 0}a{color:#8bd5ff}
+</style>
+<h1>Ходьба: v2 и v9</h1>
+<p>В v9 изменён третий кадр. Кадры 1, 2 и 4 сохранены из v2; нижний ряд зеркально отражён. Боевой спрайт рядом помогает сравнить пропорции.</p>
+<button id="play">Пауза</button>
+<select id="direction"><option value="0">Вправо</option><option value="1">Влево</option></select>
+<select id="speed"><option value="125">8 кадров/с</option><option value="250">4 кадра/с</option><option value="500">2 кадра/с</option></select>
+<button id="step">Следующий кадр</button><span id="phase"></span>
+<main></main>
+<script type="module">
+const heroes=['cassia','bruna','nova'];
+const rows=[];
+for(const hero of heroes){
+  const section=document.createElement('section');section.innerHTML=`<h2>${hero.toUpperCase()}</h2><div class="views"></div>`;document.querySelector('main').append(section);
+  const images={};
+  for(const [key,label,file] of [['v2','Исходный v2',`${hero}-brawler-walk-v2.png`],['v9','Новый v9',`${hero}-brawler-walk-v9.png`],['combat','Боевой idle',`${hero}-brawler-sheet.png`]]){
+    const figure=document.createElement('figure');figure.innerHTML=`<canvas width="512" height="384"></canvas><figcaption>${label}</figcaption>`;section.querySelector('.views').append(figure);
+    const image=new Image();image.src=`../assets/brawler/${file}`;await image.decode();images[key]={image,canvas:figure.querySelector('canvas')};
+  }
+  rows.push(images);
+}
+let playing=true,frame=2,last=performance.now();
+const play=document.querySelector('#play'),direction=document.querySelector('#direction'),speed=document.querySelector('#speed');
+play.onclick=()=>{playing=!playing;play.textContent=playing?'Пауза':'Играть'};
+document.querySelector('#step').onclick=()=>{playing=false;play.textContent='Играть';frame=(frame+1)%4;draw()};
+direction.onchange=draw;
+function draw(){
+  const row=Number(direction.value);document.querySelector('#phase').textContent=`Кадр ${frame+1} / 4`;
+  for(const images of rows)for(const [key,{image,canvas}]of Object.entries(images)){
+    const ctx=canvas.getContext('2d');ctx.clearRect(0,0,512,384);ctx.imageSmoothingEnabled=false;ctx.save();
+    if(key==='v2'&&row){ctx.translate(512,0);ctx.scale(-1,1)}
+    const column=key==='combat'?0:frame,sourceRow=key==='combat'?row*2:key==='v9'?row:0;
+    ctx.drawImage(image,column*256,sourceRow*192,256,192,0,0,512,384);ctx.restore();
+  }
+}
+function tick(now){if(playing&&now-last>=Number(speed.value)){frame=(frame+1)%4;last=now;draw()}requestAnimationFrame(tick)}
+draw();requestAnimationFrame(tick);
+</script>
+</html>

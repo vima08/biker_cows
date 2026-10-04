@@ -239,3 +239,300 @@ Bruna correction contract used for `bruna-pose-correction-chroma.png`:
 > Create a strict 3 × 2 corrective atlas for Bruna. Preserve her anatomical-left silver/cyan segmented cyberarm and anatomical-right organic arm. The right-facing heavy-hook cell must be a clean readable cyberarm strike with intact anatomy. The left-facing finisher must be independently drawn from a rear three-quarter/back-to-camera view, striking the floor only with the same cybernetic left arm; never mirror the right-facing pose or transfer metal to the organic arm. Flat exact #FF00FF, fixed gameplay scale and baseline.
 
 Enemy direction is deliberately not regenerated per direction. The authoritative raw `enemy-roster-chroma.png` contains raider, bruiser and shocker facing screen-left. `process_brawler_motion_art.ps1` copies that row exactly for leftward movement and constructs the rightward row only by a deterministic horizontal pixel mirror. This removes the ambiguous backward-walking silhouettes produced by independently generated direction rows.
+
+## Wave 29 — isolated-limb gait experiment
+
+Accepted generated limb parts were assembled into walk-v3 PNGs using `scripts/build-gait-v3.ps1`. Whole-character generations were not accepted as complete gait cycles because the leading legs repeated. Directional sheets supplied left-facing upper bodies only. Raw inputs remain in `.gauntlet/iteration-29/raw/`; the superseded v3 assets are preserved beside the current production atlases.
+
+### Leg parts
+
+> Use case: stylized-concept. Asset type: cutout limb animation parts for a 16-bit pixel-art game. Generate EXACTLY TWELVE ISOLATED SINGLE LEGS, in strict 4 columns x 3 rows on perfectly uniform GREEN #00FF00. Each cell contains ONE LEG ONLY from hip socket to shoe, no second leg, no torso, no character head. Every single leg's hip socket starts at SAME upper center of its cell. ALL BOOT TOES FACE RIGHT in ALL cells. Columns: 1 trailing leg -- thigh and shin stretch diagonally DOWN LEFT from hip, boot heel raised on toe; 2 passing leg -- thigh angles down RIGHT, knee bent so ankle curls behind under hip, boot hovering; 3 leading leg -- thigh and shin extend diagonally DOWN RIGHT, boot heel planted toe slightly raised; 4 support leg -- straight almost VERTICAL thigh/shin, boot flat on shared bottom ground line. These are four poses of ONE SAME LEFT LEG, not paired legs. Row1 Cassia leg: black leather pants with gold seam/studs, black biker boot with three gold buckles. Row2 Bruna leg: heavy blue denim trousers, sturdy dark black heavy biker boot with silver buckles. Row3 Nova leg: white cow fur thigh with a few charcoal spots, red kneeguard and red/white racing boot. All legs fleshy organic, NONE robotic. Preserve same thigh/calf proportions across row, generous empty padding around each leg. Retro16bit hard pixel clusters, dark outline, 4-color material shade ramps. Cell hip seams flat and open for assembly beneath existing pelvis. No cast shadows, gradients, text, grid lines, ground, effects, heads, arms, torsos, COMPLETE CHARACTERS or PAIRS OF LEGS. Single leg each cell, twelve limbs total.
+
+### Cassia directional torso
+
+> Use case: sketch-to-render. Image 1 is the STRICT POSE AND OCCLUSION GUIDE, image 2 is Cassia's costume/identity/pixel-art reference ONLY. Render image 1's EIGHT POSES as Cassia, a brown cow heroine with auburn mane, horns, red scarf, black/gold biker gear. 4 columns x 2 rows. Preserve EXACT leg positions, near/far overlap and arm swings from guide. CYAN limbs in guide are NEAR camera and PURPLE limbs FAR from camera: replace colors with natural costume colors but preserve their occlusion. Top row facing RIGHT: in column1 near left leg points diagonally DOWN LEFT, far right leg DOWN RIGHT; column3 near left leg points DOWN RIGHT, far right leg DOWN LEFT. This reversal of which leg OVERLAPS the other is the entire purpose. Her near thigh has gold sun marking: place that marking on the diagonal BACK leg in top-left, on diagonal FRONT leg in top-third. Bottom row faces LEFT, camera sees her BACK/RIGHT side, follow guide precisely. Natural four-phase walk, heels/toes planted, same pelvis pivot and body/head sizes. Use sharp low-resolution 16-bit pixel clusters and limited colors. Background must be perfectly flat solid #00FF00 GREEN throughout, no gradient, no halo, no ground, no cast shadows. REMOVE guide lines and all text/labels. NO posed copies from reference 2: it is costume reference, guide 1 controls anatomy. Every complete sprite centered in its grid cell with generous padding.
+
+### Bruna directional torso
+
+> Use case: sketch-to-render. Image 1 controls EXACT eight walk poses and near/far limb overlap. Image 2 controls Bruna character appearance only, NOT leg positions. Create 4 columns x 2 rows pixel-art animation sheet, pure uniform #00FF00 green background. Bruna is the same muscular charcoal cow woman, black hair, ivory horns, sleeveless cobalt-blue biker vest, dark trousers and boots. Anatomical LEFT ARM is cybernetic silver with cyan joint; RIGHT ARM is organic dark fur. Top row faces RIGHT, near side is LEFT: near cyber ARM swings forward in column1, backward in column3; near LEFT LEG extends diagonally BACK to screen-left in column1 and FORWARD to screen-right in column3. Far organic arm and far right leg swing oppositely. The near thigh must OVERLAP the other at hip: do not redraw two identical leading legs. Top col2 right support left passes, top col4 left support right passes. Bottom row faces LEFT in back-three-quarter view: show BACK of vest, organic RIGHT ARM nearest camera, cybernetic LEFT ARM on far side still visibly silver (never swap metal arm). Bottom col1 near RIGHT leg extends toward screen LEFT; bottom col3 near RIGHT leg extends BACK screen RIGHT and FAR LEFT boot extends toward screen LEFT. Follow guide cyan near/purple far silhouettes; replace guide colors with actual clothes. No high knee kicks, normal full contact walk. Every head same size, pelvis position and body height stable; natural knees and counter-swing, crisp hard-cluster 16-bit art matching image2. No text, grid lines, effects, weapons, scenery, shadow or gradient. Exactly 8 full-body sprites, each inside cell with padding.
+
+### Nova directional torso
+
+> Use case: sketch-to-render. Convert the eight exact stick-figure poses in Image1 to pixel-art Nova from upper-body reference Image2. Create one 4 columns by 2 rows sprite sheet on perfectly solid uniform GREEN #00FF00. The guide controls anatomy: CYAN is the near leg and arm, PURPLE far limbs. Top row RIGHT facing: column1 near LEFT leg BEHIND pelvis screen-left and FAR leg in FRONT screen-right; column3 near LEFT leg in FRONT screen-right and FAR leg BEHIND screen-left. Use near leg's bright WHITE THIGH and RED KNEEPAD to make it unmistakable: white thigh/red knee screen-left in column1, screen-right in column3. Column2 far leg grounded near knee passing, column4 near leg grounded far knee passing. Bottom LEFT-facing row: independently draw rear three-quarter view, near RIGHT leg front screen-left in column1, back screen-right in column3; match guide occlusion. Same attractive athletic adult white cow woman, black spots, short horns, platinum quiff, amber visor, magenta neck scarf, black/white/red racing gear, red kneepads, red/white shoes. Natural grounded walk with normal knee flexion, not kicking. Same pelvis center, height and scale all cells. Crisp retro16bit clusters like reference, sharp dark contours, four shade ramps. Absolutely no shadow, gradient, text, grid, guide lines, bikes or props. Full body each cell with ample margin.
+
+## Wave 30 — unified full-body gait
+
+Generated with the built-in imagegen tool. The first pass supplied coherent 4 x 2 full-body bases; its repeated contact geometry was not accepted as the finished cycle. A second, narrowly scoped pass supplied the opposite right/left contact frames. `scripts/build-gait-v4.ps1` deterministically normalizes the full sprites and substitutes those contacts without cutting bodies at the waist. Raw masters: `.gauntlet/iteration-30/raw/`; production: `*-brawler-walk-v4.png`.
+
+### Cassia complete base
+
+> Use case: stylized-concept.
+> Asset type: production 16-bit pixel-art character walk sprite sheet.
+> Input images: Image 1 is Cassia's authoritative identity, costume, proportions, pixel rendering and right-facing torso reference. Image 2 is only a directional and gait guide; redraw every complete character as one unified figure and do not splice or preserve its mismatched leg construction.
+> Primary request: create exactly eight complete full-body Cassia walk sprites in a strict 4 columns × 2 rows atlas. Top row faces screen-right; bottom row faces screen-left and is independently authored from rear three-quarter view, never a horizontal mirror. Four phases per row: right/near leg trailing with opposite leg leading; passing pose with lifted trailing foot; right/near leg leading with opposite leg trailing; opposite passing pose. Opposite contacts must be unmistakable in columns 1 and 3.
+> Identity: attractive adult golden-brown anthropomorphic cow biker heroine, swept auburn mane, small ivory horns, green eyes, red neck scarf, fitted black leather biker outfit with gold sun motif, gold seams and buckled black boots.
+> Anatomy/integration: draw every frame from head through pelvis through both boots as one continuous body. Natural hip sockets, consistent thigh thickness, knees aligned under the pelvis, believable counter-swing of shoulders and arms. No seam or abrupt palette/detail change at waist or hips. Same head size, shoulder width, pelvis height, overall height and ground baseline in every cell. Moderate grounded stride, no splits or high kicks.
+> Style/medium: late-era 16-bit arcade pixel art, crisp hard pixel clusters, dark 1–2 pixel contour, restrained four-tone ramps, same density and finish as Image 1.
+> Layout: generous transparent-looking isolation on perfectly uniform chroma GREEN #00FF00; each sprite centered in an equal cell with ample padding, no overlap.
+> Constraints: exactly eight complete sprites; no motorcycle, weapon, effects, cast shadow, scenery, text, grid lines, labels, gradients, halos or watermark. All scarf, tail and limbs remain fully inside their cells.
+
+### Cassia opposite contacts
+
+> Use case: stylized-concept.
+> Asset type: two corrective production walk-contact sprites.
+> Input image: authoritative Cassia identity, scale, outfit, pixel rendering and unified anatomy reference.
+> Primary request: draw exactly TWO complete full-body Cassia walk-contact sprites in one horizontal 2-column × 1-row image. Cell 1 faces SCREEN RIGHT: her anatomical LEFT leg, the camera-near leg carrying the gold sun hip marking, must extend FORWARD to screen-right with its boot clearly furthest right; her anatomical RIGHT leg is the darker rear support reaching screen-left. Cell 2 faces SCREEN LEFT from rear three-quarter view: her anatomical LEFT leg, now camera-far, must extend FORWARD to screen-left with its boot clearly furthest left; her anatomical RIGHT camera-near leg supports behind toward screen-right. These must be the opposite contacts missing from the supplied sheet.
+> Identity: same adult golden-brown cow heroine, auburn mane, horns, red scarf, black/gold biker gear.
+> Anatomy: redraw each from head through pelvis through both boots as one continuous body; coherent hip sockets and thick thighs; natural shoulder counter-swing; moderate grounded stride. Match supplied character height, proportions, baseline, dark contour and limited pixel palette.
+> Backdrop/layout: genuinely transparent background; equal cells, centered full silhouettes, ample padding.
+> Constraints: exactly two sprites, no duplicated leading-leg pose, no splice at waist, no motorcycle, weapon, shadow, effects, text, grid, labels, scenery or watermark.
+
+### Bruna complete base
+
+> Use case: stylized-concept.
+> Asset type: production 16-bit pixel-art character walk sprite sheet.
+> Input images: Image 1 is Bruna's authoritative identity, clothing, muscular proportions, pixel rendering and right-facing torso reference. Image 2 is only a gait/direction diagnostic; redraw every full character as one coherent figure and remove its waist/leg splice.
+> Primary request: create exactly eight complete full-body Bruna walk sprites in a strict 4 columns × 2 rows atlas. Top row faces screen-right. Bottom row faces screen-left from an independently authored rear three-quarter view, not a mirror. Four natural phases per row: near leg trailing/opposite leg leading; passing; near leg leading/opposite leg trailing; opposite passing. Columns 1 and 3 must show opposite anatomical legs in front.
+> Identity/asymmetry: tall muscular adult charcoal-gray anthropomorphic cow biker heroine, black mane, ivory horns, cobalt sleeveless biker vest, dark blue jeans, heavy black boots. Her anatomical LEFT ARM is always the segmented silver cybernetic arm with cyan joint lights. Her anatomical RIGHT ARM is always organic charcoal fur. Facing right, cyberarm is camera-near; facing left, organic right arm is camera-near and the cyberarm remains visible on the far side. Never swap which arm is metal.
+> Anatomy/integration: each sprite is drawn continuously from torso into pelvis into both legs. Broad stable pelvis appropriate to her muscular torso, consistent thick thighs and calves, believable hip joints, natural arm counter-swing. No thin pasted legs, waist seam, duplicated limb, or sudden change in palette/detail. Same head, shoulders, pelvis height, overall scale and ground baseline in all cells. Grounded heavy walk, no splits or high kicks.
+> Style/medium: late-era 16-bit arcade pixel art matching Image 1, crisp pixel clusters, dark contour, limited material ramps.
+> Layout: perfectly uniform chroma GREEN #00FF00, equal cells, full silhouettes centered with ample padding.
+> Constraints: exactly eight complete sprites; no motorcycle, weapon, effects, cast shadow, scenery, text, grids, labels, gradients, halos or watermark.
+
+### Bruna opposite contacts
+
+> Use case: stylized-concept.
+> Asset type: two corrective production walk-contact sprites.
+> Input image: authoritative Bruna identity, muscular scale, clothing, pixel rendering and coherent anatomy reference.
+> Primary request: draw exactly TWO complete full-body Bruna walk-contact sprites in one horizontal 2-column × 1-row image. Cell 1 faces SCREEN RIGHT: her anatomical LEFT leg, on the same camera-near side as her silver cybernetic LEFT ARM, extends FORWARD to screen-right and its boot is clearly furthest right; anatomical RIGHT leg supports behind to screen-left. Cell 2 faces SCREEN LEFT from rear three-quarter view: her anatomical LEFT leg on the cyberarm/far side extends FORWARD to screen-left and its boot is clearly furthest left; anatomical RIGHT camera-near leg supports behind toward screen-right. These are opposite contacts missing from the supplied sheet.
+> Critical invariant: anatomical LEFT ARM is silver segmented cybernetic with cyan joints in both cells; anatomical RIGHT ARM remains organic dark fur. Never swap them.
+> Anatomy: whole continuous figure, broad pelvis matching torso, thick integrated thighs, no waist seam, natural grounded stride and counter-swing. Match supplied scale, baseline, contours and pixel palette.
+> Backdrop/layout: genuinely transparent; two equal cells with ample padding.
+> Constraints: exactly two sprites; no duplicated contact, thin pasted legs, extra limbs, motorcycle, weapon, shadow, effects, text, grid, scenery or watermark.
+
+### Nova complete base
+
+> Use case: stylized-concept.
+> Asset type: production 16-bit pixel-art character walk sprite sheet.
+> Input images: Image 1 is Nova's authoritative identity, costume, proportions and pixel rendering reference. Image 2 is only a gait/direction guide; redraw each full character as a unified body rather than combining its torso and leg pieces.
+> Primary request: create exactly eight complete full-body Nova walk sprites in a strict 4 columns × 2 rows atlas. Top row faces screen-right. Bottom row faces screen-left in an independently drawn rear three-quarter view, never a horizontal mirror. Four natural walk phases: near leg trailing/opposite leg leading; passing; near leg leading/opposite leg trailing; opposite passing. Columns 1 and 3 visibly reverse which anatomical leg overlaps and leads.
+> Identity: athletic adult white-furred anthropomorphic cow biker heroine with sparse charcoal spots, platinum swept quiff, short dark horns, amber visor, magenta scarf, fitted black/white/red racing leathers, red kneepads and red-white boots.
+> Anatomy/integration: render head, torso, hips, thighs, knees and boots as one coherent sprite per cell. Keep athletic but substantial thigh/calf proportions consistent with torso, continuous black/white/red costume panels across the hip, natural joints and arm counter-swing. No waist seam, paper-thin legs, detached boots, extra limb, or detail-density mismatch. Same head size, pelvis height, total scale and shared ground baseline. Moderate grounded stride, no high kick or split.
+> Style/medium: late-era 16-bit arcade pixel art matching Image 1, crisp clusters, dark contour, limited four-tone ramps.
+> Layout: perfectly uniform chroma GREEN #00FF00, equal cells, full silhouettes centered with ample padding.
+> Constraints: exactly eight complete sprites; no motorcycle, weapon, effects, cast shadow, scenery, text, grid lines, labels, gradients, halos or watermark. Keep scarf and tail fully inside every cell.
+
+### Nova opposite contacts
+
+> Use case: stylized-concept.
+> Asset type: two corrective production walk-contact sprites.
+> Input image: authoritative Nova identity, athletic proportions, costume, pixel rendering and coherent anatomy reference.
+> Primary request: draw exactly TWO complete full-body Nova walk-contact sprites in a horizontal 2-column × 1-row image. Cell 1 faces SCREEN RIGHT: anatomical LEFT camera-near leg with its bright white thigh and red kneepad extends FORWARD to screen-right, boot clearly furthest right; anatomical RIGHT leg supports behind to screen-left. Cell 2 faces SCREEN LEFT from rear three-quarter view: anatomical LEFT camera-far leg extends FORWARD to screen-left, its red kneepad and boot clearly furthest left; anatomical RIGHT camera-near leg supports behind toward screen-right. These are the opposite contacts missing from the supplied sheet.
+> Identity: same adult white cow heroine with charcoal spots, platinum quiff, amber visor, magenta scarf, black/white/red racing outfit.
+> Anatomy: complete unified figures from head through hips to boots, athletic consistent thighs, continuous costume panels, natural counter-swing, moderate grounded stride. Match supplied scale, baseline, crisp contour and limited pixel palette.
+> Backdrop/layout: genuinely transparent; equal cells, full silhouettes with padding.
+> Constraints: exactly two sprites; no duplicated leading-leg pose, waist splice, extra limbs, motorcycle, weapon, shadow, effects, text, grid, scenery or watermark.
+
+
+## Wave 32 — staged anatomical gait with persistent leg markers
+
+Generated with the built-in `imagegen` tool. The accepted chain follows front identity anchor → neutral directional profile → separately requested right/left contacts → passing pose synthesized from the accepted contact pair. Raw production masters are copied by `scripts/build-gait-v8.ps1` to `.gauntlet/iteration-32/raw/`; normalized production atlases are `public/assets/brawler/*-brawler-walk-v8.png`. Walk-v5's luminance-only hypothesis was rejected by the user and is not production.
+
+### Cassia — front identity anchor
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art character anchor.
+> Input image: Image 1 is Cassia's authoritative game identity and costume reference.
+> Primary request: draw exactly ONE complete full-body Cassia standing ANFAS, straight toward the camera, in a neutral relaxed stance with both boots parallel and equally visible. This front view is an anatomical identity anchor for later walk frames.
+> Identity: adult golden-brown anthropomorphic cow heroine, symmetrical ivory horns, swept auburn mane, green eyes, red neck scarf, black leather biker outfit with gold sun emblems and gold-trimmed buckled boots.
+> Anatomy: clear separate LEFT and RIGHT hips, thighs, knees and boots; natural adult proportions; arms relaxed at the sides; body centered on a fixed baseline.
+> Style: crisp late-era 16-bit arcade pixel art matching Image 1, limited palette and hard dark contour.
+> Backdrop: genuinely transparent.
+> Constraints: one character only, true front view, no twist, no walking, no motorcycle, weapon, shadow, effects, text, grid, scenery or watermark.
+
+### Cassia — neutral right profile
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art character anchor.
+> Input image: Image 1 is the authoritative front-view Cassia anatomy and identity anchor.
+> Primary request: rotate the same character exactly 90 degrees into a clean neutral SIDE PROFILE facing SCREEN RIGHT. She stands still with both legs vertical, knees straight but relaxed, and both boots together on one shared baseline. No walking pose yet.
+> Identity/invariants: preserve the exact same adult Cassia face, horns, auburn mane, red scarf, black/gold leather outfit, body proportions, leg thickness and boot design from Image 1. Preserve anatomical left/right identity internally. Arms rest neutrally; tail hangs naturally.
+> Style: same crisp late-era 16-bit arcade pixel art and scale as Image 1.
+> Backdrop: genuinely transparent.
+> Constraints: exactly one complete full-body sprite; strict side profile; feet together; no stride, no three-quarter front view, no motorcycle, weapon, shadow, effects, text, scenery or watermark.
+
+### Cassia — neutral left profile
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art character anchor.
+> Input image: Image 1 is the authoritative front-view cassia anatomy and identity anchor.
+> Primary request: rotate the same character into a clean neutral profile facing SCREEN LEFT. Stand still, both legs vertical and both boots together on one baseline. No walking yet.
+> Identity tracking: The gold sun emblem remains permanently on the anatomical LEFT thigh.
+> Preserve exact face, horns, hair, outfit, body proportions, leg thickness, pixel style and left/right identity from Image 1.
+> Backdrop: genuinely transparent.
+> Constraints: exactly one complete sprite; no stride; no mirrored redesign; no swapped marker or arm; no motorcycle, weapon, shadow, effects, text, scenery or watermark.
+
+### Bruna — front identity anchor
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art character anchor.
+> Input image: Image 1 is Bruna's authoritative game identity and costume reference.
+> Primary request: draw exactly ONE complete full-body Bruna standing ANFAS, straight toward the camera, neutral, with both boots parallel and equally visible.
+> Identity: tall muscular adult charcoal-gray cow heroine, black mane, ivory horns, cobalt sleeveless biker vest, dark blue jeans and heavy black boots. Her ANATOMICAL LEFT ARM is always segmented silver cybernetic with cyan joints; anatomical RIGHT ARM is organic dark fur.
+> Anatomy: clear separate left/right hips, thighs, knees and boots, natural muscular proportions, arms relaxed, fixed baseline.
+> Style: crisp late-era 16-bit arcade pixel art matching Image 1.
+> Backdrop: genuinely transparent.
+> Constraints: one character, true front view, no walking, no swapped cyberarm, no motorcycle, weapon, shadow, effects, text, scenery or watermark.
+
+### Bruna — neutral right profile
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art character anchor.
+> Input image: Image 1 is the authoritative front-view bruna anatomy and identity anchor.
+> Primary request: rotate the same character into a clean neutral profile facing SCREEN RIGHT. Stand still, both legs vertical and both boots together on one baseline. No walking yet.
+> Identity tracking: The segmented silver/cyan cyberarm remains permanently the anatomical LEFT arm; organic arm remains right.
+> Preserve exact face, horns, hair, outfit, body proportions, leg thickness, pixel style and left/right identity from Image 1.
+> Backdrop: genuinely transparent.
+> Constraints: exactly one complete sprite; no stride; no mirrored redesign; no swapped marker or arm; no motorcycle, weapon, shadow, effects, text, scenery or watermark.
+
+### Bruna — neutral left profile
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art character anchor.
+> Input image: Image 1 is the authoritative front-view bruna anatomy and identity anchor.
+> Primary request: rotate the same character into a clean neutral profile facing SCREEN LEFT. Stand still, both legs vertical and both boots together on one baseline. No walking yet.
+> Identity tracking: The segmented silver/cyan cyberarm remains permanently the anatomical LEFT arm; organic arm remains right.
+> Preserve exact face, horns, hair, outfit, body proportions, leg thickness, pixel style and left/right identity from Image 1. Use an independently authored rear-three-quarter profile: organic right arm is camera-near and the left cyberarm remains visible on the far side.
+> Backdrop: genuinely transparent.
+> Constraints: exactly one complete sprite; no stride; no mirrored redesign; no swapped marker or arm; no motorcycle, weapon, shadow, effects, text, scenery or watermark.
+
+### Nova — front identity anchor
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art character anchor.
+> Input image: Image 1 is Nova's authoritative game identity and costume reference.
+> Primary request: draw exactly ONE complete full-body Nova standing ANFAS, straight toward camera, neutral, both boots parallel and equally visible.
+> Identity: athletic adult white cow heroine, platinum quiff, dark horns, amber visor, magenta scarf, black-white-red racing outfit, red kneepads and red-white boots. Add one natural CHARCOAL COW SPOT on her ANATOMICAL LEFT outer thigh above the red kneepad; keep the anatomical RIGHT thigh mostly white. This stable spot identifies the left leg in later frames.
+> Anatomy: clear separate left/right hips, thighs, knees and boots, natural athletic proportions, arms relaxed, fixed baseline.
+> Style: crisp late-era 16-bit arcade pixel art matching Image 1.
+> Backdrop: genuinely transparent.
+> Constraints: one character, true front view, no walking, no motorcycle, weapon, shadow, effects, text, scenery or watermark.
+
+### Nova — neutral right profile
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art character anchor.
+> Input image: Image 1 is the authoritative front-view nova anatomy and identity anchor.
+> Primary request: rotate the same character into a clean neutral profile facing SCREEN RIGHT. Stand still, both legs vertical and both boots together on one baseline. No walking yet.
+> Identity tracking: The large charcoal spot remains permanently on the anatomical LEFT outer thigh; anatomical RIGHT thigh stays mostly white.
+> Preserve exact face, horns, hair, outfit, body proportions, leg thickness, pixel style and left/right identity from Image 1.
+> Backdrop: genuinely transparent.
+> Constraints: exactly one complete sprite; no stride; no mirrored redesign; no swapped marker or arm; no motorcycle, weapon, shadow, effects, text, scenery or watermark.
+
+### Nova — neutral left profile
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art character anchor.
+> Input image: Image 1 is the authoritative front-view nova anatomy and identity anchor.
+> Primary request: rotate the same character into a clean neutral profile facing SCREEN LEFT. Stand still, both legs vertical and both boots together on one baseline. No walking yet.
+> Identity tracking: The large charcoal spot remains permanently on the anatomical LEFT outer thigh; anatomical RIGHT thigh stays mostly white.
+> Preserve exact face, horns, hair, outfit, body proportions, leg thickness, pixel style and left/right identity from Image 1.
+> Backdrop: genuinely transparent.
+> Constraints: exactly one complete sprite; no stride; no mirrored redesign; no swapped marker or arm; no motorcycle, weapon, shadow, effects, text, scenery or watermark.
+
+### Cassia right-facing — right leg forward
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art walk keyframe.
+> Input image: Image 1 is Cassia standing in neutral profile facing screen-right.
+> Primary request: make exactly ONE clear step forward with her ANATOMICAL RIGHT LEG.
+> Unambiguous costume tracking: the large GOLD SUN EMBLEM belongs to her ANATOMICAL LEFT THIGH. That SUN-MARKED LEFT LEG MUST STAY BEHIND at screen-left as the rear support leg. The OTHER, UNMARKED RIGHT THIGH/KNEE/BOOT must move forward toward screen-right and its boot must be the rightmost boot. The sun emblem must remain fully visible on the REAR thigh, never on the forward thigh.
+> This is the visual acceptance test: forward leg has NO sun emblem; rear leg HAS the sun emblem.
+> Preserve Cassia's identity, neutral profile viewpoint, proportions, black/gold outfit, pixel style, transparency, scale and baseline. Natural opposite arm swing.
+> Constraints: exactly one full-body sprite; do not put the sun-marked leg forward; no second pose, text, labels, arrows, shadow, scenery, vehicle, weapon or watermark.
+
+### Cassia right-facing — left leg forward
+
+> Use case: identity-preserve.
+> Asset type: one production 16-bit pixel-art walk keyframe.
+> Input image: Image 1 is Cassia standing in neutral profile facing screen-right.
+> Primary request: keep her facing screen-right and make her take ONE clear natural step FORWARD WITH HER ANATOMICAL LEFT LEG. Move the LEFT thigh, LEFT knee and LEFT boot together forward toward screen-right. The RIGHT leg stays behind as the rear support leg. Let arms counter-swing naturally.
+> This is specifically the LEFT-LEG-FORWARD keyframe, the anatomical opposite of a right-leg-forward step.
+> Constraints: preserve the exact character identity, costume, profile viewpoint, body proportions, pixel-art style, transparency, scale and ground baseline from Image 1. Exactly one full-body sprite. No right-leg-forward pose, no second pose, no text, labels, arrows, shadow, scenery, vehicle, weapon or watermark.
+
+### Cassia left-facing — right leg forward marker correction
+
+> Edit only the leg identity marker in this LEFT-FACING Cassia walk frame. This is RIGHT LEG FORWARD. Remove the gold sun emblem from the forward thigh on the SCREEN-LEFT side. Put that exact single gold sun emblem on the trailing thigh on the SCREEN-RIGHT side, because the trailing leg is her anatomical LEFT leg. Do not change pose, silhouette, boot positions, face, torso, scarf, arms, pixel-art style, scale, palette or transparency. Exactly one thigh sun emblem, on the rear screen-right leg. No text, no glow, transparent background.
+
+### Cassia left-facing — left leg forward
+
+> Edit the supplied Cassia neutral LEFT-FACING profile into one isolated full-body 16-bit pixel-art WALK CONTACT pose, transparent background. She travels toward SCREEN-LEFT. This exact frame is LEFT LEG FORWARD: her anatomical LEFT boot, unmistakably belonging to the leg with the gold sun emblem on its thigh, is planted far ahead toward screen-left; her anatomical RIGHT leg without that thigh emblem trails behind toward screen-right. Keep the sun emblem physically attached to the forward LEFT thigh. Make the two boots clearly separated by at least one boot length. Natural counter-swing arms, confident motion, no bike, no weapon. Preserve face, red scarf, outfit, proportions and chunky Genesis-era pixels. Do not mirror the design, do not swap or duplicate the sun emblem, no text, no glow, no floor, transparent background.
+
+### Bruna right-facing — right leg forward
+
+> Edit the supplied Bruna neutral RIGHT-FACING profile into one isolated full-body 16-bit pixel-art WALK CONTACT pose, transparent background. She travels toward SCREEN-RIGHT. This exact frame is RIGHT LEG FORWARD: her anatomical RIGHT boot is planted far ahead toward screen-right and her anatomical LEFT leg trails behind toward screen-left. To make anatomy auditable, add and preserve one narrow CYAN METAL KNEE STRAP only on the anatomical LEFT jeans leg; in this frame that marked LEFT leg must be the trailing screen-left leg. Her anatomical LEFT ARM is the silver cybernetic arm: it naturally swings FORWARD toward screen-right, opposite the forward right leg. Her organic right arm swings back. Boots separated by at least one boot length. Preserve face, vest, jeans, muscular build, cyberarm and chunky Genesis-era pixels. Do not mirror the design; never put metal on the organic arm; no bike, no weapon, no text, no floor, transparent background.
+
+### Bruna right-facing — left leg forward
+
+> Edit the supplied Bruna neutral RIGHT-FACING profile into one isolated full-body 16-bit pixel-art WALK CONTACT pose, transparent background. She travels toward SCREEN-RIGHT. This exact frame is LEFT LEG FORWARD: her anatomical LEFT boot is planted far ahead toward screen-right and her anatomical RIGHT leg trails behind toward screen-left. To make anatomy auditable, add and preserve one narrow CYAN METAL KNEE STRAP only on the anatomical LEFT jeans leg; in this frame that marked LEFT leg must be the forward screen-right leg. Her anatomical LEFT ARM is the silver cybernetic arm: it naturally swings BACK toward screen-left, opposite the forward left leg. Her organic right arm swings forward. Boots separated by at least one boot length. Preserve face, vest, jeans, muscular build, cyberarm and chunky Genesis-era pixels. Do not mirror the design; never put metal on the organic arm; no bike, no weapon, no text, no floor, transparent background.
+
+### Bruna left-facing — right leg forward
+
+> Edit the supplied Bruna neutral LEFT-FACING profile into one isolated full-body 16-bit pixel-art WALK CONTACT pose, transparent background. She travels toward SCREEN-LEFT. This exact frame is RIGHT LEG FORWARD: her anatomical RIGHT boot is planted far ahead toward screen-left and her anatomical LEFT leg trails behind toward screen-right. Add exactly one narrow CYAN METAL KNEE STRAP only on the anatomical LEFT jeans leg; here the marked LEFT leg is the trailing screen-right leg. Her anatomical LEFT ARM is the silver cybernetic arm and swings FORWARD toward screen-left, opposite the forward right leg; her organic right arm swings back. Boots separated by at least one boot length. Preserve the rear three-quarter left-facing view, face, vest, jeans, muscular build and chunky Genesis-era pixels. Never mirror the design, never put metal on the organic right arm, no bike, no weapon, no text, no floor, transparent background.
+
+### Bruna left-facing — left leg forward
+
+> Edit the supplied Bruna neutral LEFT-FACING profile into one isolated full-body 16-bit pixel-art WALK CONTACT pose, transparent background. She travels toward SCREEN-LEFT. This exact frame is LEFT LEG FORWARD: her anatomical LEFT boot is planted far ahead toward screen-left and her anatomical RIGHT leg trails behind toward screen-right. Add exactly one narrow CYAN METAL KNEE STRAP only on the anatomical LEFT jeans leg; here the marked LEFT leg is the forward screen-left leg. Her anatomical LEFT ARM is the silver cybernetic arm and swings BACK toward screen-right, opposite the forward left leg; her organic right arm swings forward. Boots separated by at least one boot length. Preserve the rear three-quarter left-facing view, face, vest, jeans, muscular build and chunky Genesis-era pixels. Never mirror the design, never put metal on the organic right arm, no bike, no weapon, no text, no floor, transparent background.
+
+### Nova right-facing — right leg forward
+
+> Edit the supplied Nova neutral RIGHT-FACING profile into one isolated full-body 16-bit pixel-art WALK CONTACT pose, transparent background. She travels toward SCREEN-RIGHT. This exact frame is RIGHT LEG FORWARD: her mostly WHITE anatomical RIGHT leg and red boot are planted far ahead toward screen-right. Her anatomical LEFT leg, unmistakably identified by the large natural CHARCOAL-BLACK hide patch on the outer thigh, trails behind toward screen-left. Keep that same charcoal patch physically attached to the trailing LEFT thigh. Boots separated by at least one boot length, natural opposite arm swing, scarf streams behind. Preserve visor, red armor, cow markings, proportions and chunky Genesis-era pixels. Do not mirror or duplicate the charcoal marker; no bike, no weapon, no text, no floor, transparent background.
+
+### Nova right-facing — left leg forward marker correction
+
+> Edit only Nova's upper-thigh hide markings in this RIGHT-FACING walk frame. This is LEFT LEG FORWARD. Remove the large charcoal-black S-shaped patch from the trailing upper thigh on SCREEN-LEFT. Paint that same single large charcoal-black S-shaped hide patch on the forward upper thigh on SCREEN-RIGHT, because that forward leg is her anatomical LEFT leg. Do not change pose, silhouette, boot positions, knee armor, lower-leg spots, face, torso, scarf, arms, pixel-art style, scale, palette or transparency. The marked left thigh is screen-right and forward; the screen-left trailing thigh is mostly white. No text, no glow, transparent background.
+
+### Nova left-facing — right leg forward marker correction
+
+> Edit only Nova's upper-thigh hide markings in this LEFT-FACING walk frame. This is RIGHT LEG FORWARD. Remove the large charcoal-black S-shaped patch from the forward upper thigh on SCREEN-LEFT. Paint that same single large charcoal-black S-shaped hide patch on the trailing upper thigh on SCREEN-RIGHT, because that trailing leg is her anatomical LEFT leg. Do not change pose, silhouette, boot positions, knee armor, lower-leg spots, face, torso, scarf, arms, pixel-art style, scale, palette or transparency. The marked left thigh is screen-right and rear; the screen-left forward thigh is mostly white. No text, no glow, transparent background.
+
+### Nova left-facing — left leg forward
+
+> Edit the supplied Nova neutral LEFT-FACING profile into one isolated full-body 16-bit pixel-art WALK CONTACT pose, transparent background. She travels toward SCREEN-LEFT. This exact frame is LEFT LEG FORWARD: her anatomical LEFT leg, unmistakably identified by the large natural CHARCOAL-BLACK hide patch on the outer thigh, and its red boot are planted far ahead toward screen-left. Her mostly white anatomical RIGHT leg trails behind toward screen-right. Keep that same charcoal patch physically attached to the forward LEFT thigh. Boots separated by at least one boot length, natural opposite arm swing, scarf streams behind toward screen-right. Preserve visor, red armor, cow markings, proportions and chunky Genesis-era pixels. Do not mirror or duplicate the charcoal marker; no bike, no weapon, no text, no floor, transparent background.
+
+### Cassia — right-facing passing pose
+
+> Using the two supplied contact poses as strict character references, create ONE isolated full-body 16-bit pixel-art WALK PASSING pose of the same heroine traveling toward SCREEN-RIGHT. This is the exact in-between frame: the rear foot has lifted and passes close beside the planted foot, knees overlap naturally, torso keeps the same three-quarter camera angle and the arms pass through their counter-swing. Preserve the same head size, body proportions, outfit, palette, facial design, silhouette thickness and Genesis-era pixel scale as the two contact references. The gold sun emblem remains attached only to her anatomical LEFT thigh. Do not turn into a narrow pure side profile. Do not mirror the character design. No bike, no weapon, no extra limbs, no text, no floor, transparent background.
+
+### Cassia — left-facing passing pose
+
+> Using the two supplied contact poses as strict character references, create ONE isolated full-body 16-bit pixel-art WALK PASSING pose of the same heroine traveling toward SCREEN-LEFT. This is the exact in-between frame: the rear foot has lifted and passes close beside the planted foot, knees overlap naturally, torso keeps the same three-quarter camera angle and the arms pass through their counter-swing. Preserve the same head size, body proportions, outfit, palette, facial design, silhouette thickness and Genesis-era pixel scale as the two contact references. The gold sun emblem remains attached only to her anatomical LEFT thigh. Do not turn into a narrow pure side profile. Do not mirror the character design. No bike, no weapon, no extra limbs, no text, no floor, transparent background.
+
+### Bruna — right-facing passing pose
+
+> Using the two supplied contact poses as strict character references, create ONE isolated full-body 16-bit pixel-art WALK PASSING pose of the same heroine traveling toward SCREEN-RIGHT. This is the exact in-between frame: the rear foot has lifted and passes close beside the planted foot, knees overlap naturally, torso keeps the same three-quarter camera angle and the arms pass through their counter-swing. Preserve the same head size, body proportions, outfit, palette, facial design, silhouette thickness and Genesis-era pixel scale as the two contact references. Her silver cybernetic arm is always the anatomical LEFT arm, her organic arm is always the anatomical RIGHT arm, and the single cyan knee strap remains only on the anatomical LEFT leg. Do not turn into a narrow pure side profile. Do not mirror the character design. No bike, no weapon, no extra limbs, no text, no floor, transparent background.
+
+### Bruna — left-facing passing pose
+
+> Using the two supplied contact poses as strict character references, create ONE isolated full-body 16-bit pixel-art WALK PASSING pose of the same heroine traveling toward SCREEN-LEFT. This is the exact in-between frame: the rear foot has lifted and passes close beside the planted foot, knees overlap naturally, torso keeps the same three-quarter camera angle and the arms pass through their counter-swing. Preserve the same head size, body proportions, outfit, palette, facial design, silhouette thickness and Genesis-era pixel scale as the two contact references. Her silver cybernetic arm is always the anatomical LEFT arm, her organic arm is always the anatomical RIGHT arm, and the single cyan knee strap remains only on the anatomical LEFT leg. Do not turn into a narrow pure side profile. Do not mirror the character design. No bike, no weapon, no extra limbs, no text, no floor, transparent background.
+
+### Nova — right-facing passing pose
+
+> Using the two supplied contact poses as strict character references, create ONE isolated full-body 16-bit pixel-art WALK PASSING pose of the same heroine traveling toward SCREEN-RIGHT. This is the exact in-between frame: the rear foot has lifted and passes close beside the planted foot, knees overlap naturally, torso keeps the same three-quarter camera angle and the arms pass through their counter-swing. Preserve the same head size, body proportions, outfit, palette, facial design, silhouette thickness and Genesis-era pixel scale as the two contact references. The large charcoal S-shaped hide patch remains attached only to her anatomical LEFT upper thigh. Do not turn into a narrow pure side profile. Do not mirror the character design. No bike, no weapon, no extra limbs, no text, no floor, transparent background.
+
+### Nova — left-facing passing pose
+
+> Using the two supplied contact poses as strict character references, create ONE isolated full-body 16-bit pixel-art WALK PASSING pose of the same heroine traveling toward SCREEN-LEFT. This is the exact in-between frame: the rear foot has lifted and passes close beside the planted foot, knees overlap naturally, torso keeps the same three-quarter camera angle and the arms pass through their counter-swing. Preserve the same head size, body proportions, outfit, palette, facial design, silhouette thickness and Genesis-era pixel scale as the two contact references. The large charcoal S-shaped hide patch remains attached only to her anatomical LEFT upper thigh. Do not turn into a narrow pure side profile. Do not mirror the character design. No bike, no weapon, no extra limbs, no text, no floor, transparent background.
+
+
+## Wave 33 — Cassia depth-swap contacts (partial, not production)
+
+Generated with the built-in `imagegen` tool. These two accepted contact masters are stored in `.gauntlet/iteration-33/raw/`. They are intentionally not connected to production until four distinct passing poses can be generated and independently accepted. The passing-pose batch was stopped by HTTP 429 `usage_limit_reached`.
+
+### Cassia right-facing — far right leg leads with near-left depth occlusion
+
+> Edit this Cassia RIGHT-FACING right-leg-forward walk contact into a decisive THREE-QUARTER DEPTH-SWAP pose. Keep her anatomical RIGHT boot planted furthest toward screen-right and her anatomical LEFT boot trailing toward screen-left. CRITICAL OCCLUSION: the anatomical LEFT leg is the CAMERA-NEAR leg, identified by the gold sun emblem. Although it trails, its lit left thigh must visibly cross IN FRONT OF the pelvis seam and OCCLUDE the root of the forward right thigh. The anatomical RIGHT leg leading toward screen-right is CAMERA-FAR: draw its entire thigh, knee, shin and boot darker/desaturated and clearly BEHIND the near left leg at the hip. Show different knee silhouettes and heel/toe angles; do not merely move or recolor the sun emblem. Strong opposite shoulder/arm swing. Preserve exact face, scarf, outfit and late-16-bit pixel style. One whole full-body sprite, transparent background, no bike, no text, no floor, no glow.
+
+### Cassia left-facing — far left leg leads with near-right depth occlusion
+
+> Edit this Cassia LEFT-FACING left-leg-forward walk contact into a decisive REAR THREE-QUARTER DEPTH-SWAP pose. Keep her anatomical LEFT boot planted furthest toward screen-left and her anatomical RIGHT boot trailing toward screen-right. CRITICAL OCCLUSION: the anatomical RIGHT leg without the sun emblem is the CAMERA-NEAR leg. Although it trails, its lit right thigh must visibly cross IN FRONT OF the pelvis seam and OCCLUDE the root of the forward left thigh. The anatomical LEFT leg leading toward screen-left, identified by the gold sun emblem, is CAMERA-FAR: draw its entire thigh, knee, shin and boot darker/desaturated and clearly BEHIND the near right leg at the hip. Show different knee silhouettes and heel/toe angles; do not merely move or recolor the sun emblem. Strong opposite shoulder/arm swing. Preserve exact face, scarf, outfit and late-16-bit pixel style. One whole full-body sprite, transparent background, no bike, no text, no floor, no glow.

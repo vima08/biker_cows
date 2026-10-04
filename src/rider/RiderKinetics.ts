@@ -2,6 +2,7 @@ import type { HeroId, RiderPlayer } from './types';
 
 export interface RiderKineticPose {
   readonly active: boolean;
+  readonly secondaryActive: boolean;
   readonly cycleIndex: number;
   readonly signature: number;
   readonly suspensionY: number;
@@ -54,6 +55,7 @@ const RIDE_POSES = [
 
 const NEUTRAL: RiderKineticPose = Object.freeze({
   active: false,
+  secondaryActive: false,
   cycleIndex: 0,
   signature: 0,
   suspensionY: 0,
@@ -78,15 +80,26 @@ function positiveMod(value: number, modulus: number) {
 }
 
 /** Quantised internal motion shared by rendering, hardpoints and motion tests. */
-export function resolveRiderKinetics(player: RiderPlayer, active: boolean): RiderKineticPose {
-  if (!active) return NEUTRAL;
+export function resolveRiderKinetics(player: RiderPlayer, active: boolean, secondaryActive = active): RiderKineticPose {
+  if (!active && !secondaryActive) return NEUTRAL;
   // A dedicated simulation clock prevents road-speed changes and PNG capture
   // cost from aliasing the suspension or the eight wheel angles.
   const cycleIndex = positiveMod(Math.floor(player.kineticClock * 10), RIDE_POSES.length);
   const wheelAngleIndex = positiveMod(Math.floor(player.kineticClock * 8), 8);
   const phase = RIDE_POSES[cycleIndex];
+  // Cloth/hair keep the same continuous wind clock through fire, release and
+  // airborne poses. These poses retain an identity chassis transform so the
+  // authored barrels, wheels and projectile hardpoints do not move with cloth.
+  if (!active) return {
+    ...NEUTRAL,
+    secondaryActive,
+    cycleIndex,
+    secondaryA: phase.secondaryA,
+    secondaryB: phase.secondaryB,
+  };
   return {
     active: true,
+    secondaryActive,
     cycleIndex,
     signature: cycleIndex * 8 + wheelAngleIndex,
     ...phase,
