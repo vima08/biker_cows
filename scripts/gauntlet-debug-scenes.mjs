@@ -23,7 +23,9 @@ try{
   await open(`?scene=brawler-jump&hero=${hero}`);await page.waitForFunction(()=>window.__BCFV_DEBUG__.snapshot().brawler?.players[0].z>8);
   const jump=[];for(let i=0;i<16;i++){await page.waitForTimeout(30);jump.push((await state()).brawler.players[0])}const maxZ=Math.max(...jump.map(s=>s.z));
   if(maxZ<=20||jump.some(s=>s.attackPhase!==null))throw Error(`${hero} jump failed: ${maxZ}`);await shot(`${hero}-jump`);
-  await open(`?scene=brawler-air-attack&hero=${hero}`);await page.waitForFunction(()=>window.__BCFV_DEBUG__.snapshot().brawler?.players[0].airborneAttack===true);
+  // Asset loading and bitmap baking can finish in the middle of an attack.
+  // Start sampling a fresh windup so the interval includes contact, not idle.
+  await open(`?scene=brawler-air-attack&hero=${hero}`);await page.waitForFunction(()=>{const p=window.__BCFV_DEBUG__.snapshot().brawler?.players[0];return p?.airborneAttack===true&&p.attackPhase==='windup'&&p.attackTimer>.38});
   const air=[];for(let i=0;i<8;i++){await page.waitForTimeout(35);air.push((await state()).brawler.players[0])}
   const frames=[...new Set(air.map(s=>s.frame))],attackPhases=[...new Set(air.map(s=>s.attackPhase).filter(Boolean))],expected=[5,6];
   if(!air.every(s=>s.z>8)||!frames.every(f=>expected.includes(f))||!attackPhases.includes('contact'))throw Error(`${hero} air failed: ${JSON.stringify({frames,attackPhases})}`);await shot(`${hero}-air-attack`);

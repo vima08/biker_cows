@@ -1,13 +1,13 @@
 /**
- * Optional authored portraits for the hero-select screen.
+ * Authored portraits for the hero-select screen.
  *
  * The single local PNG is split into three equal cells. Loading failure is a
- * normal state: callers receive `false` from drawHeroPortrait and can retain
- * the existing procedural portrait without delaying the menu.
+ * observable state: the scene gate offers retry or an explicit fallback.
  */
 
 import { assetUrl } from './assetUrl';
 import { isArtEnabled } from './debug/runtime';
+import { fetchImageBlob } from './core/fetchImageBlob';
 
 export type SelectPortraitHeroId = "cassia" | "bruna" | "nova";
 export type SelectPortraitLoadState = "idle" | "loading" | "ready" | "error";
@@ -61,7 +61,8 @@ let loadPromise: Promise<void> | null = null;
 
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
 
-function beginLoad(): Promise<void> {
+function beginLoad(retry = false): Promise<void> {
+  if (retry && state === 'error') { state = 'idle'; loadPromise = null; }
   if (state === "ready" || state === "error") return Promise.resolve();
   if (loadPromise) return loadPromise;
 
@@ -77,6 +78,12 @@ function beginLoad(): Promise<void> {
     image = nextImage;
     let objectUrl: string | null = null;
     let settled = false;
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout>;
+    const activity = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => { settle('error'); controller.abort(); }, 120_000);
+    };
 
     const releaseObjectUrl = () => {
       if (objectUrl && typeof URL !== "undefined") URL.revokeObjectURL(objectUrl);
@@ -85,13 +92,17 @@ function beginLoad(): Promise<void> {
     const settle = (nextState: SelectPortraitLoadState) => {
       if (settled) return;
       settled = true;
+      clearTimeout(timeout);
       releaseObjectUrl();
       state = nextState;
       if (nextState === "error") image = null;
       resolve();
     };
+    activity();
 
-    nextImage.addEventListener("load", () => {
+    nextImage.addEventListener("load", async () => {
+      try { await nextImage.decode(); } catch { settle('error'); return; }
+      if (settled) return;
       const width = Math.floor(nextImage.naturalWidth / COLUMNS);
       const height = Math.floor(nextImage.naturalHeight / ROWS);
       const valid = width > 0 && height > 0 &&
@@ -106,17 +117,14 @@ function beginLoad(): Promise<void> {
     }, { once: true });
     nextImage.addEventListener("error", () => settle("error"), { once: true });
     nextImage.decoding = "async";
+    nextImage.fetchPriority = 'high';
 
-    // Fetch first so an optional missing sheet resolves to the procedural
-    // fallback without a noisy image-resource error in the browser console.
+    // Fetch first to validate the response and allow a stalled download to be
+    // aborted. The presentation gate decides when to retry or use a fallback.
     if (typeof fetch !== "undefined" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
-      void fetch(SHEET_PATH).then(async (response) => {
-        const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
-        if (!response.ok || !contentType.startsWith("image/")) {
-          settle("error");
-          return;
-        }
-        objectUrl = URL.createObjectURL(await response.blob());
+      void fetchImageBlob(SHEET_PATH, controller.signal, activity).then(blob => {
+        if (settled) return;
+        objectUrl = URL.createObjectURL(blob);
         nextImage.src = objectUrl;
       }).catch(() => settle("error"));
     } else {
@@ -127,9 +135,9 @@ function beginLoad(): Promise<void> {
   return loadPromise;
 }
 
-/** Begin loading the optional local portrait atlas. This promise never rejects. */
-export async function preloadSelectPortraits(): Promise<void> {
-  await beginLoad();
+/** Load portraits, or retry a failed attempt. This promise never rejects. */
+export async function preloadSelectPortraits(retry = false): Promise<void> {
+  await beginLoad(retry);
 }
 
 export function isSelectPortraitsReady(): boolean {

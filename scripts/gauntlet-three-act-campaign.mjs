@@ -187,7 +187,8 @@ try {
   }, undefined, { timeout: 20_000 });
   const roadEntry = await state();
   assertCoop(roadEntry, coopHeroes, 'road act 2 retained team');
-  assert(!roadEntry.campaign.standalone && roadEntry.campaign.activePlayers === 1, 'Campaign road should retain its route with P1 driving', roadEntry.campaign);
+  assert(!roadEntry.campaign.standalone && roadEntry.campaign.activePlayers === 2, 'Campaign road should retain its route and both riders', roadEntry.campaign);
+  assert(JSON.stringify(roadEntry.roadRash.players.map(player => player.hero)) === JSON.stringify(coopHeroes), 'Road Rash changed the cooperative riders', roadEntry.roadRash);
   assert(roadEntry.roadRash.playerHero === coopHeroes[0], 'Road Rash changed the selected P1 heroine', roadEntry.roadRash);
   const roadEntryScore = roadEntry.score;
   record('road-rash-act-2', roadEntry);
@@ -221,7 +222,7 @@ try {
   assert(segmentOf(brawler) === 'brawler', 'Act 2 has the wrong campaign segment', brawler.campaign);
   assertCoop(brawler, coopHeroes, 'brawler act 2');
   assert(brawler.score === roadEntryScore + report.road.road.score, 'Road score was lost or committed more than once', { before: roadEntryScore, road: report.road.road.score, after: brawler.score });
-  assert(brawler.campaign.activePlayers === 2, 'P2 did not rejoin after Road Rash', brawler.campaign);
+  assert(brawler.campaign.activePlayers === 2, 'Brawler lost the cooperative team after Road Rash', brawler.campaign);
   record('brawler-act-2', brawler);
   await capture('04-brawler-act-2');
 
@@ -317,9 +318,14 @@ try {
   // Legacy/debug routes are part of the production review harness. The
   // stage-transition route must enter Road Rash, while the
   // standalone rider boss remains a self-contained victory route.
-  await page.goto(`${baseURL}/?scene=stage-transition&hero=bruna`, { waitUntil: 'networkidle' });
-  await page.waitForFunction(() => window.__BCFV_DEBUG__?.snapshot().boss?.kind === 'miniboss');
-  await capture('11-stage-transition-miniboss');
+  await page.goto(`${baseURL}/?scene=stage-transition&hero=bruna`, { waitUntil: 'domcontentloaded' });
+  // This debug route automatically defeats a one-HP miniboss. It can already
+  // be gone by the time navigation/assets settle; its history records the event.
+  await page.waitForFunction(() => {
+    const snapshot = window.__BCFV_DEBUG__?.snapshot();
+    return snapshot?.boss?.kind === 'miniboss' || snapshot?.campaign?.history.includes('miniboss-defeated');
+  });
+  await capture('11-stage-transition');
   await page.waitForFunction(() => {
     const snapshot = window.__BCFV_DEBUG__.snapshot();
     return snapshot.state === 'road-rash' && (snapshot.act ?? snapshot.campaign?.act) === 2;

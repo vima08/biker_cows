@@ -108,6 +108,7 @@ function getPanorama(): HTMLImageElement | null {
       panorama = null;
       panoramaState = 'failed';
     };
+    image.fetchPriority = 'low';
     image.src = PANORAMA_URL;
   } catch {
     panoramaState = 'failed';
@@ -136,6 +137,7 @@ function getRoadProps(): HTMLImageElement | null {
       roadProps = null;
       roadPropsState = 'failed';
     };
+    image.fetchPriority = 'low';
     image.src = ROAD_PROPS_URL;
   } catch {
     roadPropsState = 'failed';
@@ -164,6 +166,7 @@ function getShoulderStrip(): HTMLImageElement | null {
       shoulderStrip = null;
       shoulderStripState = 'failed';
     };
+    image.fetchPriority = 'low';
     image.src = SHOULDER_STRIP_URL;
   } catch {
     shoulderStripState = 'failed';

@@ -262,11 +262,12 @@ function loadSpriteSheet(id: SpriteSheetId): Promise<void> {
     image.addEventListener("error", fail, { once: true });
 
     image.decoding = "async";
+    image.fetchPriority = 'low';
 
     // Fetching first avoids the browser's noisy "Failed to load resource" console
     // message for optional atlases while still leaving their status observable.
     if (typeof fetch !== "undefined" && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
-      void fetch(definition.path).then(async (response) => {
+      void fetch(definition.path, { priority: 'low' } as RequestInit).then(async (response) => {
         const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
         if (!response.ok || !contentType.startsWith("image/")) {
           fail();

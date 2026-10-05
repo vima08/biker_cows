@@ -37,6 +37,15 @@ export const FURNACE_DISTRICT: BrawlerLevelDefinition = {
   length: 6700,
   floorNear: 478,
   floorFar: 302,
+  street: [
+    { width: 1000, kind: 'shops', label: 'CINDER AVENUE', accent: '#ef679e' },
+    { width: 1000, kind: 'garage', label: 'VENUS MOTOR WORKS', accent: '#eab564' },
+    { width: 800, kind: 'alley', label: 'ASH LANE', accent: '#789ba7' },
+    { width: 900, kind: 'crossroads', label: 'FOUNDRY / EAST DOCKS', accent: '#71c8b9' },
+    { width: 1000, kind: 'market', label: 'NIGHT MARKET', accent: '#ca71ad' },
+    { width: 1000, kind: 'depot', label: 'FREIGHT TERMINAL 06', accent: '#c29156' },
+    { width: 1000, kind: 'forge', label: 'THE FURNACE', accent: '#ff854e' },
+  ],
   assets: {
     backdrop: assetUrl('assets/brawler/furnace-district-panorama.png'),
     floor: assetUrl('assets/brawler/furnace-floor.png'),

@@ -44,6 +44,14 @@ export interface BrawlerLevelDefinition extends LevelMetadata {
   readonly bossName: string;
   readonly assets: BrawlerLevelAssets;
   readonly waves: readonly BrawlerWaveDefinition[];
+  readonly street?: readonly BrawlerStreetSection[];
+}
+
+export interface BrawlerStreetSection {
+  readonly width: number;
+  readonly kind: 'shops' | 'garage' | 'alley' | 'crossroads' | 'market' | 'depot' | 'forge';
+  readonly label: string;
+  readonly accent: string;
 }
 
 export type LevelDefinition = RiderLevelDefinition | RoadRashLevelDefinition | BrawlerLevelDefinition;

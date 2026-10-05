@@ -16,6 +16,7 @@ window.addEventListener('pagehide', () => { void audioBridge.destroy(); }, { onc
 
 const game = new VenusGame(canvas);
 game.start();
+document.querySelector('#boot-loader')?.remove();
 
 declare global {
   interface Window {

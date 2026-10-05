@@ -10,7 +10,7 @@ import {
   ENVIRONMENT_ROAD_BOTTOM,
   ENVIRONMENT_ROAD_TOP,
 } from './environment';
-import { drawHeroPortrait, preloadSelectPortraits } from './selectPortraits';
+import { drawHeroPortrait } from './selectPortraits';
 import { drawSpriteFrame, getSpriteSheetStatus, preloadSpriteSheets } from './spriteAtlas';
 import { BeatEmUpStage, type BrawlerControls, type BrawlerHeroId } from './beatEmUp';
 import { RoadRashStage, type RoadRashControls } from './roadRash';
@@ -18,6 +18,7 @@ import { gameEvents } from './core/GameEvents';
 import { HighScoreStore, type HighScore } from './core/HighScoreStore';
 import { assetUrl } from './assetUrl';
 import { InputController } from './core/InputController';
+import { PresentationAssets, type PresentationLoadingStatus } from './core/PresentationAssets';
 import { ContinueSystem, type CampaignCheckpoint } from './core/ContinueSystem';
 import {
   CAMPAIGN_TIMING,
@@ -196,11 +197,14 @@ export class VenusGame {
   private titleChoice = 0;
   private highScores: HighScore[] = [];
   private lastFriendlyFireProbe: {ownerId:number;targetId:number;crossedTarget:boolean;before:Array<{id:number;hp:number;armor:number}>;after:Array<{id:number;hp:number;armor:number}>} | null = null;
-  private titleArt = new Image();
-  private introArt: HTMLImageElement[] = [];
+  private readonly presentation = new PresentationAssets();
+  private optionalAssetsStarted = false;
+  private loadingClock = 0;
+  private get titleArt() { return this.presentation.title.image; }
+  private get introArt() { return this.presentation.intro.map(asset => asset.image); }
   private introPanel = 0;
   private introClock = 0;
-  private outroArt: HTMLImageElement[] = [];
+  private get outroArt() { return this.presentation.outro.map(asset => asset.image); }
   private outroPanel = 0;
   private outroClock = 0;
   private debugScene: BrawlerDebugScene | null = null;
@@ -222,23 +226,6 @@ export class VenusGame {
     this.pausedFrame.width = W;
     this.pausedFrame.height = H;
     this.input = new InputController(canvas);
-    // Atlas loading is deliberately non-blocking. Until every individual PNG is
-    // ready, its existing procedural counterpart remains the renderer of record.
-    void preloadSpriteSheets();
-    void preloadSelectPortraits();
-    this.titleArt.src = assetUrl('assets/venus-title-key-art.png');
-    this.introArt = INTRO_PANELS.map(panel => {
-      const image = new Image();
-      image.decoding = 'async';
-      image.src = panel.src;
-      return image;
-    });
-    this.outroArt = OUTRO_PANELS.map(panel => {
-      const image = new Image();
-      image.decoding = 'async';
-      image.src = panel.src;
-      return image;
-    });
     this.highScores = this.highScoreStore.load();
     const query = new URLSearchParams(location.search);
     const hero = query.get('hero') as HeroId | null;
@@ -279,6 +266,14 @@ export class VenusGame {
       else if (scene === 'sustain') this.debugSustain(query.get('rapid') === '1');
       else this.elapsed = clamp(Number(query.get('time')) || 0, 0, LEVEL_BOSS_TIME);
     }
+    this.presentation.prepare(this.mode);
+    if (!['title','select','intro','outro'].includes(this.mode)) this.preloadGameplayArt();
+  }
+
+  private preloadGameplayArt() {
+    if (this.optionalAssetsStarted || !isArtEnabled()) return;
+    this.optionalAssetsStarted = true;
+    void preloadSpriteSheets();
   }
 
   start() {
@@ -300,6 +295,25 @@ export class VenusGame {
   };
 
   private update(dt: number) {
+    this.presentation.prepare(this.mode);
+    const loading = this.presentation.status(this.mode);
+    if (loading) {
+      this.loadingClock += dt;
+      if (loading.failed) {
+        if (this.input.tap('Enter','Space','KeyZ','KeyR','P1PadFire','P2PadFire')) {
+          this.presentation.prepare(this.mode, true);
+          this.loadingClock = 0;
+        } else if (this.input.tap('KeyF','P1PadSpecial','P2PadSpecial')) {
+          this.presentation.continueWithoutImages(loading.scene);
+        }
+      }
+      return;
+    }
+    this.loadingClock = 0;
+    this.presentation.warmNext(this.mode);
+    // Critical menu artwork goes first on a slow connection. Optional gameplay
+    // atlases begin once the intro is ready, or on a direct gameplay/debug URL.
+    if (!['title','select'].includes(this.mode)) this.preloadGameplayArt();
     if (this.mode === 'title') this.updateTitle();
     else if (this.mode === 'select') this.updateSelect();
     else if (this.mode === 'intro') this.updateIntro(dt);
@@ -345,6 +359,7 @@ export class VenusGame {
     this.introPanel = 0;
     this.introClock = 0;
     this.mode = 'intro';
+    this.presentation.prepare('intro');
     emitAudio('menu_accept');
     emitMusic('intro', .36);
   }
@@ -369,8 +384,7 @@ export class VenusGame {
       this.advanceIntro();
       return;
     }
-    const image = this.introArt[this.introPanel];
-    if (image?.complete && image.naturalWidth > 0) this.introClock += dt;
+    if (!this.presentation.status('intro')) this.introClock += dt;
     if (this.introClock >= INTRO_PANELS[this.introPanel].duration) this.advanceIntro();
   }
 
@@ -378,6 +392,7 @@ export class VenusGame {
     this.outroPanel = 0;
     this.outroClock = 0;
     this.mode = 'outro';
+    this.presentation.prepare('outro');
     emitMusic('victory');
   }
 
@@ -401,8 +416,7 @@ export class VenusGame {
       this.advanceOutro();
       return;
     }
-    const image = this.outroArt[this.outroPanel];
-    if (image?.complete && image.naturalWidth > 0) this.outroClock += dt;
+    if (!this.presentation.status('outro')) this.outroClock += dt;
     if (this.outroClock >= OUTRO_PANELS[this.outroPanel].duration) this.advanceOutro();
   }
 
@@ -1348,8 +1362,9 @@ export class VenusGame {
     const segment=campaignSegment(this.campaignAct,this.roadRash?'road-rash':this.brawler?'brawler':'rider');
     const segmentDuration=riderSegmentDuration(this.campaignAct);
     const sourceElapsed=riderSourceElapsed(this.campaignAct,this.elapsed);
+    const loading = this.presentation.status(this.mode);
     return {
-      state: this.mode, stage:this.campaignAct,act:this.campaignAct,segment,hero: HEROES[this.selected].id, score: Math.floor(this.score),
+      state: loading ? 'loading' : this.mode, loading, stage:this.campaignAct,act:this.campaignAct,segment,hero: HEROES[this.selected].id, score: Math.floor(this.score),
       artEnabled:isArtEnabled(),renderMode:getRenderMode(),debugScene:this.debugScene,
       campaign:{
         act:this.campaignAct,segment,levelId:this.currentLevelId,transition:this.campaignTransition,history:[...this.campaignHistory],
@@ -1362,8 +1377,8 @@ export class VenusGame {
         timing:{...CAMPAIGN_TIMING},
       },
       continue:this.continues.snapshot(),
-      intro:this.mode==='intro'?{panel:this.introPanel,total:INTRO_PANELS.length,time:Number(this.introClock.toFixed(2)),skippable:true,assetReady:Boolean(this.introArt[this.introPanel]?.complete&&this.introArt[this.introPanel].naturalWidth)}:null,
-      outro:this.mode==='outro'?{panel:this.outroPanel,total:OUTRO_PANELS.length,time:Number(this.outroClock.toFixed(2)),skippable:true,assetReady:Boolean(this.outroArt[this.outroPanel]?.complete&&this.outroArt[this.outroPanel].naturalWidth)}:null,
+      intro:this.mode==='intro'?{panel:this.introPanel,total:INTRO_PANELS.length,time:Number(this.introClock.toFixed(2)),skippable:!loading,assetReady:this.presentation.intro[this.introPanel].state==='ready'}:null,
+      outro:this.mode==='outro'?{panel:this.outroPanel,total:OUTRO_PANELS.length,time:Number(this.outroClock.toFixed(2)),skippable:!loading,assetReady:this.presentation.outro[this.outroPanel].state==='ready'}:null,
       coop:this.coopEnabled,coopEnabled:this.coopEnabled,selectedHeroes:this.selectedHeroes.map(index=>HEROES[index].id),selectReady:[...this.selectReady],
       coopControls:{players:this.coopEnabled?2:1,keyboard:{p1:'WASD / Z X C',p2:'ARROWS / NUM1 NUM2 NUM3'},gamepadSlots:this.coopEnabled?2:1},
       players:this.players.map(p=>({id:p.id,hero:HEROES[p.heroIndex].id,x:Number(p.x.toFixed(2)),y:Number((p.y-p.jump).toFixed(2)),groundY:Number(p.y.toFixed(2)),hp:Number(p.hp.toFixed(2)),armor:Number(p.armor.toFixed(2)),alive:p.alive,downed:p.downed,fireHeld:p.fireHeld,shotsFired:p.shotsFired,weapon:p.weapon,weaponRank:p.weaponRank,
@@ -1473,8 +1488,39 @@ export class VenusGame {
     for(let i=0;i<Math.max(3,size/12);i++)this.particles.push({x:x+rnd(-size*.25,size*.25),y:y+rnd(-size*.2,size*.2),vx:rnd(-50,40),vy:rnd(-85,-20),life:rnd(.5,1.25),max:1.25,size:rnd(size*.08,size*.22),color:'#30243a',kind:'smoke',rot:0});
   }
 
+  private drawLoading(status: PresentationLoadingStatus) {
+    const c = this.ctx;
+    c.save();
+    const background = c.createLinearGradient(0, 0, W, H);
+    background.addColorStop(0, '#10091e'); background.addColorStop(1, '#29112e');
+    c.fillStyle = background; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#ef4268'; c.fillRect(80, 70, 800, 3);
+    c.fillStyle = '#5de4e0'; c.fillRect(80, 457, 800, 3);
+    this.text('BIKER COWS FROM VENUS', 480, 123, 30, '#fff2b4', 'center', true);
+    const labels = { title: 'LOADING COVER', select: 'PREPARING RIDERS', intro: 'LOADING INTRO', outro: 'LOADING FINALE' };
+    this.text(status.failed ? 'SOME IMAGES COULD NOT BE LOADED' : labels[status.scene], 480, 197, 21, status.failed ? '#ff698c' : '#5de4e0', 'center', true);
+    c.fillStyle = '#080613'; c.fillRect(230, 225, 500, 22);
+    c.fillStyle = '#ffcf47'; c.fillRect(233, 228, 494 * status.ready / status.total, 16);
+    c.strokeStyle = '#70405c'; c.lineWidth = 2; c.strokeRect(230, 225, 500, 22);
+    this.text(`${status.percent}%   ${status.ready} / ${status.total} IMAGES READY`, 480, 278, 15, '#fff2b4', 'center', true);
+    status.assets.forEach((asset, index) => {
+      const marker = asset.state === 'ready' ? 'READY' : asset.state === 'error' ? 'RETRY' : 'LOADING';
+      this.text(`${asset.label.toUpperCase()}  //  ${marker}`, 480, 310 + index * 22, 12, asset.state === 'error' ? '#ff698c' : asset.state === 'ready' ? '#5de4e0' : '#b4a2c2', 'center');
+    });
+    if (status.failed) {
+      this.text('ENTER / CLICK  RETRY    F  CONTINUE WITH SIMPLE ART', 480, 424, 13, '#fff2b4', 'center', true);
+    } else {
+      const dots = '.'.repeat(1 + Math.floor(this.time * 2) % 3);
+      this.text(`${this.loadingClock > 8 ? 'STILL LOADING - THANKS FOR WAITING' : 'PLEASE WAIT'}${dots}`, 480, 424, 13, '#d7b8df', 'center');
+    }
+    this.text('NEON STAMPEDE', 480, 492, 13, '#887995', 'center', true);
+    c.restore();
+  }
+
   private draw(){
     const c=this.ctx;
+    const loading = this.presentation.status(this.mode);
+    if (loading) { this.drawLoading(loading); return; }
     if(this.mode==='paused'){
       c.drawImage(this.pausedFrame,0,0);
       this.drawPause();
@@ -2137,7 +2183,7 @@ export class VenusGame {
       c.drawImage(image,(W-dw)/2+(ease-.5)*panel.pan,(H-dh)/2,dw,dh);
     }else{
       const loading=c.createLinearGradient(0,0,W,H);loading.addColorStop(0,'#63283b');loading.addColorStop(.5,'#e18b54');loading.addColorStop(1,'#163b52');c.fillStyle=loading;c.fillRect(0,0,W,H);
-      this.text('LOADING COMIC PANEL...',480,266,21,'#fff4c2','center',true);
+      this.text('TRANSMISSION UNAVAILABLE',480,266,21,'#fff4c2','center',true);
     }
     const topShade=c.createLinearGradient(0,0,0,118);topShade.addColorStop(0,'rgba(3,2,10,.84)');topShade.addColorStop(1,'rgba(3,2,10,0)');c.fillStyle=topShade;c.fillRect(0,0,W,118);
     const bottomShade=c.createLinearGradient(0,292,0,H);bottomShade.addColorStop(0,'rgba(3,2,10,0)');bottomShade.addColorStop(.43,'rgba(3,2,10,.68)');bottomShade.addColorStop(1,'rgba(3,2,10,.98)');c.fillStyle=bottomShade;c.fillRect(0,292,W,H-292);
@@ -2166,7 +2212,7 @@ export class VenusGame {
       c.drawImage(image,(W-dw)/2+(ease-.5)*panel.pan,(H-dh)/2,dw,dh);
     }else{
       const loading=c.createLinearGradient(0,0,W,H);loading.addColorStop(0,'#28142f');loading.addColorStop(.5,'#b56a48');loading.addColorStop(1,'#102a45');c.fillStyle=loading;c.fillRect(0,0,W,H);
-      this.text('LOADING FINAL PANEL...',480,266,21,'#fff4c2','center',true);
+      this.text('TRANSMISSION UNAVAILABLE',480,266,21,'#fff4c2','center',true);
     }
     const topShade=c.createLinearGradient(0,0,0,112);topShade.addColorStop(0,'rgba(2,3,11,.84)');topShade.addColorStop(1,'rgba(2,3,11,0)');c.fillStyle=topShade;c.fillRect(0,0,W,112);
     const bottomShade=c.createLinearGradient(0,310,0,H);bottomShade.addColorStop(0,'rgba(2,3,11,0)');bottomShade.addColorStop(.45,'rgba(2,3,11,.62)');bottomShade.addColorStop(1,'rgba(2,3,11,.98)');c.fillStyle=bottomShade;c.fillRect(0,310,W,H-310);

@@ -5,6 +5,7 @@ import { isArtEnabled } from '../debug/runtime';
 import { BRAWLER_HEROES } from './catalog';
 import { enemyAttackDuration, enemyAttackPhase, resolveEnemyMotionPose } from './enemyMotion';
 import { playerWalkFrameDurationMs, resolvePlayerMotionPose, resolvePlayerReactionPose } from './motion';
+import { StreetRibbon } from './StreetRibbon';
 import type {
   BeatEmUpOptions,
   BrawlerControls,
@@ -66,6 +67,7 @@ export class BeatEmUpStage {
   private readonly bossSheet: ImageAsset;
   private readonly backdrop: ImageAsset;
   private readonly floor: ImageAsset;
+  private readonly street: StreetRibbon | null;
   private readonly debugPulse = { jumpCycle: -1, attackCycle: -1 };
 
   constructor(
@@ -93,6 +95,7 @@ export class BeatEmUpStage {
     this.bossSheet = new ImageAsset(options.level.assets.boss, 3, 2);
     this.backdrop = new ImageAsset(options.level.assets.backdrop);
     this.floor = new ImageAsset(options.level.assets.floor);
+    this.street = options.level.street ? new StreetRibbon(options.level.street) : null;
     if (options.debugScene) {
       this.status = 'running';
       this.introTimer = 0;
@@ -661,11 +664,15 @@ export class BeatEmUpStage {
     ctx.fillRect(0, 0, W, H);
     if (isArtEnabled() && this.backdrop.state === 'ready' && this.backdrop.image) {
       const image = this.backdrop.image;
-      const cropWidth = Math.min(image.naturalWidth, Math.round(image.naturalHeight * (W / 320)));
-      const travel = Math.max(0, image.naturalWidth - cropWidth);
-      const sourceX = travel ? Math.round((this.cameraX / Math.max(1, this.options.level.length - W)) * travel) : 0;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(image, sourceX, 0, cropWidth, image.naturalHeight, 0, 0, W, 322);
+      if (this.street) {
+        StreetRibbon.drawPanorama(ctx, image, this.cameraX, this.options.level.length);
+      } else {
+        const cropWidth = Math.min(image.naturalWidth, Math.round(image.naturalHeight * (W / 320)));
+        const travel = Math.max(0, image.naturalWidth - cropWidth);
+        const sourceX = travel ? Math.round((this.cameraX / Math.max(1, this.options.level.length - W)) * travel) : 0;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(image, sourceX, 0, cropWidth, image.naturalHeight, 0, 0, W, 322);
+      }
     } else {
       ctx.fillStyle = '#3e1d44'; ctx.fillRect(0, 80, W, 242);
       ctx.fillStyle = '#9b483e'; ctx.fillRect(0, 220, W, 102);
@@ -675,6 +682,10 @@ export class BeatEmUpStage {
         ctx.fillStyle = '#f05d54'; ctx.fillRect(x + 12, 138, 6, 92);
         ctx.fillStyle = '#5de4e0'; ctx.fillRect(x + 30, 160, 44, 4);
       }
+    }
+    if (this.street) {
+      this.street.draw(ctx, this.cameraX);
+      return;
     }
     if (isArtEnabled() && this.floor.state === 'ready' && this.floor.image) {
       const tileWidth = Math.round(254 * this.floor.image.naturalWidth / this.floor.image.naturalHeight);
@@ -704,6 +715,7 @@ export class BeatEmUpStage {
 
   private drawForeground(): void {
     const ctx = this.ctx;
+    if (this.street) return;
     if (isArtEnabled() && this.floor.state === 'ready') {
       ctx.fillStyle = '#07050c99'; ctx.fillRect(0, 532, W, 8);
       ctx.fillStyle = '#56334899'; ctx.fillRect(0, 532, W, 2);
