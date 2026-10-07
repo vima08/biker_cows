@@ -45,7 +45,7 @@ const waitForPreview = async (timeoutMs = 20_000) => {
 let preview = null;
 if (!(await reachable())) {
   assert(['127.0.0.1', 'localhost', '::1'].includes(previewHost), 'Refusing to start a local preview for a remote BCFV_URL', baseURL.href);
-  preview = spawn(process.execPath, [path.resolve('node_modules/vite/bin/vite.js'), 'preview', '--host', previewHost, '--port', String(previewPort), '--strictPort'], {
+  preview = spawn(process.execPath, [path.resolve('node_modules/vite/bin/vite.js'), 'preview', '--configLoader', 'runner', '--host', previewHost, '--port', String(previewPort), '--strictPort'], {
     cwd: process.cwd(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
   });
   report.preview.startedByHarness = true;

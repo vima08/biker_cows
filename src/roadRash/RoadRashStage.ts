@@ -8,14 +8,16 @@ import type {
 } from './types';
 import { assetUrl } from '../assetUrl';
 import { isArtEnabled } from '../debug/runtime';
+import { prepareRiderAtlas, type RiderAtlas } from './riderAtlas';
 
 const W = 960;
 const H = 540;
 // The open-road panorama's asphalt converges at source pixel ~811,582.
-// At the 960x540 game resolution that is (466,323). Keep both render modes and
+// At source size 1672x941, the 960x540 projection is (466,334).
+// Keep both render modes and
 // every projected object registered to that point; near the camera the road
 // centre eases back to the canvas centre so player/collision anchors stay put.
-const HORIZON = 323;
+const HORIZON = 334;
 const VANISH_X = 466;
 const ROAD_BOTTOM = 524;
 const MAX_SPEED = 224;
@@ -47,6 +49,8 @@ interface RoadEntity {
   hitFlash: number;
   reactionTimer: number;
   recoilSide: number;
+  attackSide?: -1 | 1;
+  attackTargetId?: 1 | 2;
   wobble: number;
   color: string;
 }
@@ -120,9 +124,9 @@ export class RoadRashStage {
   private readonly panorama: HTMLImageElement | null;
   private readonly roadObjectsAtlas: HTMLImageElement | null;
   private readonly ridersAtlas: HTMLImageElement | null;
-  private ridersAtlasCanvas: HTMLCanvasElement | null = null;
+  private ridersAtlasCanvas: RiderAtlas | null = null;
   private readonly heroinesAtlas: HTMLImageElement | null;
-  private heroinesAtlasCanvas: HTMLCanvasElement | null = null;
+  private heroinesAtlasCanvas: RiderAtlas | null = null;
 
   constructor(options: RoadRashStageOptions = {}) {
     this.rngState = (options.seed ?? 0x9e3779b9) >>> 0;
@@ -251,7 +255,7 @@ export class RoadRashStage {
       if (!steer) this.rider.lean = lerp(this.rider.lean, 0, Math.min(1, dt * 6));
 
       const attackPressed = Boolean(controls.attackPressed || controls.specialPressed || (controls.attack && this.rider.attackTimer <= 0));
-      if (attackPressed && this.rider.attackTimer <= 0) this.beginAttack();
+      if (attackPressed && this.rider.attackTimer <= 0 && this.rider.playerRecoil <= 0) this.beginAttack();
 
     }
     this.rider = living[0] ?? this.riders[0];
@@ -342,7 +346,9 @@ export class RoadRashStage {
     const lead = this.rider;
     for (const entity of this.entities) {
       if (!entity.active) continue;
-      this.rider = this.riders.filter(rider => rider.hp > 0).reduce((nearest, rider) => Math.abs(entity.lane - rider.lane) < Math.abs(entity.lane - nearest.lane) ? rider : nearest, lead);
+      const living = this.riders.filter(rider => rider.hp > 0);
+      const committedTarget = entity.attackTimer > 0 ? living.find(rider => rider.id === entity.attackTargetId) : undefined;
+      this.rider = committedTarget ?? living.reduce((nearest, rider) => Math.abs(entity.lane - rider.lane) < Math.abs(entity.lane - nearest.lane) ? rider : nearest, lead);
       entity.hitFlash = Math.max(0, entity.hitFlash - dt);
       entity.reactionTimer = Math.max(0, entity.reactionTimer - dt);
       entity.attackTimer = Math.max(0, entity.attackTimer - dt);
@@ -398,6 +404,8 @@ export class RoadRashStage {
           // A longer wind-up gives the mace/baton silhouette a readable warning
           // before the active frames begin, especially for the oversized boss.
           entity.attackTimer = isBoss ? .82 : .54;
+          entity.attackTargetId = this.rider.id;
+          entity.attackSide = this.rider.lane < entity.lane ? -1 : 1;
           entity.attackCooldown = isBoss ? 2.05 : 1.2 + this.random() * .8;
         }
       }
@@ -430,8 +438,10 @@ export class RoadRashStage {
         // Keep the white contact pose to a single beat. The longer recoil that
         // follows carries the motion without hiding both riders in one flash.
         entity.hitFlash = .065;
+        entity.attackTimer = 0;
         entity.reactionTimer = entity.kind === 'boss' ? .68 : .54;
         entity.recoilSide = this.rider.attackSide;
+        entity.attackSide = this.rider.attackSide < 0 ? 1 : -1;
         entity.lane = clamp(entity.lane + this.rider.attackSide * (entity.kind === 'boss' ? .15 : .23), -1.05, 1.05);
         this.rider.attackConnected = true;
         this.rider.attackTimer = .48;
@@ -441,17 +451,18 @@ export class RoadRashStage {
         this.score += entity.kind === 'boss' ? 400 : 180;
         this.shake = Math.max(this.shake, 5);
         const impact = this.project(dz, entity.lane);
-        this.emitImpact(lerp(480 + this.rider.lane * 215, impact.x, .58), impact.y - 88 * impact.scale, entity.kind === 'boss' ? '#fde047' : '#fef08a');
+        this.emitImpact(lerp(this.project(0, this.rider.lane).x, impact.x, .58), impact.y - 88 * impact.scale, entity.kind === 'boss' ? '#fde047' : '#fef08a');
         this.emitSound('melee_hit', .9, entity.kind === 'boss' ? .72 : .94);
         if (entity.hp <= 0) this.defeatRival(entity);
       }
 
-      const enemyAttackActive = isBoss
+      const enemyAttackActive = entity.reactionTimer <= 0 && (isBoss
         ? entity.attackTimer > .12 && entity.attackTimer <= .31
-        : entity.attackTimer > .16 && entity.attackTimer < .3;
+        : entity.attackTimer > .16 && entity.attackTimer < .3);
       const enemyLongitudinalReach = isBoss ? 64 : 45;
       const enemyLateralReach = isBoss ? .5 : .42;
-      if ((entity.kind === 'rival' || isBoss) && enemyAttackActive &&
+      const playerOnEnemyAttackSide = (entity.attackSide ?? 1) * (this.rider.lane - entity.lane) >= -.08;
+      if ((entity.kind === 'rival' || isBoss) && enemyAttackActive && playerOnEnemyAttackSide &&
           Math.abs(dz) < enemyLongitudinalReach && lateral < enemyLateralReach) {
         // Dropping below the active range makes each committed swing deal at
         // most one hit. Invulnerability remains a second line of protection.
@@ -480,7 +491,8 @@ export class RoadRashStage {
     this.rivalsDefeated++;
     this.score += entity.kind === 'boss' ? 5000 : 900;
     for (let index = 0; index < 14; index++) {
-      this.particles.push({ x: 480 + (entity.lane - this.rider.lane) * 190, y: 360, vx: (this.random() - .5) * 190,
+      const impact = this.project(entity.distance - this.distance, entity.lane);
+      this.particles.push({ x: impact.x, y: impact.y - 80 * impact.scale, vx: (this.random() - .5) * 190,
         vy: -35 - this.random() * 145, life: .5 + this.random() * .45, maxLife: 1, size: 2 + this.random() * 4,
         color: index % 3 ? entity.color : '#fff7ae', kind: index % 4 ? 'spark' : 'star' });
     }
@@ -531,11 +543,12 @@ export class RoadRashStage {
     this.rider.invulnerability = .72;
     this.rider.hitFlash = .25;
     this.rider.attackConnected = false;
+    this.rider.attackTimer = 0;
     this.rider.attackSide = push >= 0 ? -1 : 1;
     this.rider.playerRecoil = .48;
     this.shake = Math.max(this.shake, amount > 15 ? 10 : 6);
     this.rider.lane = clamp(this.rider.lane + push * .16, -1.1, 1.1);
-    this.emitImpact(480 + this.rider.lane * 215, 405, '#fb7185');
+    this.emitImpact(this.project(0, this.rider.lane).x, ROAD_BOTTOM - 109, '#fb7185');
     this.emitSound('rider_hurt', .85, .8);
   }
 
@@ -609,19 +622,13 @@ export class RoadRashStage {
   draw(ctx: CanvasRenderingContext2D): void {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    const shakeX = this.shake ? (this.random() - .5) * this.shake : 0;
-    const shakeY = this.shake ? (this.random() - .5) * this.shake * .55 : 0;
+    const shakeX = Math.sin(this.elapsed * 173.3) * this.shake * .5;
+    const shakeY = Math.cos(this.elapsed * 217.7) * this.shake * .275;
     ctx.translate(px(shakeX), px(shakeY));
     this.drawSky(ctx);
     this.drawRoad(ctx);
     this.drawForegroundMotion(ctx);
     this.drawWorldObjects(ctx);
-    const lead = this.rider;
-    for (const rider of this.riders) {
-      this.rider = rider;
-      if (rider.hp > 0) this.drawPlayer(ctx);
-    }
-    this.rider = lead;
     this.drawParticles(ctx);
     ctx.restore();
     this.drawHud(ctx);
@@ -674,10 +681,10 @@ export class RoadRashStage {
     const depth = clamp(1 - relativeDistance / 620, 0, 1);
     const perspective = depth * depth;
     const y = HORIZON + perspective * (ROAD_BOTTOM - HORIZON);
-    const roadHalf = lerp(10, 486, perspective);
-    const curve = this.roadCurve(this.visualDistance + relativeDistance) * (1 - depth) * 210;
+    const roadHalf = 486 * perspective;
+    const curve = this.roadCurve(this.visualDistance + relativeDistance) * (1 - depth) * perspective * 210;
     const roadCenter = lerp(VANISH_X, W / 2, perspective);
-    return { x: roadCenter + curve + lane * roadHalf * .72, y, scale: .12 + perspective * 1.02, roadHalf };
+    return { x: roadCenter + curve + lane * roadHalf * .72, y, scale: perspective * 1.14, roadHalf };
   }
 
   private drawRoad(ctx: CanvasRenderingContext2D): void {
@@ -724,8 +731,6 @@ export class RoadRashStage {
       const roadCenter = lerp(VANISH_X, W / 2, phase);
       ctx.beginPath(); ctx.moveTo(roadCenter + side * spread, y); ctx.lineTo(roadCenter + side * (spread + 18 + phase * 42), y + 12 + phase * 28); ctx.stroke();
     }
-    // Player shadow anchors the sprite to the road.
-    ctx.fillStyle = '#0808138f'; ctx.beginPath(); ctx.ellipse(480 + this.rider.lane * 215, 516, 38, 8, 0, 0, Math.PI * 2); ctx.fill();
   }
 
   /**
@@ -806,16 +811,22 @@ export class RoadRashStage {
       }
     }
 
-    const visible = this.entities
+    const visible: Array<{ entity?: RoadEntity; rider?: RoadPlayer; dz: number }> = this.entities
       .map(entity => ({ entity, dz: entity.distance - this.distance }))
-      .filter(item => item.entity.active && item.dz > -35 && item.dz < 620)
-      .sort((a, b) => b.dz - a.dz);
+      .filter(item => item.entity.active && item.dz > -35 && item.dz < 620);
+    for (const rider of this.riders) if (rider.hp > 0) visible.push({ rider, dz: 0 });
+    visible.sort((a, b) => b.dz - a.dz);
+    const lead = this.rider;
     for (const item of visible) {
-      const pos = this.project(item.dz, item.entity.lane);
-      if (item.entity.kind === 'oil') this.drawOil(ctx, pos.x, pos.y, pos.scale);
-      else if (item.entity.kind === 'car' || item.entity.kind === 'truck') this.drawVehicle(ctx, item.entity, pos.x, pos.y, pos.scale);
-      else this.drawRival(ctx, item.entity, pos.x, pos.y, pos.scale);
+      if (item.rider) { this.rider = item.rider; this.drawPlayer(ctx); continue; }
+      const entity = item.entity!;
+      const pos = this.project(item.dz, entity.lane);
+      if (pos.scale < .015) continue;
+      if (entity.kind === 'oil') this.drawOil(ctx, pos.x, pos.y, pos.scale);
+      else if (entity.kind === 'car' || entity.kind === 'truck') this.drawVehicle(ctx, entity, pos.x, pos.y, pos.scale);
+      else this.drawRival(ctx, entity, pos.x, pos.y, pos.scale);
     }
+    this.rider = lead;
 
     if (this.bossDefeatResolved && this.courseLength - this.distance < 620 && this.courseLength >= this.distance - 30) {
       const p = this.project(this.courseLength - this.distance, 0); const s = p.scale;
@@ -905,25 +916,16 @@ export class RoadRashStage {
     ctx.restore();
   }
 
-  private prepareAtlas(image: HTMLImageElement | null, accept: (canvas: HTMLCanvasElement) => void):void{
+  private prepareAtlas(image: HTMLImageElement | null, accept: (canvas: RiderAtlas) => void):void{
     if(!image||!image.naturalWidth||typeof document==='undefined')return;
-    const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
-    const context=canvas.getContext('2d',{willReadFrequently:true});if(!context)return;
-    context.drawImage(image,0,0);
-    const pixels=context.getImageData(0,0,canvas.width,canvas.height),data=pixels.data,w=canvas.width,h=canvas.height;
-    const queue=new Uint32Array(w*h);let head=0,tail=0;
-    const eligible=(index:number)=>{const o=index*4,r=data[o],g=data[o+1],b=data[o+2];return data[o+3]>0&&r>188&&g>188&&b>188&&Math.max(r,g,b)-Math.min(r,g,b)<22;};
-    const push=(index:number)=>{if(!eligible(index))return;data[index*4+3]=0;queue[tail++]=index;};
-    for(let x=0;x<w;x++){push(x);push((h-1)*w+x);}for(let y=1;y<h-1;y++){push(y*w);push(y*w+w-1);}
-    while(head<tail){const index=queue[head++],x=index%w,y=(index/w)|0;if(x>0)push(index-1);if(x<w-1)push(index+1);if(y>0)push(index-w);if(y<h-1)push(index+w);}
-    context.putImageData(pixels,0,0);accept(canvas);
+    accept(prepareRiderAtlas(image));
   }
 
-  private drawAtlasFrame(ctx:CanvasRenderingContext2D,atlas:HTMLCanvasElement|null,row:number,frame:number,x:number,y:number,width:number,height:number,flip=false):boolean{
+  private drawAtlasFrame(ctx:CanvasRenderingContext2D,atlas:RiderAtlas|null,row:number,frame:number,x:number,y:number,width:number,height:number,flip=false):boolean{
     if(!isArtEnabled()||!atlas)return false;
-    const cellW=atlas.width/6,cellH=atlas.height/3,sx=Math.floor(clamp(frame,0,5))*cellW,sy=Math.floor(clamp(row,0,2))*cellH;
+    const sprite=atlas.frames[Math.floor(clamp(row,0,2))][Math.floor(clamp(frame,0,5))];
     ctx.save();ctx.translate(px(x),px(y));ctx.scale(flip?-1:1,1);ctx.imageSmoothingEnabled=false;
-    ctx.drawImage(atlas,sx,sy,cellW,cellH,-width*.5,-height,width,height);ctx.restore();return true;
+    ctx.drawImage(sprite,-width,-height,width*2,height);ctx.restore();return true;
   }
 
   private drawRidersAtlasFrame(ctx:CanvasRenderingContext2D,row:number,frame:number,x:number,y:number,width:number,height:number,flip=false):boolean{
@@ -961,7 +963,10 @@ export class RoadRashStage {
       ctx.globalAlpha = alpha;
       ctx.translate(px(defeatX), px(y + dropY));
       ctx.rotate(rotation);
-      this.drawRidersAtlasFrame(ctx, 2, phase < .28 ? 4 : 5, 0, 0, atlasWidth, atlasHeight, false);
+      if (!this.drawRidersAtlasFrame(ctx, 2, phase < .28 ? 4 : 5, 0, 0, atlasWidth, atlasHeight, false)) {
+        // Render the ordinary vector silhouette under the same crash transform.
+        this.drawRival(ctx, { ...entity, hp: 1, hitFlash: 0, reactionTimer: .68 * (1 - phase) }, 0, 0, defeatScale);
+      }
       ctx.restore();
       return;
     }
@@ -974,22 +979,24 @@ export class RoadRashStage {
     const recoil = entity.reactionTimer > 0
       ? ((1 - reactionPhase) * 14 + Math.sin(clamp(reactionPhase, 0, 1) * Math.PI) * recoilDistance) * entity.recoilSide
       : 0;
-    const attacking=entity.attackTimer>0,side=entity.lane<this.rider.lane?1:-1;
+    const attacking=entity.attackTimer>0;
+    const side=entity.attackSide ?? (entity.lane<this.rider.lane?1:-1);
     const telegraphSplit=boss ? .43 : .34;
     const atlasFrame=entity.hitFlash>0?3:entity.reactionTimer>0?(reactionPhase<.62?4:5):attacking?(entity.attackTimer>telegraphSplit?1:2):0;
     const atlasWidth=(boss?BOSS_ATLAS_WIDTH:RIVAL_ATLAS_WIDTH)*scale;
     const atlasHeight=(boss?BOSS_ATLAS_HEIGHT:RIVAL_ATLAS_HEIGHT)*scale;
     // Road combat is side-by-side. Preserve a small screen-space gap at close
     // depth so authored silhouettes never collapse into one unreadable stack.
-    const playerX = 480 + this.rider.lane * 215;
+    const target = this.riders.filter(rider => rider.hp > 0).reduce((nearest, rider) => Math.abs(entity.lane - rider.lane) < Math.abs(entity.lane - nearest.lane) ? rider : nearest, this.rider);
+    const playerX = this.project(0, target.lane).x;
     const rawRenderX = x + recoil * s;
     const closeEnough = Math.abs(entity.distance - this.distance) < 86;
     const minimumGap = (PLAYER_ATLAS_WIDTH + (boss ? BOSS_ATLAS_WIDTH : RIVAL_ATLAS_WIDTH)) * scale * .29;
-    const separationSide = Math.sign(rawRenderX - playerX) || Math.sign(entity.lane - this.rider.lane) || 1;
+    const separationSide = Math.sign(rawRenderX - playerX) || Math.sign(entity.lane - target.lane) || 1;
     const renderX = closeEnough && Math.abs(rawRenderX - playerX) < minimumGap
       ? playerX + separationSide * minimumGap
       : rawRenderX;
-    ctx.save();ctx.globalAlpha=.25;ctx.fillStyle=boss?'#ff493f':'#070813';ctx.beginPath();ctx.ellipse(px(renderX),px(y),atlasWidth*.34,Math.max(3,10*scale),0,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.save();ctx.globalAlpha*=.25;ctx.fillStyle=boss?'#ff493f':'#070813';ctx.beginPath();ctx.ellipse(px(renderX),px(y),atlasWidth*.34,Math.max(3,10*scale),0,0,Math.PI*2);ctx.fill();ctx.restore();
     if (boss && attacking) {
       const swing = clamp((telegraphSplit - entity.attackTimer + .18) / .36, 0, 1);
       ctx.save(); ctx.globalAlpha = .2 + swing * .48;
@@ -1001,13 +1008,16 @@ export class RoadRashStage {
       ctx.arc(arcCenterX, arcCenterY, 49 * scale, side > 0 ? -1.65 : Math.PI + .1, side > 0 ? .35 : Math.PI * 2 - .35, side < 0);
       ctx.stroke(); ctx.restore();
     }
-    if(this.drawRidersAtlasFrame(ctx,boss?2:1,atlasFrame,renderX,y+suspension*s,atlasWidth,atlasHeight,attacking&&side<0))return;
+    const actionFacing = attacking || entity.reactionTimer > 0 || entity.hitFlash > 0;
+    const flip = actionFacing && side < 0;
+    if(this.drawRidersAtlasFrame(ctx,boss?2:1,atlasFrame,renderX,y+suspension*s,atlasWidth,atlasHeight,flip))return;
     ctx.save(); ctx.translate(px(renderX), px(y + suspension * s)); ctx.scale(s, s);
     ctx.rotate(leanPose * .045 + (entity.reactionTimer > 0 ? entity.recoilSide * .075 : 0));
     ctx.translate(leanPose * 2.5, 0);
     if (boss) {
-      ctx.globalAlpha = .22 + Math.sin(this.elapsed * 7) * .06; ctx.fillStyle = '#ff3c35';
-      ctx.beginPath(); ctx.ellipse(0, -54, 43, 61, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+      const inheritedAlpha = ctx.globalAlpha;
+      ctx.globalAlpha *= .22 + Math.sin(this.elapsed * 7) * .06; ctx.fillStyle = '#ff3c35';
+      ctx.beginPath(); ctx.ellipse(0, -54, 43, 61, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = inheritedAlpha;
     }
     // One strong rear wheel immediately reads as a motorcycle from behind.
     ctx.fillStyle = '#080812'; ctx.beginPath(); ctx.ellipse(leanPose * 2, -9, boss ? 16 : 13, boss ? 29 : 24, 0, 0, Math.PI * 2); ctx.fill();
@@ -1076,7 +1086,8 @@ export class RoadRashStage {
   }
 
   private drawPlayer(ctx: CanvasRenderingContext2D): void {
-    const x = 480 + this.rider.lane * 215;
+    const x = this.project(0, this.rider.lane).x;
+    ctx.fillStyle = '#0808138f'; ctx.beginPath(); ctx.ellipse(px(x), ROAD_BOTTOM, 38, 8, 0, 0, Math.PI * 2); ctx.fill();
     const leanPose = this.rider.lean > .24 ? 1 : this.rider.lean < -.24 ? -1 : 0;
     const suspensionPose = Math.floor(this.elapsed * (8 + this.rider.speed * .025)) % 3;
     const bob = suspensionPose === 0 ? -3 : suspensionPose === 1 ? 2 : 0;
@@ -1086,16 +1097,19 @@ export class RoadRashStage {
       : 0;
     let atlasFrame=0;
     if(this.rider.attackConnected)atlasFrame=recoilPhase<.12?3:recoilPhase<.62?4:5;
-    else if(this.rider.attackTimer>.58)atlasFrame=1;else if(this.rider.attackTimer>.39)atlasFrame=2;else if(this.rider.attackTimer>0)atlasFrame=3;
-    ctx.save();ctx.translate(px(x+recoilShift),px(514+bob));ctx.rotate(leanPose*.055+this.rider.lean*.02);
+    else if(this.rider.playerRecoil>0)atlasFrame=recoilPhase<.62?4:5;
+    else if(this.rider.attackTimer>.58)atlasFrame=1;else if(this.rider.attackTimer>.27)atlasFrame=2;else if(this.rider.attackTimer>0)atlasFrame=5;
+    ctx.save();ctx.translate(px(x+recoilShift),px(ROAD_BOTTOM+bob));ctx.rotate(leanPose*.055+this.rider.lean*.02);
     if (this.rider.hitFlash > 0) ctx.filter = 'brightness(2.8) saturate(0)';
-    const atlasDrawn=this.drawHeroineAtlasFrame(ctx,atlasFrame,0,0,PLAYER_ATLAS_WIDTH,PLAYER_ATLAS_HEIGHT,this.rider.attackTimer>0&&this.rider.attackSide<0);
+    const actionFacing = this.rider.attackTimer > 0 || this.rider.playerRecoil > 0;
+    const flip = actionFacing && this.rider.attackSide < 0;
+    const atlasDrawn=this.drawHeroineAtlasFrame(ctx,atlasFrame,0,0,PLAYER_ATLAS_WIDTH,PLAYER_ATLAS_HEIGHT,flip);
     ctx.restore();
     if(atlasDrawn){
       if(this.rider.speed>132){ctx.fillStyle='#58efe0';const flame=7+(Math.floor(this.elapsed*20)%3)*4;ctx.fillRect(px(x+recoilShift-7),510,5,flame);ctx.fillStyle='#fff18c';ctx.fillRect(px(x+recoilShift-6),510,2,Math.max(3,flame-4));}
       return;
     }
-    ctx.save(); ctx.translate(px(x + recoilShift), px(514 + bob)); ctx.rotate(leanPose * .075 + this.rider.lean * .025);
+    ctx.save(); ctx.translate(px(x + recoilShift), px(ROAD_BOTTOM + bob)); ctx.rotate(leanPose * .075 + this.rider.lean * .025);
     if (this.rider.speed > 145) {
       ctx.fillStyle = '#73f0e34d';
       for (let index = 0; index < 5; index++) ctx.fillRect(-13 + index * 7, 2 + index % 2 * 4, 3, 22 + index * 6);
@@ -1109,7 +1123,7 @@ export class RoadRashStage {
       ctx.fillStyle = '#55e8dc'; ctx.fillRect(-34, -18, 8, flame); ctx.fillStyle = '#fff18c'; ctx.fillRect(-32, -16, 3, Math.max(3, flame - 5));
     }
     const fallbackPalette = this.rider.hero === 'cassia'
-      ? { bike: '#d63b6b', jacket: '#632155', stripe: '#65eadb', hair: '#f4d13f', visor: '#7ff4e3' }
+      ? { bike: '#bf3025', jacket: '#211d24', stripe: '#e9ae38', hair: '#78301c', visor: '#54bd71' }
       : this.rider.hero === 'bruna'
         ? { bike: '#318ac6', jacket: '#24384f', stripe: '#86d9ff', hair: '#d8dde3', visor: '#67e8ff' }
         : { bike: '#f0ebe3', jacket: '#9b294d', stripe: '#ff785f', hair: '#f1e7ed', visor: '#ff9b43' };
@@ -1118,7 +1132,7 @@ export class RoadRashStage {
     ctx.lineTo(16, -31); ctx.lineTo(-17, -31); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#ffd849'; ctx.fillRect(-8, -42, 16, 7); ctx.fillStyle = '#4f1743'; ctx.fillRect(-4, -57, 8, 19);
     ctx.fillStyle = '#16101b'; ctx.fillRect(-20, -60, 11, 28); ctx.fillRect(9, -60, 11, 28);
-    // Hero jacket uses the same neon-magenta/teal/yellow hierarchy as the core game.
+    // Keep each heroine's fallback colours consistent with her authored design.
     ctx.fillStyle = this.rider.hitFlash > 0 ? '#fff' : fallbackPalette.jacket;
     ctx.beginPath(); ctx.moveTo(-29, -105); ctx.lineTo(-17, -115); ctx.lineTo(18, -115); ctx.lineTo(31, -102);
     ctx.lineTo(20, -61); ctx.lineTo(-20, -61); ctx.closePath(); ctx.fill();
@@ -1137,7 +1151,11 @@ export class RoadRashStage {
     ctx.fillStyle = fallbackPalette.bike; ctx.fillRect(-25 - leanPose * 3, -138, 9, 4); ctx.fillRect(-34 - leanPose * 6, -136, 12, 3);
     ctx.fillStyle = '#171421'; ctx.fillRect(-14, -132, 28, 7); ctx.fillStyle = fallbackPalette.visor; ctx.fillRect(-8, -129, 5, 3); ctx.fillRect(4, -129, 5, 3);
     ctx.fillStyle = '#f0d0a2';
-    if (this.rider.attackTimer > 0) {
+    if (this.rider.playerRecoil > 0 && !this.rider.attackConnected) {
+      ctx.save(); ctx.translate(0, -105); ctx.rotate(-this.rider.attackSide * (.5 - recoilPhase * .3));
+      ctx.fillRect(this.rider.attackSide > 0 ? 17 : -17, 0, this.rider.attackSide * 33, 9);
+      ctx.restore();
+    } else if (this.rider.attackTimer > 0) {
       let reach = 16; let angle = -.16;
       if (this.rider.attackConnected) {
         if (recoilPhase < .22) { reach = 69; angle = -.7; }
