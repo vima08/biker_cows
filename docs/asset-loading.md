@@ -10,6 +10,19 @@ Once the game starts, `PresentationAssets` gates critical artwork by scene:
 | Intro | All four comic panels |
 | Finale | Both ending panels |
 
+The cover, intro/finale panels and all three active gameplay panoramas use JPG
+at their original resolution (quality 88), reducing their combined download size
+from 32.65 MB to 5.17 MB. PNG sources remain available for artwork edits; the game
+loads only the JPG variants. After editing a source, regenerate them on Windows
+with `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/compress_backgrounds.ps1`.
+Gameplay sprite sheets remain PNG.
+
+The selection portrait atlas uses WebP (quality 90) with its original alpha
+channel and 768 x 192 dimensions: 37,254 bytes instead of 175,768 bytes (79% smaller).
+Its PNG source remains available for edits. Regenerate the WebP on Windows with
+`node scripts/compress_portraits.mjs` (requires the installed Edge browser, or
+set `BCFV_BROWSER` to another Chromium executable).
+
 The loading screen replaces the scene until every required image has finished
 decoding. Scene input and intro/finale timers stay frozen. Progress counts ready
 files, not downloaded bytes. Portraits preload after the cover is ready; intro

@@ -69,7 +69,7 @@ const SECTIONS: readonly EnvironmentSection[] = [
  * the loader here (rather than in game state) means a slow/missing local asset
  * simply reveals the procedural world that is already drawn underneath it.
  */
-const PANORAMA_URL = assetUrl('assets/world/venus-highway-panorama.png');
+const PANORAMA_URL = assetUrl('assets/world/venus-highway-panorama.jpg');
 let panorama: HTMLImageElement | null = null;
 let panoramaState: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
 

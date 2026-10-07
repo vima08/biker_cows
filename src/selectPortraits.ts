@@ -1,7 +1,7 @@
 /**
  * Authored portraits for the hero-select screen.
  *
- * The single local PNG is split into three equal cells. Loading failure is a
+ * The single local WebP is split into three equal cells. Loading failure is a
  * observable state: the scene gate offers retry or an explicit fallback.
  */
 
@@ -40,7 +40,7 @@ interface PortraitLayout {
   readonly pivot: readonly [x: number, y: number];
 }
 
-const SHEET_PATH = assetUrl("assets/ui/cow-portraits-sheet.png");
+const SHEET_PATH = assetUrl("assets/ui/cow-portraits-sheet.webp");
 const COLUMNS = 3;
 const ROWS = 1;
 

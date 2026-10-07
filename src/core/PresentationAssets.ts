@@ -64,7 +64,7 @@ export interface PresentationLoadingStatus {
 }
 
 export class PresentationAssets {
-  readonly title = new PresentationImage(assetUrl('assets/venus-title-key-art.png'), 'Cover');
+  readonly title = new PresentationImage(assetUrl('assets/venus-title-key-art.jpg'), 'Cover');
   readonly intro = INTRO_PANELS.map((panel, index) => new PresentationImage(panel.src, `Intro ${index + 1}`));
   readonly outro = OUTRO_PANELS.map((panel, index) => new PresentationImage(panel.src, `Finale ${index + 1}`));
   private readonly bypassed = new Set<PresentationScene>();

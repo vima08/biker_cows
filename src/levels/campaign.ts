@@ -23,7 +23,7 @@ export const SULFUR_RUN: RoadRashLevelDefinition = {
   musicCue: 'stage',
   distance: 7200,
   bossAt: 5900,
-  backdrop: assetUrl('assets/road-rash/venus-badlands-panorama-v2-open-road.png'),
+  backdrop: assetUrl('assets/road-rash/venus-badlands-panorama-v2-open-road.jpg'),
 };
 
 export const FURNACE_DISTRICT: BrawlerLevelDefinition = {
@@ -47,7 +47,7 @@ export const FURNACE_DISTRICT: BrawlerLevelDefinition = {
     { width: 1000, kind: 'forge', label: 'THE FURNACE', accent: '#ff854e' },
   ],
   assets: {
-    backdrop: assetUrl('assets/brawler/furnace-district-panorama.png'),
+    backdrop: assetUrl('assets/brawler/furnace-district-panorama.jpg'),
     floor: assetUrl('assets/brawler/furnace-floor.png'),
     enemies: assetUrl('assets/brawler/venus-gang-sheet.png'),
     boss: assetUrl('assets/brawler/forge-overseer-sheet.png'),

@@ -136,7 +136,7 @@ export class RoadRashStage {
     this.rider = this.riders[0];
     this.introTimer = options.debugSkipIntro || options.debugBoss ? 0 : (options.introDuration ?? 2.3);
     this.panorama = typeof Image === 'undefined' ? null : new Image();
-    if (this.panorama) this.panorama.src = assetUrl('assets/road-rash/venus-badlands-panorama-v2-open-road.png');
+    if (this.panorama) this.panorama.src = assetUrl('assets/road-rash/venus-badlands-panorama-v2-open-road.jpg');
     this.roadObjectsAtlas = typeof Image === 'undefined' ? null : new Image();
     if (this.roadObjectsAtlas) this.roadObjectsAtlas.src = assetUrl('assets/road-rash/road-objects-atlas-v1.png');
     this.ridersAtlas = typeof Image === 'undefined' ? null : new Image();

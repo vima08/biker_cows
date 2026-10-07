@@ -38,9 +38,9 @@ try {
   const page = await freshPage();
   const cover = gate(), portraits = gate(), panels = [gate(), gate(), gate(), gate()];
   const requests = { cover: 0, portraits: 0, panels: [0, 0, 0, 0] };
-  await page.route('**/assets/venus-title-key-art.png', async route => { requests.cover++; await cover.promise; await route.continue(); });
-  await page.route('**/assets/ui/cow-portraits-sheet.png', async route => { requests.portraits++; await portraits.promise; await route.continue(); });
-  await page.route('**/assets/intro/*.png', async route => {
+  await page.route('**/assets/venus-title-key-art.jpg', async route => { requests.cover++; await cover.promise; await route.continue(); });
+  await page.route('**/assets/ui/cow-portraits-sheet.webp', async route => { requests.portraits++; await portraits.promise; await route.continue(); });
+  await page.route('**/assets/intro/*.jpg', async route => {
     const index = Number(route.request().url().match(/beach-0(\d)/)[1]) - 1;
     requests.panels[index]++; await panels[index].promise; await route.continue();
   });
@@ -91,7 +91,7 @@ try {
     const gate = new Promise(resolve => { window.releaseCoverDecode = resolve; });
     HTMLImageElement.prototype.decode = async function () {
       await nativeDecode.call(this);
-      if (this.dataset.assetPath?.endsWith('venus-title-key-art.png')) await gate;
+      if (this.dataset.assetPath?.endsWith('venus-title-key-art.jpg')) await gate;
     };
   });
   await decoded.goto(base, { waitUntil: 'domcontentloaded' });
@@ -103,8 +103,8 @@ try {
 
   const retry = await freshPage();
   let coverAttempts = 0, portraitAttempts = 0;
-  await retry.route('**/assets/venus-title-key-art.png', route => ++coverAttempts === 1 ? route.abort('failed') : route.continue());
-  await retry.route('**/assets/ui/cow-portraits-sheet.png', route => ++portraitAttempts === 1 ? route.abort('failed') : route.continue());
+  await retry.route('**/assets/venus-title-key-art.jpg', route => ++coverAttempts === 1 ? route.abort('failed') : route.continue());
+  await retry.route('**/assets/ui/cow-portraits-sheet.webp', route => ++portraitAttempts === 1 ? route.abort('failed') : route.continue());
   await retry.goto(base, { waitUntil: 'domcontentloaded' });
   await waitFor(retry, () => window.__BCFV_DEBUG__?.snapshot().loading?.failed === 1);
   await retry.locator('canvas').screenshot({ path: path.join(output, 'retry.png') });
@@ -118,7 +118,7 @@ try {
   check('Failed cover and portraits can be retried'); await retry.context().close();
 
   const fallback = await freshPage();
-  await fallback.route('**/assets/intro/venus-beach-01-rest.png', route => route.abort('failed'));
+  await fallback.route('**/assets/intro/venus-beach-01-rest.jpg', route => route.abort('failed'));
   await fallback.goto(`${base}?scene=intro`, { waitUntil: 'domcontentloaded' });
   await waitFor(fallback, () => window.__BCFV_DEBUG__?.snapshot().loading?.failed === 1);
   assert.equal((await snapshot(fallback)).intro.time, 0);
@@ -138,7 +138,7 @@ try {
 
   const outro = await freshPage();
   const finale = [gate(), gate()];
-  await outro.route('**/assets/outro/*.png', async route => {
+  await outro.route('**/assets/outro/*.jpg', async route => {
     const index = Number(route.request().url().match(/victory-0(\d)/)[1]) - 1;
     await finale[index].promise; await route.continue();
   });
@@ -164,7 +164,7 @@ try {
     const nativeFetch = window.fetch.bind(window);
     window.fetch = async (input, options) => {
       const response = await nativeFetch(input, options);
-      if (!String(input).endsWith('venus-title-key-art.png')) return response;
+      if (!String(input).endsWith('venus-title-key-art.jpg')) return response;
       const bytes = new Uint8Array(await response.arrayBuffer());
       const stream = new ReadableStream({ async start(controller) {
         const chunkSize = Math.ceil(bytes.length / 3);
@@ -193,7 +193,7 @@ try {
     const gate = new Promise(resolve => { window.releaseCoverDecode = resolve; });
     HTMLImageElement.prototype.decode = async function () {
       await nativeDecode.call(this);
-      if (this.dataset.assetPath?.endsWith('venus-title-key-art.png')) await gate;
+      if (this.dataset.assetPath?.endsWith('venus-title-key-art.jpg')) await gate;
     };
   });
   await timedOut.goto(base, { waitUntil: 'domcontentloaded' });

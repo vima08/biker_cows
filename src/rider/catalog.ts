@@ -8,15 +8,15 @@ export const HEROES: readonly HeroSpec[] = [
 ];
 
 export const INTRO_PANELS: readonly IntroPanel[] = [
-  { src: assetUrl('assets/intro/venus-beach-01-rest.png'), kicker: 'VENUS BOARDWALK // 18:42 LOCAL', title: 'A PERFECT DAY OFF.', caption: 'CASSIA: "Quiet suits us."   BRUNA: "Last set."   NOVA: "Last wave!"', duration: 5.2, pan: -12 },
-  { src: assetUrl('assets/intro/venus-beach-02-blast.png'), kicker: 'THEN THE HORIZON BLINKS.', title: 'KRA-KOOM!', caption: 'One blast. Three heads turn. The day off is officially over.', duration: 4.1, pan: 10 },
-  { src: assetUrl('assets/intro/venus-beach-03-jackets.png'), kicker: 'NO SPEECHES. NO HESITATION.', title: 'JACKETS ON.', caption: 'Leather, engines and a rising column of smoke. Just like old times.', duration: 4.2, pan: -8 },
-  { src: assetUrl('assets/intro/venus-beach-04-ride.png'), kicker: 'VACATION STATUS: CANCELLED', title: 'GIRLS... RIDE.', caption: 'The Venus skyway is waiting - and trouble never waits politely.', duration: 4.6, pan: 14 },
+  { src: assetUrl('assets/intro/venus-beach-01-rest.jpg'), kicker: 'VENUS BOARDWALK // 18:42 LOCAL', title: 'A PERFECT DAY OFF.', caption: 'CASSIA: "Quiet suits us."   BRUNA: "Last set."   NOVA: "Last wave!"', duration: 5.2, pan: -12 },
+  { src: assetUrl('assets/intro/venus-beach-02-blast.jpg'), kicker: 'THEN THE HORIZON BLINKS.', title: 'KRA-KOOM!', caption: 'One blast. Three heads turn. The day off is officially over.', duration: 4.1, pan: 10 },
+  { src: assetUrl('assets/intro/venus-beach-03-jackets.jpg'), kicker: 'NO SPEECHES. NO HESITATION.', title: 'JACKETS ON.', caption: 'Leather, engines and a rising column of smoke. Just like old times.', duration: 4.2, pan: -8 },
+  { src: assetUrl('assets/intro/venus-beach-04-ride.jpg'), kicker: 'VACATION STATUS: CANCELLED', title: 'GIRLS... RIDE.', caption: 'The Venus skyway is waiting - and trouble never waits politely.', duration: 4.6, pan: 14 },
 ];
 
 export const OUTRO_PANELS: readonly IntroPanel[] = [
-  { src: assetUrl('assets/outro/venus-victory-01-parade.png'), kicker: 'VENUS CITY // THE ROAD HOME', title: 'THEY REMEMBER.', caption: 'The engines roll slowly now. Every raised fist says the same thing: Venus is free.', duration: 5.4, pan: -14 },
-  { src: assetUrl('assets/outro/venus-victory-02-fireworks.png'), kicker: 'TONIGHT, THE SKY ANSWERS.', title: 'VENUS RIDES FREE.', caption: 'CASSIA: "Worth the detour."   BRUNA: "Almost."   NOVA: "Best vacation ever!"', duration: 7.2, pan: 12 },
+  { src: assetUrl('assets/outro/venus-victory-01-parade.jpg'), kicker: 'VENUS CITY // THE ROAD HOME', title: 'THEY REMEMBER.', caption: 'The engines roll slowly now. Every raised fist says the same thing: Venus is free.', duration: 5.4, pan: -14 },
+  { src: assetUrl('assets/outro/venus-victory-02-fireworks.jpg'), kicker: 'TONIGHT, THE SKY ANSWERS.', title: 'VENUS RIDES FREE.', caption: 'CASSIA: "Worth the detour."   BRUNA: "Almost."   NOVA: "Best vacation ever!"', duration: 7.2, pan: 12 },
 ];
 
 export const HERO_AUTHORED_SIZE: Readonly<Record<HeroId, { width: number; height: number; anchorX: number; anchorY: number }>> = {
