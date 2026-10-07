@@ -18,6 +18,7 @@ import { gameEvents } from './core/GameEvents';
 import { HighScoreStore, type HighScore } from './core/HighScoreStore';
 import { assetUrl } from './assetUrl';
 import { InputController } from './core/InputController';
+import { ExtrasView } from './extras/ExtrasView';
 import { PresentationAssets, type PresentationLoadingStatus } from './core/PresentationAssets';
 import { ContinueSystem, type CampaignCheckpoint } from './core/ContinueSystem';
 import {
@@ -134,6 +135,7 @@ function emitMusic(cue: string, intensity = 1) {
 export class VenusGame {
   private ctx: CanvasRenderingContext2D;
   private readonly input: InputController;
+  private readonly extras: ExtrasView;
   private readonly highScoreStore = new HighScoreStore();
   private readonly riderPose = new RiderPoseResolver();
   private readonly continues = new ContinueSystem({ levelId: VENUS_HIGHWAY.id, stage: 1, runtime: 'rider' });
@@ -226,6 +228,19 @@ export class VenusGame {
     this.pausedFrame.width = W;
     this.pausedFrame.height = H;
     this.input = new InputController(canvas);
+    this.extras = new ExtrasView(canvas, () => { this.extras.close(); this.mode = 'title'; emitAudio('menu_back'); });
+    canvas.addEventListener('pointerdown', event => {
+      if (this.mode !== 'title' || this.presentation.status('title')) return;
+      const bounds = canvas.getBoundingClientRect();
+      const x = (event.clientX - bounds.left) / bounds.width * W;
+      const y = (event.clientY - bounds.top) / bounds.height * H;
+      let hitMenu = false;
+      if (x >= 104 && x <= 378 && y >= 377 && y <= 493) {
+        const choice = Math.floor((y - 377) / 41);
+        if (choice < 3 && (y - 377) % 41 <= 34) { this.titleChoice = choice; hitMenu = true; }
+      }
+      if (!hitMenu) event.stopImmediatePropagation();
+    }, { capture: true });
     this.highScores = this.highScoreStore.load();
     const query = new URLSearchParams(location.search);
     const hero = query.get('hero') as HeroId | null;
@@ -313,8 +328,9 @@ export class VenusGame {
     this.presentation.warmNext(this.mode);
     // Critical menu artwork goes first on a slow connection. Optional gameplay
     // atlases begin once the intro is ready, or on a direct gameplay/debug URL.
-    if (!['title','select'].includes(this.mode)) this.preloadGameplayArt();
+    if (!['title','select','extras'].includes(this.mode)) this.preloadGameplayArt();
     if (this.mode === 'title') this.updateTitle();
+    else if (this.mode === 'extras') this.extras.update(this.input, dt);
     else if (this.mode === 'select') this.updateSelect();
     else if (this.mode === 'intro') this.updateIntro(dt);
     else if (this.mode === 'outro') this.updateOutro(dt);
@@ -327,9 +343,11 @@ export class VenusGame {
   }
 
   private updateTitle() {
-    if (this.input.tap('ArrowUp','KeyW','ArrowDown','KeyS','P1PadUp','P1PadDown')) { this.titleChoice = 1 - this.titleChoice; emitAudio('menu_move'); }
+    if (this.input.tap('ArrowUp','KeyW','P1PadUp')) { this.titleChoice = (this.titleChoice + 2) % 3; emitAudio('menu_move'); }
+    else if (this.input.tap('ArrowDown','KeyS','P1PadDown')) { this.titleChoice = (this.titleChoice + 1) % 3; emitAudio('menu_move'); }
     if (this.input.tap('Enter','Space','KeyZ','P1PadFire','P1PadStart')) {
       if (this.titleChoice === 0) { this.mode = 'select'; emitAudio('menu_accept'); emitMusic('select', .7); }
+      else if (this.titleChoice === 1) { this.mode = 'extras'; this.extras.open(); emitAudio('menu_accept'); }
       else { this.highScores = []; localStorage.removeItem('venus-stampede-highscores'); emitAudio('menu_back'); }
     }
   }
@@ -1518,6 +1536,8 @@ export class VenusGame {
   }
 
   private draw(){
+    // Extras owns a DOM reader; keep the last menu frame behind it.
+    if (this.mode === 'extras') return;
     const c=this.ctx;
     const loading = this.presentation.status(this.mode);
     if (loading) { this.drawLoading(loading); return; }
@@ -2237,7 +2257,7 @@ export class VenusGame {
     const shade=c.createLinearGradient(0,0,W,0);shade.addColorStop(0,'rgba(3,2,10,.92)');shade.addColorStop(.55,'rgba(5,2,12,.32)');shade.addColorStop(1,'rgba(3,2,10,.83)');c.fillStyle=shade;c.fillRect(0,0,W,H);
     c.save();c.translate(57,64);c.transform(1,0,-.12,1,0,0);c.fillStyle='#14091f';c.strokeStyle='#ef3f69';c.lineWidth=4;c.fillRect(0,0,520,151);c.strokeRect(0,0,520,151);c.fillStyle='#ffcf47';c.fillRect(20,17,480,4);this.text('BIKER COWS',260,67,48,'#f4e4d2','center',true);this.text('FROM VENUS',260,105,25,'#ff5b73','center',true);c.fillStyle='#5de4e0';c.beginPath();c.moveTo(34,121);c.lineTo(203,121);c.lineTo(220,112);c.lineTo(482,112);c.lineTo(455,128);c.lineTo(45,128);c.fill();c.restore();
     c.save();c.translate(92,231);c.rotate(-.025);c.shadowColor='#b922ff';c.shadowBlur=28;this.text('NEON',0,61,64,'#fff36b','left',true);this.text('STAMPEDE',3,120,58,'#ff496e','left',true);c.shadowBlur=0;c.restore();
-    const pulse=.75+.25*Math.sin(this.time*5);for(let i=0;i<2;i++){const active=this.titleChoice===i;c.fillStyle=active?'#ff456b':'#151022dd';c.fillRect(104,387+i*45,274,34);c.strokeStyle=active?'#ffe360':'#4d365d';c.lineWidth=2;c.strokeRect(104,387+i*45,274,34);if(active){c.globalAlpha=pulse;c.fillStyle='#fff26c';c.beginPath();c.moveTo(87,404+i*45);c.lineTo(99,396+i*45);c.lineTo(99,412+i*45);c.fill();c.globalAlpha=1;}this.text(i===0?'RIDE INTO BATTLE':'CLEAR RECORDS',241,410+i*45,19,active?'#fff':'#9e90ac','center',true);}
+    const pulse=.75+.25*Math.sin(this.time*5);for(let i=0;i<3;i++){const active=this.titleChoice===i;c.fillStyle=active?'#ff456b':'#151022dd';c.fillRect(104,377+i*41,274,34);c.strokeStyle=active?'#ffe360':'#4d365d';c.lineWidth=2;c.strokeRect(104,377+i*41,274,34);if(active){c.globalAlpha=pulse;c.fillStyle='#fff26c';c.beginPath();c.moveTo(87,394+i*41);c.lineTo(99,386+i*41);c.lineTo(99,402+i*41);c.fill();c.globalAlpha=1;}this.text(['RIDE INTO BATTLE','EXTRAS','CLEAR RECORDS'][i],241,400+i*41,19,active?'#fff':'#9e90ac','center',true);}
     c.fillStyle='#090713dd';c.fillRect(646,326,264,152);c.strokeStyle='#74455f';c.strokeRect(646,326,264,152);this.text('HALL OF FIRE',778,351,18,'#ffcd4c','center',true);
     if(this.highScores.length){this.highScores.slice(0,4).forEach((s,i)=>{this.text(`${i+1}. ${s.name}`,664,380+i*24,13,'#d9cadf');this.text(s.score.toLocaleString(),892,380+i*24,13,'#fff','right');});}else this.text('THE SKYWAY AWAITS…',778,410,14,'#776c82','center');
     this.text('ENTER / Z  SELECT     ↑↓  MOVE',480,517,14,'#e3d9e8','center',true);this.text('ORIGINAL ARCADE PROTOTYPE',899,22,10,'#887995','right');

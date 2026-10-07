@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build --configLoader runner",
     "preview": "vite preview --configLoader runner",
     "test:smoke": "node scripts/gauntlet.mjs",
+    "test:extras": "node scripts/gauntlet-extras.mjs",
     "test:wave18": "node scripts/gauntlet-iteration18.mjs",
     "test:brawler": "node scripts/gauntlet-brawler.mjs",
     "test:brawler-street": "node scripts/gauntlet-brawler-street.mjs",
