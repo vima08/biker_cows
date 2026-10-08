@@ -924,7 +924,7 @@ function drawRoadLamp(
   ctx.globalAlpha = 1;
 }
 
-function drawRoadsideProps(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number, time: number, section: EnvironmentSection) {
+function drawRoadsideProps(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number, time: number) {
   const props = getRoadProps();
   for (const item of repeatedPositions(scroll, .48, 312, 2)) {
     const x = pixel2(item.x + 84);
@@ -935,10 +935,13 @@ function drawRoadsideProps(ctx: CanvasRenderingContext2D, palette: Palette, scro
     }
   }
 
-  // Wreckage remains on the extreme shoulder, leaving y=330..468 visually clean.
+}
+
+function drawRoadsideWrecks(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number, front: boolean) {
+  const props = getRoadProps();
   for (const item of repeatedPositions(scroll, .96, 438, 2)) {
+    if ((item.index % 2 === 0) !== front) continue;
     const x = Math.floor(item.x + 15);
-    const front = item.index % 2 === 0;
     const y = front ? 493 : 317;
     if (props) {
       drawRoadPropCell(ctx, props, RoadPropCell.Wreck, x + 38, y + 7, 118, 88, item.index % 4 === 0);
@@ -952,12 +955,6 @@ function drawRoadsideProps(ctx: CanvasRenderingContext2D, palette: Palette, scro
     }
   }
 
-  if (section === 'lava-foundry') {
-    ctx.fillStyle = palette.hot;
-    ctx.globalAlpha = .22;
-    ctx.fillRect(0, 507, ENVIRONMENT_WIDTH, 5);
-    ctx.globalAlpha = 1;
-  }
 }
 
 function drawShoulders(ctx: CanvasRenderingContext2D, palette: Palette, scroll: number) {
@@ -1045,8 +1042,40 @@ function withLogicalCanvas(ctx: CanvasRenderingContext2D, options: EnvironmentDr
   ctx.restore();
 }
 
-/** Draw the complete world background, road and non-occluding speed detail. */
-export function drawEnvironment(ctx: CanvasRenderingContext2D, options: EnvironmentDrawOptions): void {
+// Painted contact points exclude the transparent atlas gutters.
+const AUTHORED_DEPTH_LAYERS = [
+  { id: 'signs', y: 296 },
+  { id: 'far-wrecks', y: 302 },
+  { id: 'guardrail', y: 296 },
+  { id: 'near-wrecks', y: 478 },
+] as const;
+const FALLBACK_DEPTH_LAYERS = [
+  { id: 'signs', y: 296 },
+  { id: 'far-wrecks', y: 324 },
+  { id: 'guardrail', y: 326 },
+  { id: 'near-wrecks', y: 500 },
+] as const;
+
+export function getEnvironmentDepthLayers() {
+  return getRoadProps() ? AUTHORED_DEPTH_LAYERS : FALLBACK_DEPTH_LAYERS;
+}
+
+export function drawEnvironmentDepthLayer(
+  ctx: CanvasRenderingContext2D,
+  options: EnvironmentDrawOptions,
+  layer: typeof AUTHORED_DEPTH_LAYERS[number]['id'],
+): void {
+  const phase = getEnvironmentPhase(options.elapsed);
+  const palette = mixPalette(PALETTES[phase.current], PALETTES[phase.next], phase.mix);
+  withLogicalCanvas(ctx, options, () => {
+    if (layer === 'signs') drawRoadsideProps(ctx, palette, options.scroll, options.time);
+    else if (layer === 'guardrail') drawGuardrail(ctx, palette, options.scroll);
+    else drawRoadsideWrecks(ctx, palette, options.scroll, layer === 'near-wrecks');
+  });
+}
+
+/** Standalone integrations retain a complete background by default. */
+export function drawEnvironment(ctx: CanvasRenderingContext2D, options: EnvironmentDrawOptions, includeRoadside = true): void {
   const phase = getEnvironmentPhase(options.elapsed);
   const basePalette = PALETTES[phase.current];
   const nextPalette = PALETTES[phase.next];
@@ -1071,11 +1100,12 @@ export function drawEnvironment(ctx: CanvasRenderingContext2D, options: Environm
     drawRoadMaterialEvents(ctx, palette, options.scroll, options.time);
     drawCracks(ctx, palette, options.scroll);
     drawLaneReflectors(ctx, palette, options.scroll, options.time);
-    drawRoadsideProps(ctx, palette, options.scroll, options.time, phase.mix < .5 ? phase.current : phase.next);
-    // The safety rail is nearest to the camera. Drawing it after roadside
-    // lamps/signs keeps their bases behind the barrier and restores depth.
-    drawGuardrail(ctx, palette, options.scroll);
     drawShoulders(ctx, palette, options.scroll);
+    if (phase.current === 'lava-foundry') {
+      ctx.fillStyle = palette.hot; ctx.globalAlpha = .22;
+      ctx.fillRect(0, 507, ENVIRONMENT_WIDTH, 5); ctx.globalAlpha = 1;
+    }
+    if (includeRoadside) for (const layer of [...getEnvironmentDepthLayers()].sort((a, b) => a.y - b.y)) drawEnvironmentDepthLayer(ctx, options, layer.id);
     drawAmbientSparks(ctx, palette, options.scroll, options.time, phase.mix < .5 ? phase.current : phase.next, intensity);
     drawSpeedLines(ctx, palette, options.scroll, options.speed, options.time, intensity + shakeEnergy * .35);
   });
@@ -1103,7 +1133,7 @@ export function drawEnvironmentForeground(ctx: CanvasRenderingContext2D, options
         // The atlas cells include a broad painted base.  Keep that base below
         // the canvas so the shoulder silhouettes enter from the near plane
         // instead of appearing to hover over the bottom road strip.
-        drawRoadPropCell(ctx, props, cell, x + 28, 562, 98, 74, item.index % 4 === 1, .94);
+        drawRoadPropCell(ctx, props, cell, x + 28, 562, 98, 74, item.index % 4 === 1);
       } else {
         ctx.fillStyle = item.index % 3 === 0 ? palette.metal : palette.road0;
         polygon(ctx, [[x - 18, 540], [x + 4, 509], [x + 31, 506], [x + 56, 540]]);
@@ -1118,13 +1148,13 @@ export function drawEnvironmentForeground(ctx: CanvasRenderingContext2D, options
         const cell = item.index % 2 === 0 ? RoadPropCell.ForegroundRockA : RoadPropCell.ForegroundRockB;
         // Still large enough to establish the fastest parallax plane, but its
         // crest remains beneath rider torsos and projectile silhouettes.
-        drawRoadPropCell(ctx, props, cell, x, 574, 152, 114, item.index % 4 === 2, .82 + velocity * .12);
+        drawRoadPropCell(ctx, props, cell, x, 574, 152, 114, item.index % 4 === 2);
       } else {
-        ctx.globalAlpha = .65 + velocity * .2;
+        ctx.globalAlpha = 1;
         ctx.fillStyle = '#05060b';
         polygon(ctx, [[x - 52, 540], [x - 18, 516], [x + 11, 520], [x + 45, 540]]);
         ctx.fillStyle = palette.shoulder;
-        ctx.globalAlpha = .34;
+        ctx.globalAlpha = 1;
         polygon(ctx, [[x - 23, 540], [x - 3, 521], [x + 17, 525], [x + 31, 540]]);
       }
     }

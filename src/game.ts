@@ -7,6 +7,8 @@ import {
 import {
   drawEnvironment,
   drawEnvironmentForeground,
+  drawEnvironmentDepthLayer,
+  getEnvironmentDepthLayers,
   ENVIRONMENT_ROAD_BOTTOM,
   ENVIRONMENT_ROAD_TOP,
 } from './environment';
@@ -40,6 +42,7 @@ import {
   OUTRO_PANELS,
 } from './rider/catalog';
 import { RiderPoseResolver } from './rider/RiderPoseResolver';
+import { playerRoadDepth, enemyRoadDepth } from './rider/depth';
 import {
   HERO_WHEEL_GEOMETRY,
   type RiderKineticPose,
@@ -1586,7 +1589,7 @@ export class VenusGame {
         if(background&&foreground){
           background.imageSmoothingEnabled=false;
           foreground.imageSmoothingEnabled=false;
-          drawEnvironment(background,environment);
+          drawEnvironment(background,environment,false);
           foreground.clearRect(0,0,W,H);
           drawEnvironmentForeground(foreground,environment);
           this.bossEnvironmentCacheValid=true;
@@ -1596,20 +1599,21 @@ export class VenusGame {
     }else{
       this.bossEnvironmentCacheValid=false;
       this.bossEnvironmentFrame=0;
-      drawEnvironment(c,environment);
+      drawEnvironment(c,environment,false);
     }
-    for(const q of this.pickups)this.drawPickup(q);
-    if(this.debugImpactStage!==null){const rider=this.enemies.find(e=>e.kind==='rider');if(rider)this.drawImpactRear(this.debugImpactStage,rider,this.getRiderHitPoint(rider));}
-    for(const event of this.riderImpacts){const rider=this.enemies.find(e=>e.id===event.enemyId);if(rider)this.drawImpactRear(this.impactStageFromAge(event.age),rider,{x:rider.x+event.localX,y:rider.y+event.localY});}
-    const ordered=[...this.enemies].sort((a,b)=>a.y-b.y);for(const e of ordered)this.drawEnemy(e);
-    for(const p of [...this.players].filter(p=>p.alive).sort((a,b)=>a.y-b.y))this.drawPlayer(p);
-    // Keep a fallen co-op rider present in the shared playfield. The old
-    // explosion-only state read like a pickup and obscured why P2 vanished.
-    for(const p of this.players.filter(p=>p.downed).sort((a,b)=>a.y-b.y))this.drawDownedPlayer(p);
+    // Ground objects use road contact. Flight altitude is not road depth.
+    const objects:Array<{y:number;order:number;draw:()=>void}>=[];
+    for(const p of this.players){
+      if(p.alive)objects.push({y:playerRoadDepth(p),order:0,draw:()=>this.drawPlayer(p)});
+      else if(p.downed)objects.push({y:playerRoadDepth(p)+7,order:0,draw:()=>this.drawDownedPlayer(p)});
+    }
+    for(const q of this.pickups)objects.push({y:q.y,order:1,draw:()=>this.drawPickup(q)});
+    for(const e of this.enemies)if(!e.aerial)objects.push({y:enemyRoadDepth(e),order:2,draw:()=>this.drawEnemyWithImpacts(e)});
+    for(const layer of getEnvironmentDepthLayers())objects.push({y:layer.y,order:3,draw:()=>drawEnvironmentDepthLayer(c,environment,layer.id)});
+    objects.sort((a,b)=>a.y-b.y||a.order-b.order).forEach(object=>object.draw());
+    for(const e of this.enemies.filter(enemy=>enemy.aerial).sort((a,b)=>a.y-b.y))this.drawEnemyWithImpacts(e);
     for(const s of this.shots)this.drawShot(s);
     for(const q of this.particles)this.drawParticle(q);
-    if(this.debugImpactStage!==null)this.drawImpactChoreography(this.debugImpactStage);
-    for(const event of this.riderImpacts){const rider=this.enemies.find(e=>e.id===event.enemyId);if(rider)this.drawImpactForeground(this.impactStageFromAge(event.age),rider,{x:rider.x+event.localX,y:rider.y+event.localY});}
     if(bossEncounter)c.drawImage(this.bossForegroundCache,0,0);
     else drawEnvironmentForeground(c,environment);
     for(const f of this.floaters){c.globalAlpha=clamp(f.life*2,0,1);this.text(f.text,f.x,f.y,17,f.color,'center',true);c.globalAlpha=1;}
@@ -1752,9 +1756,10 @@ export class VenusGame {
     const c=this.ctx,h=HEROES[p.heroIndex],size=HERO_AUTHORED_SIZE[h.id],x=px(p.x),y=px(p.y);
     c.save();
     c.globalAlpha=.38;c.fillStyle='#020106';c.beginPath();c.ellipse(x-5,y+16,58,12,0,0,Math.PI*2);c.fill();
+    c.globalAlpha=1;
     c.translate(x,y+7);c.rotate(p.id===1?.075:-.075);
     const used=drawSpriteFrame(c,h.id,7,0,38,{...size,alpha:.46});
-    if(!used){c.scale(2,2);drawPixelHero(c,h.id,0,0,{frame:5,angle:p.id===1?.08:-.08,power:.18,firing:false,airborne:false,flash:0,recoil:0});}
+    if(!used){c.globalAlpha=.46;c.scale(2,2);drawPixelHero(c,h.id,0,0,{frame:5,angle:p.id===1?.08:-.08,power:.18,firing:false,airborne:false,flash:0,recoil:0});}
     c.restore();
 
     // A compact world-space rescue beacon survives foreground clutter and
@@ -1777,8 +1782,14 @@ export class VenusGame {
     const c=this.ctx;c.save();c.translate(hit.x,hit.y);c.globalCompositeOperation='lighter';c.globalAlpha=stage===5?.72:.9;c.fillStyle='#176f91';c.fillRect(-48,-8,96,16);c.fillRect(-8,-36,16,72);c.fillStyle='#ff7138';c.fillRect(-36,-5,72,10);c.fillRect(-5,-28,10,56);c.restore();
   }
 
-  private drawImpactChoreography(stage:number){
-    const enemy=this.enemies.find(e=>e.kind==='rider');if(enemy)this.drawImpactForeground(stage,enemy,this.getRiderHitPoint(enemy));
+  private drawEnemyWithImpacts(enemy:Enemy){
+    const debugStage=this.debugImpactStage!==null&&enemy===this.enemies.find(e=>e.kind==='rider')?this.debugImpactStage:null;
+    const events=this.riderImpacts.filter(event=>event.enemyId===enemy.id);
+    if(debugStage!==null)this.drawImpactRear(debugStage,enemy,this.getRiderHitPoint(enemy));
+    for(const event of events)this.drawImpactRear(this.impactStageFromAge(event.age),enemy,{x:enemy.x+event.localX,y:enemy.y+event.localY});
+    this.drawEnemy(enemy);
+    if(debugStage!==null)this.drawImpactForeground(debugStage,enemy,this.getRiderHitPoint(enemy));
+    for(const event of events)this.drawImpactForeground(this.impactStageFromAge(event.age),enemy,{x:enemy.x+event.localX,y:enemy.y+event.localY});
   }
 
   private drawImpactForeground(stage:number,enemy:Enemy,hit:{x:number;y:number}){
@@ -1987,12 +1998,18 @@ export class VenusGame {
       const rosterFrame=e.kind==='mine'
         ?4+(Math.floor(e.t*10)%4)
         :(e.flash>0?10:e.fire>0&&e.fire<.18?9:1-e.hp/e.maxHp>.55?10:(Math.floor(e.t*5)%2?11:8));
-      const usedRoster=drawSpriteFrame(c,'enemyRoster',rosterFrame,e.x,e.y,{
+      const rosterOptions={
         width:e.kind==='mine'?76:108,
         height:e.kind==='mine'?76:108,
         anchorX:.5,
         anchorY:.5,
-      });
+      };
+      const usedRoster=drawSpriteFrame(c,'enemyRoster',rosterFrame,e.x,e.y,rosterOptions);
+      if(usedRoster&&e.flash>0){
+        c.save();c.globalCompositeOperation='screen';
+        drawSpriteFrame(c,'enemyRoster',rosterFrame,e.x,e.y,{...rosterOptions,alpha:.55});
+        c.restore();
+      }
       if(usedRoster)return;
     }
     if(e.kind==='rider'||e.kind==='tank'||e.kind==='drone'||e.kind==='skimmer'||e.kind==='miniboss'||e.kind==='boss'){
