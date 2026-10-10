@@ -62,6 +62,7 @@ interface RoadPlayer {
   speed: number;
   lane: number;
   lean: number;
+  wheelDistance: number;
   hp: number;
   attackTimer: number;
   attackSide: -1 | 1;
@@ -132,7 +133,7 @@ export class RoadRashStage {
     this.rngState = (options.seed ?? 0x9e3779b9) >>> 0;
     this.courseLength = Math.max(2400, options.courseLength ?? 6200);
     const makePlayer = (id: 1 | 2, hero: RoadRashHeroId, name: string, lane: number): RoadPlayer => ({
-      id, hero, name: name.slice(0, 14).toUpperCase(), lane, speed: 72, lean: 0, hp: 100,
+      id, hero, name: name.slice(0, 14).toUpperCase(), lane, speed: 72, lean: 0, wheelDistance: 0, hp: 100,
       attackTimer: 0, attackSide: 1, attackConnected: false, playerRecoil: 0, invulnerability: 0, hitFlash: 0,
     });
     this.riders = [makePlayer(1, options.playerHero ?? 'cassia', options.playerName ?? 'MOO RIDER', options.secondPlayerHero ? -.32 : 0)];
@@ -220,7 +221,10 @@ export class RoadRashStage {
 
     if (this.statusValue === 'intro') {
       this.introTimer -= dt;
-      for (const rider of this.riders) rider.speed = lerp(rider.speed, 102, Math.min(1, dt * 1.8));
+      for (const rider of this.riders) {
+        rider.speed = lerp(rider.speed, 102, Math.min(1, dt * 1.8));
+        rider.wheelDistance += rider.speed * dt;
+      }
       this.distance += this.rider.speed * dt;
       this.visualDistance += this.rider.speed * dt;
       if (this.introTimer <= 0) this.changeStatus('racing');
@@ -228,7 +232,10 @@ export class RoadRashStage {
       return;
     }
     if (this.statusValue === 'victory' || this.statusValue === 'defeat') {
-      for (const rider of this.riders) rider.speed = Math.max(0, rider.speed - dt * (this.completed ? 18 : 70));
+      for (const rider of this.riders) {
+        rider.speed = Math.max(0, rider.speed - dt * (this.completed ? 18 : 70));
+        rider.wheelDistance += rider.speed * dt;
+      }
       this.distance += this.rider.speed * dt;
       this.visualDistance += this.rider.speed * dt;
       this.updateParticles(dt);
@@ -248,6 +255,7 @@ export class RoadRashStage {
       const response = targetSpeed > this.rider.speed ? 48 : braking ? 118 : 31;
       this.rider.speed += clamp(targetSpeed - this.rider.speed, -response * dt, response * dt);
       if (Math.abs(this.rider.lane) > .94) this.rider.speed = Math.max(52, this.rider.speed - 54 * dt);
+      this.rider.wheelDistance += this.rider.speed * dt;
 
       const steerPower = (.7 + this.rider.speed / MAX_SPEED * .48) * dt;
       this.rider.lane = clamp(this.rider.lane + steer * steerPower, -1.12, 1.12);
@@ -735,9 +743,8 @@ export class RoadRashStage {
 
   /**
    * Fast perspective cues layered over the authored panorama. The distant
-   * refinery bridge in the bitmap is the horizon portal; these repeated
-   * gantries and reflector posts visibly travel toward the camera, so the
-   * background no longer reads as a stationary picture frame.
+   * refinery bridge stays in the panorama. Reflector posts travel toward the
+   * camera without repeated flat gantries obscuring the road and riders.
    */
   private drawForegroundMotion(ctx: CanvasRenderingContext2D): void {
     const firstPost = Math.ceil(this.visualDistance / 64) * 64;
@@ -759,32 +766,6 @@ export class RoadRashStage {
       }
     }
 
-    const firstGantry = Math.ceil(this.visualDistance / 720) * 720;
-    for (let marker = firstGantry + 720; marker >= firstGantry; marker -= 720) {
-      const dz = marker - this.visualDistance;
-      if (dz < 18 || dz > 620) continue;
-      const pos = this.project(dz, 0);
-      const s = pos.scale;
-      if (s < .17) continue;
-      const edge = pos.roadHalf * 1.035;
-      const top = pos.y - 78 * s;
-      const beam = Math.max(2, px(8 * s));
-      const post = Math.max(2, px(7 * s));
-      const alpha = clamp((s - .15) * 1.4, .18, .92);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#09081b';
-      ctx.fillRect(px(pos.x - edge), px(top), px(edge * 2), beam);
-      ctx.fillRect(px(pos.x - edge), px(top), post, px(pos.y - top));
-      ctx.fillRect(px(pos.x + edge - post), px(top), post, px(pos.y - top));
-      ctx.fillStyle = '#3b2646';
-      ctx.fillRect(px(pos.x - edge + 4 * s), px(top + 2 * s), px(edge * 2 - 8 * s), Math.max(1, px(2 * s)));
-      for (let lamp = -3; lamp <= 3; lamp++) {
-        ctx.fillStyle = lamp === 0 ? '#fff09a' : '#39e5dd';
-        ctx.fillRect(px(pos.x + lamp * edge * .19 - 3 * s), px(top + 4 * s), Math.max(1, px(6 * s)), Math.max(1, px(3 * s)));
-      }
-      ctx.restore();
-    }
   }
 
   private drawWorldObjects(ctx: CanvasRenderingContext2D): void {
@@ -937,6 +918,38 @@ export class RoadRashStage {
     return this.drawAtlasFrame(ctx,this.heroinesAtlasCanvas,row,frame,x,y,width,height,flip);
   }
 
+  /** Rear-view rolling tread and foreshortened spokes, inside the authored tyre. */
+  private drawRollingWheel(ctx: CanvasRenderingContext2D, width: number, height: number, distance: number, flip = false): void {
+    ctx.save();
+    ctx.scale(flip ? -1 : 1, 1);
+    ctx.translate(-width * .065, -height * .175);
+    const rx = width * .085, ry = height * .165;
+    ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, -.07, 0, Math.PI * 2); ctx.clip();
+    const pitch = height * .044;
+    const offset = (distance * height * .012) % pitch;
+    ctx.lineWidth = Math.max(.65, width * .007);
+    for (let y = -ry - pitch + offset; y < ry + pitch; y += pitch) {
+      ctx.strokeStyle = '#080b1680';
+      ctx.beginPath(); ctx.moveTo(-rx, y - pitch * .28); ctx.lineTo(0, y); ctx.lineTo(rx, y - pitch * .28); ctx.stroke();
+      ctx.strokeStyle = '#9295a62e';
+      ctx.beginPath(); ctx.moveTo(-rx, y - pitch * .28 + 1); ctx.lineTo(0, y + 1); ctx.lineTo(rx, y - pitch * .28 + 1); ctx.stroke();
+    }
+    ctx.restore();
+
+    // The exposed side of the rim is an ellipse in this rear three-quarter view.
+    ctx.save(); ctx.scale(flip ? -1 : 1, 1);
+    ctx.translate(width * .095, -height * .17);
+    const rimX = width * .027, rimY = height * .105;
+    ctx.beginPath(); ctx.ellipse(0, 0, rimX, rimY, .08, 0, Math.PI * 2); ctx.clip();
+    ctx.strokeStyle = '#c5bba580'; ctx.lineWidth = Math.max(.65, width * .008);
+    const angle = distance * .11;
+    for (let spoke = 0; spoke < 5; spoke++) {
+      const phase = angle + spoke * Math.PI * 2 / 5;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(phase) * rimX, Math.sin(phase) * rimY); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   private drawRival(ctx: CanvasRenderingContext2D, entity: RoadEntity, x: number, y: number, scale: number): void {
     const boss = entity.kind === 'boss'; const s = scale * (boss ? 1.04 : .9);
     const defeatAnimating = boss && entity.hp <= 0 && this.bossDefeatAnimating;
@@ -1010,7 +1023,11 @@ export class RoadRashStage {
     }
     const actionFacing = attacking || entity.reactionTimer > 0 || entity.hitFlash > 0;
     const flip = actionFacing && side < 0;
-    if(this.drawRidersAtlasFrame(ctx,boss?2:1,atlasFrame,renderX,y+suspension*s,atlasWidth,atlasHeight,flip))return;
+    if(this.drawRidersAtlasFrame(ctx,boss?2:1,atlasFrame,renderX,y+suspension*s,atlasWidth,atlasHeight,flip)) {
+      ctx.save(); ctx.translate(px(renderX), px(y + suspension * s));
+      this.drawRollingWheel(ctx, atlasWidth, atlasHeight, this.visualDistance, flip);
+      ctx.restore(); return;
+    }
     ctx.save(); ctx.translate(px(renderX), px(y + suspension * s)); ctx.scale(s, s);
     ctx.rotate(leanPose * .045 + (entity.reactionTimer > 0 ? entity.recoilSide * .075 : 0));
     ctx.translate(leanPose * 2.5, 0);
@@ -1023,6 +1040,7 @@ export class RoadRashStage {
     ctx.fillStyle = '#080812'; ctx.beginPath(); ctx.ellipse(leanPose * 2, -9, boss ? 16 : 13, boss ? 29 : 24, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#343341'; ctx.fillRect(-5, -28, 10, 36); ctx.fillStyle = '#9ca5a4'; ctx.fillRect(-2, -25, 4, 31);
     ctx.fillStyle = '#0b0912'; ctx.fillRect(-31, -24, 14, 8); ctx.fillRect(17, -24, 14, 8);
+    this.drawRollingWheel(ctx, 110, 140, this.visualDistance);
     ctx.fillStyle = '#d6c9a4'; ctx.fillRect(-29, -22, 12, 4); ctx.fillRect(17, -22, 12, 4);
     if (this.rider.speed > 138) {
       const flame = 5 + ((Math.floor(this.elapsed * 18) + entity.id) % 3) * 3;
@@ -1089,8 +1107,6 @@ export class RoadRashStage {
     const x = this.project(0, this.rider.lane).x;
     ctx.fillStyle = '#0808138f'; ctx.beginPath(); ctx.ellipse(px(x), ROAD_BOTTOM, 38, 8, 0, 0, Math.PI * 2); ctx.fill();
     const leanPose = this.rider.lean > .24 ? 1 : this.rider.lean < -.24 ? -1 : 0;
-    const suspensionPose = Math.floor(this.elapsed * (8 + this.rider.speed * .025)) % 3;
-    const bob = suspensionPose === 0 ? -3 : suspensionPose === 1 ? 2 : 0;
     const recoilPhase = this.rider.playerRecoil > 0 ? 1 - this.rider.playerRecoil / .48 : 0;
     const recoilShift = this.rider.playerRecoil > 0
       ? -this.rider.attackSide * ((1 - recoilPhase) * 8 + Math.sin(recoilPhase * Math.PI) * 29)
@@ -1099,23 +1115,27 @@ export class RoadRashStage {
     if(this.rider.attackConnected)atlasFrame=recoilPhase<.12?3:recoilPhase<.62?4:5;
     else if(this.rider.playerRecoil>0)atlasFrame=recoilPhase<.62?4:5;
     else if(this.rider.attackTimer>.58)atlasFrame=1;else if(this.rider.attackTimer>.27)atlasFrame=2;else if(this.rider.attackTimer>0)atlasFrame=5;
-    ctx.save();ctx.translate(px(x+recoilShift),px(ROAD_BOTTOM+bob));ctx.rotate(leanPose*.055+this.rider.lean*.02);
+    // Keep tyre contact fixed on the road. The old three-pose bob jumped the
+    // entire bike by five pixels and changed phase abruptly while accelerating.
+    ctx.save();ctx.translate(px(x+recoilShift),ROAD_BOTTOM);ctx.rotate(this.rider.lean*.075);
     if (this.rider.hitFlash > 0) ctx.filter = 'brightness(2.8) saturate(0)';
     const actionFacing = this.rider.attackTimer > 0 || this.rider.playerRecoil > 0;
     const flip = actionFacing && this.rider.attackSide < 0;
     const atlasDrawn=this.drawHeroineAtlasFrame(ctx,atlasFrame,0,0,PLAYER_ATLAS_WIDTH,PLAYER_ATLAS_HEIGHT,flip);
+    if (atlasDrawn) this.drawRollingWheel(ctx, PLAYER_ATLAS_WIDTH, PLAYER_ATLAS_HEIGHT, this.rider.wheelDistance, flip);
     ctx.restore();
     if(atlasDrawn){
       if(this.rider.speed>132){ctx.fillStyle='#58efe0';const flame=7+(Math.floor(this.elapsed*20)%3)*4;ctx.fillRect(px(x+recoilShift-7),510,5,flame);ctx.fillStyle='#fff18c';ctx.fillRect(px(x+recoilShift-6),510,2,Math.max(3,flame-4));}
       return;
     }
-    ctx.save(); ctx.translate(px(x + recoilShift), px(ROAD_BOTTOM + bob)); ctx.rotate(leanPose * .075 + this.rider.lean * .025);
+    ctx.save(); ctx.translate(px(x + recoilShift), ROAD_BOTTOM); ctx.rotate(this.rider.lean * .1);
     if (this.rider.speed > 145) {
       ctx.fillStyle = '#73f0e34d';
       for (let index = 0; index < 5; index++) ctx.fillRect(-13 + index * 7, 2 + index % 2 * 4, 3, 22 + index * 6);
     }
     ctx.fillStyle = '#080812'; ctx.beginPath(); ctx.ellipse(leanPose * 3, -9, 16, 30, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#3c3945'; ctx.fillRect(-6, -31, 12, 40); ctx.fillStyle = '#bec8c5'; ctx.fillRect(-2, -29, 4, 35);
+    this.drawRollingWheel(ctx, PLAYER_ATLAS_WIDTH, PLAYER_ATLAS_HEIGHT, this.rider.wheelDistance);
     ctx.fillStyle = '#100b16'; ctx.fillRect(-38, -27, 17, 10); ctx.fillRect(21, -27, 17, 10);
     ctx.fillStyle = '#d8d2bb'; ctx.fillRect(-37, -24, 16, 5); ctx.fillRect(21, -24, 16, 5);
     if (this.rider.speed > 132) {

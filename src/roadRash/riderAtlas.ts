@@ -7,6 +7,36 @@ export interface RiderAtlas {
 // Share their prepared frames instead of repeating synchronous pixel analysis.
 const preparedAtlases = new Map<string, RiderAtlas>();
 
+// These pockets are confirmed background between Road King's cape, arm and
+// bike, not white paint or muzzle flashes. Canonical alpha prevents a global
+// colour key from safely removing them; flood only the identified pockets.
+const ROAD_KING_MATTE_SEEDS = [[186, 866], [2304, 856], [2885, 850], [2759, 908]] as const;
+
+function clearRoadKingMatte(canvas: HTMLCanvasElement, column: number, top: number): void {
+  const seeds = ROAD_KING_MATTE_SEEDS.filter(([x]) => Math.floor(x / canvas.width) === column);
+  if (!seeds.length) return;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const { data, width, height } = pixels;
+  const queue = new Int32Array(width * height);
+  let head = 0, tail = 0;
+  const push = (x: number, y: number) => {
+    if (x < 0 || x >= width || y < 0 || y >= height) return;
+    const i = y * width + x, p = i * 4;
+    const low = Math.min(data[p], data[p + 1], data[p + 2]);
+    const high = Math.max(data[p], data[p + 1], data[p + 2]);
+    if (!data[p + 3] || low <= 188 || high - low >= 22) return;
+    data[p + 3] = 0;
+    queue[tail++] = i;
+  };
+  for (const [x, y] of seeds) push(x - column * width, y - top);
+  while (head < tail) {
+    const i = queue[head++], x = i % width, y = Math.floor(i / width);
+    push(x - 1, y); push(x + 1, y); push(x, y - 1); push(x, y + 1);
+  }
+  ctx.putImageData(pixels, 0, 0);
+}
+
 export function prepareRiderAtlas(image: HTMLImageElement): RiderAtlas {
   const cacheKey = `${image.currentSrc || image.src}|${image.naturalWidth}x${image.naturalHeight}`;
   const cached = preparedAtlases.get(cacheKey);
@@ -20,6 +50,9 @@ export function prepareRiderAtlas(image: HTMLImageElement): RiderAtlas {
       return Array.from({ length: 6 }, (_, column) => {
         const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = height;
         canvas.getContext('2d')!.drawImage(image, column * 512, top, 512, height, 0, 0, 512, height);
+        if (row === 2 && new URL(image.currentSrc || image.src).pathname.endsWith('/road-rash-riders-atlas-v3.png')) {
+          clearRoadKingMatte(canvas, column, top);
+        }
         return canvas;
       });
     });
