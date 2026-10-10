@@ -2373,7 +2373,7 @@ export class VenusGame {
     const c=this.ctx,win=this.mode==='win',stageTwo=this.completedStage===2;c.fillStyle=win?'#09031cbb':'#100309c7';c.fillRect(0,0,W,H);
     if(win){for(let i=0;i<9;i++){const x=100+i*95,y=115+Math.sin(this.time*2+i)*25;c.fillStyle=i%2?'#ff4b86':'#65f1df';c.fillRect(x,y,5,18);}}
     c.fillStyle='#100a1eea';c.fillRect(236,109,488,323);c.strokeStyle=win?'#ffe15a':'#ff3f64';c.lineWidth=4;c.strokeRect(236,109,488,323);
-    this.text(win?(stageTwo?'DISTRICT LIBERATED!':'VENUS RIDES FREE!'):(stageTwo?'CREW DOWN':'BIKE WRECKED'),480,173,43,win?'#fff16b':'#ff5270','center',true);this.text(win?(stageTwo?'THE FORGE OVERSEER IS FINISHED.':'THE SULFUR TYRANT’S WAR MACHINE IS SCRAP.'):(stageTwo?'THE FURNACE DISTRICT STILL NEEDS YOU.':'THE SKYWAY ISN’T DONE WITH YOU.'),480,208,14,'#e2d2e7','center');
+    this.text(win?(stageTwo?'DISTRICT LIBERATED!':'VENUS RIDES FREE!'):(stageTwo?'CREW DOWN':'BIKE WRECKED'),480,173,43,win?'#fff16b':'#ff5270','center',true,440);this.text(win?(stageTwo?'THE FORGE OVERSEER IS FINISHED.':'THE SULFUR TYRANT’S WAR MACHINE IS SCRAP.'):(stageTwo?'THE FURNACE DISTRICT STILL NEEDS YOU.':'THE SKYWAY ISN’T DONE WITH YOU.'),480,208,14,'#e2d2e7','center');
     if(this.coopEnabled){
       const p1=HEROES[this.selectedHeroes[0]],p2=HEROES[this.selectedHeroes[1]];
       this.text(p1.name,462,263,16,p1.accent,'right',true);this.text('+',480,263,15,'#fff','center',true);this.text(p2.name,498,263,16,p2.accent,'left',true);
@@ -2382,5 +2382,7 @@ export class VenusGame {
     this.text('ENTER / Z  RIDE AGAIN',480,399,15,'#75f1dd','center',true);this.text('ESC  TITLE SCREEN',480,419,11,'#9b8ca5','center');
   }
 
-  private text(value:string,x:number,y:number,size:number,color='#fff',align:CanvasTextAlign='left',bold=false){const c=this.ctx;c.save();c.font=`${bold?'900':'700'} ${size}px "Arial Narrow", Impact, sans-serif`;c.textAlign=align;c.textBaseline='alphabetic';c.fillStyle='#06030c';c.globalAlpha=.75;c.fillText(value,x+2,y+2);c.globalAlpha=1;c.fillStyle=color;c.fillText(value,x,y);c.restore();}
+  private text(value:string,x:number,y:number,size:number,color='#fff',align:CanvasTextAlign='left',bold=false,maxWidth?:number){const c=this.ctx;c.save();c.font=`${bold?'900':'700'} ${size}px "Arial Narrow", Impact, sans-serif`;
+    if(maxWidth){const width=c.measureText(value).width;if(width>maxWidth)c.font=`${bold?'900':'700'} ${Math.floor(size*maxWidth/width)}px "Arial Narrow", Impact, sans-serif`;}
+    c.textAlign=align;c.textBaseline='alphabetic';c.fillStyle='#06030c';c.globalAlpha=.75;c.fillText(value,x+2,y+2);c.globalAlpha=1;c.fillStyle=color;c.fillText(value,x,y);c.restore();}
 }
