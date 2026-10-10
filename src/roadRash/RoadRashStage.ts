@@ -271,7 +271,8 @@ export class RoadRashStage {
     for (const rider of living) {
       this.rider = rider;
       const controls = rider.id === 1 ? primaryControls : secondControls;
-      const steer = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
+      const steer = controls.steering !== undefined && Number.isFinite(controls.steering)
+        ? clamp(controls.steering, -1, 1) : (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
       const accelerating = Boolean(controls.accelerate ?? controls.up);
       const braking = Boolean(controls.brake ?? controls.down);
       const throttle = accelerating ? 1 : 0;

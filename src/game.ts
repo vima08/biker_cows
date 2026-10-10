@@ -20,6 +20,7 @@ import { gameEvents } from './core/GameEvents';
 import { HighScoreStore, type HighScore } from './core/HighScoreStore';
 import { assetUrl } from './assetUrl';
 import { InputController } from './core/InputController';
+import { TabletControls } from './core/TabletControls';
 import { ExtrasView } from './extras/ExtrasView';
 import { PresentationAssets, type PresentationLoadingStatus } from './core/PresentationAssets';
 import { ContinueSystem, type CampaignCheckpoint } from './core/ContinueSystem';
@@ -138,6 +139,7 @@ function emitMusic(cue: string, intensity = 1) {
 export class VenusGame {
   private ctx: CanvasRenderingContext2D;
   private readonly input: InputController;
+  private readonly tablet: TabletControls;
   private readonly extras: ExtrasView;
   private readonly highScoreStore = new HighScoreStore();
   private readonly riderPose = new RiderPoseResolver();
@@ -231,6 +233,7 @@ export class VenusGame {
     this.pausedFrame.width = W;
     this.pausedFrame.height = H;
     this.input = new InputController(canvas);
+    this.tablet = new TabletControls(this.input, canvas);
     this.extras = new ExtrasView(canvas, () => { this.extras.close(); this.mode = 'title'; emitAudio('menu_back'); });
     canvas.addEventListener('pointerdown', event => {
       if (this.mode !== 'title' || this.presentation.status('title')) return;
@@ -304,9 +307,11 @@ export class VenusGame {
     const dt = Math.min(.034, rawDt);
     this.last = now;
     this.frameInterval = rawDt;
-    if (this.mode !== 'paused') this.time += dt;
+    this.tablet.sync(this.mode);
+    if (this.mode !== 'paused' && !this.tablet.blocked) this.time += dt;
     this.input.pollGamepads();
-    this.update(dt);
+    if (!this.tablet.blocked) this.update(dt);
+    this.tablet.sync(this.mode);
     this.draw();
     this.input.endFrame();
     requestAnimationFrame(this.loop);
@@ -667,7 +672,7 @@ export class VenusGame {
     const accelerate=this.debugRoadRashControls.accelerate??this.input.down('KeyW','P1PadUp',...(solo?['ArrowUp']:[]));
     const brake=this.debugRoadRashControls.brake??this.input.down('KeyS','P1PadDown',...(solo?['ArrowDown']:[]));
     const attackKeys=['KeyZ','Space','P1PadFire'];
-    return {left,right,accelerate,brake,attack:this.debugRoadRashControls.attack??this.input.down(...attackKeys),attackPressed:this.input.tap(...attackKeys)};
+    return {left,right,steering:left||right?undefined:this.tablet.steering,accelerate,brake,attack:this.debugRoadRashControls.attack??this.input.down(...attackKeys),attackPressed:this.input.tap(...attackKeys)};
   }
 
   private updateRoadRash(dt:number) {

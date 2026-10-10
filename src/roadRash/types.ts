@@ -5,6 +5,8 @@ export type RoadRashHeroId = 'cassia' | 'bruna' | 'nova';
 export interface RoadRashControls {
   left?: boolean;
   right?: boolean;
+  /** Analog steering from -1 (left) to 1 (right), e.g. tablet tilt. */
+  steering?: number;
   accelerate?: boolean;
   brake?: boolean;
   attack?: boolean;

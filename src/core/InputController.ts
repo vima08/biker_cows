@@ -5,6 +5,7 @@
 export class InputController {
   private readonly held = new Set<string>();
   private readonly pressed = new Set<string>();
+  private readonly virtual = new Map<string, Set<string>>();
   private readonly padPrevious: boolean[][] = [[], []];
 
   constructor(canvas: HTMLCanvasElement) {
@@ -15,7 +16,7 @@ export class InputController {
       this.held.add(event.code);
     });
     addEventListener('keyup', (event) => this.held.delete(event.code));
-    addEventListener('blur', () => this.held.clear());
+    addEventListener('blur', () => { this.held.clear(); this.pressed.clear(); this.virtual.clear(); });
     canvas.addEventListener('pointerdown', () => {
       canvas.focus();
       this.pressed.add('Enter');
@@ -53,7 +54,15 @@ export class InputController {
   }
 
   down(...codes: string[]): boolean {
-    return codes.some(code => this.held.has(code));
+    return codes.some(code => this.held.has(code) || [...this.virtual.values()].some(keys => keys.has(code)));
+  }
+
+  /** Each pointer owns its input, so releasing one finger cannot release another. */
+  setVirtual(source: string, codes: string[]): void {
+    const previous = this.virtual.get(source);
+    for (const code of codes) if (!previous?.has(code)) this.pressed.add(code);
+    if (codes.length) this.virtual.set(source, new Set(codes));
+    else this.virtual.delete(source);
   }
 
   tap(...codes: string[]): boolean {
