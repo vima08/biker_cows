@@ -70,22 +70,13 @@ const checkpoints = {};
 try {
   await page.goto(baseURL, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => Boolean(window.__BCFV_DEBUG__));
-  await page.waitForFunction(expectedCount => {
-    const atlas = window.__BCFV_DEBUG__.snapshot().atlas;
-    return atlas && Object.keys(atlas).length === expectedCount && Object.values(atlas).every(sheet => sheet.state === 'ready');
-  }, EXPECTED_ATLAS_COUNT);
-  checkpoints.atlas = (await state()).atlas;
-  if (Object.keys(checkpoints.atlas).length !== EXPECTED_ATLAS_COUNT || checkpoints.atlas.riderImpact?.frames !== 12 ||
-      !checkpoints.atlas.impactMaterial || !checkpoints.atlas.sustainedFire || checkpoints.atlas.fireRelease?.frames !== 9 ||
-      checkpoints.atlas.enemyRoster?.frames !== 12) {
-    throw new Error(`Expected ${EXPECTED_ATLAS_COUNT} atlases including riderImpact, impactMaterial, sustainedFire, 9-frame fireRelease and 12-frame enemyRoster, received ${JSON.stringify(checkpoints.atlas)}`);
-  }
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'title');
   checkpoints.menu = await assertState('title');
   await shot('menu');
   console.log('[gauntlet] menu');
 
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'select');
   checkpoints.select = await assertState('select');
   await shot('select');
   console.log('[gauntlet] select');
@@ -116,7 +107,19 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'intro', undefined, { polling: 'raf' });
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(350);
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'playing');
+  // Gameplay atlases load on demand after leaving the presentation screens.
+  // Keep the full atlas contract gate before exercising gameplay rendering.
+  await page.waitForFunction(expectedCount => {
+    const atlas = window.__BCFV_DEBUG__.snapshot().atlas;
+    return atlas && Object.keys(atlas).length === expectedCount && Object.values(atlas).every(sheet => sheet.state === 'ready');
+  }, EXPECTED_ATLAS_COUNT);
+  checkpoints.atlas = (await state()).atlas;
+  if (Object.keys(checkpoints.atlas).length !== EXPECTED_ATLAS_COUNT || checkpoints.atlas.riderImpact?.frames !== 12 ||
+      !checkpoints.atlas.impactMaterial || !checkpoints.atlas.sustainedFire || checkpoints.atlas.fireRelease?.frames !== 9 ||
+      checkpoints.atlas.enemyRoster?.frames !== 12) {
+    throw new Error(`Expected ${EXPECTED_ATLAS_COUNT} atlases including riderImpact, impactMaterial, sustainedFire, 9-frame fireRelease and 12-frame enemyRoster, received ${JSON.stringify(checkpoints.atlas)}`);
+  }
   checkpoints.start = await assertState('playing');
   if (checkpoints.start.hero !== 'bruna') {
     throw new Error(`Hero select did not start Bruna: ${JSON.stringify(checkpoints.start)}`);
@@ -1471,7 +1474,9 @@ try {
 
   await page.keyboard.up('KeyZ').catch(() => {});
   await page.keyboard.up('Numpad1').catch(() => {});
-  const coopSelectStart = await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('coop-select'));
+  await page.evaluate(() => window.__BCFV_DEBUG__.gotoScene('coop-select'));
+  await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'select');
+  const coopSelectStart = await assertState('select');
   requireCoop(coopSelectStart.state === 'select' && coopSelectStart.coopEnabled === true &&
       Array.isArray(coopSelectStart.selectedHeroes) && coopSelectStart.selectedHeroes.length === 2,
     'coop select did not expose two independent slots', coopSelectStart);
