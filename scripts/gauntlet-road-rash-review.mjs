@@ -19,6 +19,7 @@ try {
     const runtime = await import(new URL('src/debug/runtime.ts', base).href);
     window.reviewRuntime = runtime;
     window.reviewStage = new RoadRashStage({ debugSkipIntro: true, playerHero: 'nova', secondPlayerHero: 'cassia' });
+    window.reviewMotionStage = new RoadRashStage({ debugSkipIntro: true, courseLength: 1e8, secondPlayerHero: 'nova' });
     const canvas = document.createElement('canvas'); canvas.width = 960; canvas.height = 540;
     document.body.replaceChildren(canvas); document.body.style.margin = '0';
     window.reviewCtx = canvas.getContext('2d');
@@ -30,6 +31,36 @@ try {
     const check = (condition, message) => { if (!condition) throw new Error(message); checks.push(message); };
     const far = s.project(620, 0);
     check(far.scale === 0 && far.y === 334 && far.x === 466, 'Calibrated vanishing point and zero distant scale');
+    const motion = window.reviewMotionStage;
+    motion.heroinesAtlasCanvas = s.heroinesAtlasCanvas;
+    motion.nextSpawnAt = Infinity;
+    const anchors = [];
+    motion.drawHeroineAtlasFrame = function(context) { anchors.push(context.getTransform().f); return true; };
+    for (let i = 0; i < 240; i++) {
+      motion.update(1 / 60, { accelerate: true }, { brake: true });
+      motion.rider = motion.riders[0]; motion.drawPlayer(ctx);
+    }
+    check(anchors.every(y => y === 524), 'Tyre contact stays fixed during four seconds of acceleration');
+    check(motion.riders[0].wheelDistance > motion.riders[1].wheelDistance * 2, 'Co-op wheel rotation follows each rider speed independently');
+    const wheelBeforeFreeze = motion.riders[0].wheelDistance;
+    motion.impactFreeze = .1; motion.update(1 / 60, { accelerate: true });
+    check(motion.riders[0].wheelDistance === wheelBeforeFreeze, 'Wheels stop during impact freeze');
+    const wheelCanvas = document.createElement('canvas'); wheelCanvas.width = 240; wheelCanvas.height = 160;
+    const wheelCtx = wheelCanvas.getContext('2d');
+    const wheelPixels = distance => {
+      wheelCtx.clearRect(0, 0, 240, 160);
+      wheelCtx.save(); wheelCtx.translate(120, 160); s.drawRollingWheel(wheelCtx, 112, 140, distance); wheelCtx.restore();
+      return wheelCtx.getImageData(0, 0, 240, 160).data;
+    };
+    const wheelA = wheelPixels(0), wheelB = wheelPixels(4);
+    let changed = 0, outsideTyre = 0;
+    for (let i = 0; i < wheelA.length; i += 4) {
+      if (wheelA[i] === wheelB[i] && wheelA[i + 1] === wheelB[i + 1] && wheelA[i + 2] === wheelB[i + 2] && wheelA[i + 3] === wheelB[i + 3]) continue;
+      changed++;
+      const x = i / 4 % 240, y = Math.floor(i / 4 / 240);
+      if (x < 100 || x > 136 || y < 110 || y > 159) outsideTyre++;
+    }
+    check(changed > 100 && outsideTyre === 0, 'Rolling tread and spokes change visible tyre pixels without touching the rider');
     for (let distance = 0; distance <= 620; distance += 10) {
       const p = s.project(distance, 0);
       check(p.y - 134 * p.scale >= 334 - 1e-8, `Tallest road sprite grounded below horizon at dz=${distance}`);

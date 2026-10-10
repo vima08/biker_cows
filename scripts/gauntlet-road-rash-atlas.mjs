@@ -70,6 +70,23 @@ try {
     assert.deepEqual(frame.top, [255, 255, 255, 255], 'Canonical alpha white pixels bypass all keying');
     assert.deepEqual(frame.bottom, [r * 60 + f + 1, 20, 30, 255], 'Canonical cell slicing preserves pivot and baseline');
   }
+  const bossMatte = await page.evaluate(async () => {
+    const image = new Image();
+    image.src = new URL('assets/road-rash/road-rash-riders-atlas-v3.png', location.href).href;
+    await image.decode();
+    const { frames } = window.prepareRiderAtlas(image);
+    const source = document.createElement('canvas'); source.width = image.naturalWidth; source.height = image.naturalHeight;
+    source.getContext('2d').drawImage(image, 0, 0);
+    const pixel = (x, y) => Array.from(frames[2][Math.floor(x / 512)].getContext('2d').getImageData(x % 512, y - 682, 1, 1).data);
+    return {
+      pockets: [[186, 866], [2304, 856], [2885, 850], [2759, 908]].map(([x, y]) => pixel(x, y)[3]),
+      highlights: [[250, 755], [303, 755], [1932, 812]].map(([x, y]) => ({
+        before: Array.from(source.getContext('2d').getImageData(x, y, 1, 1).data), after: pixel(x, y),
+      })),
+    };
+  });
+  assert.deepEqual(bossMatte.pockets, [0, 0, 0, 0], 'Road King enclosed matte pockets become transparent');
+  for (const pixel of bossMatte.highlights) assert.deepEqual(pixel.after, pixel.before, 'Road King horns and contact flash retain their white highlights');
   for (const name of ['road-rash-heroines-atlas-v1', 'road-rash-riders-atlas-v3']) {
     const result = await page.evaluate(async name => {
       const image = new Image();
