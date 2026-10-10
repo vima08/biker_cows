@@ -50,8 +50,9 @@ export class TabletControls {
     return navigator.maxTouchPoints > 0 || this.touchMedia.matches;
   }
 
-  sync(mode: GameMode): void {
-    this.root.hidden = !this.available || mode === 'extras' || this.blocked;
+  sync(mode: GameMode, suspended = false): void {
+    this.root.hidden = suspended || !this.available || mode === 'extras' || this.blocked;
+    if (suspended) this.reset();
     this.rotate.hidden = !this.blocked;
     if (this.mode !== mode) {
       this.reset();
@@ -177,6 +178,7 @@ export class TabletControls {
     toolbar.className = 'tablet-toolbar';
     toolbar.append(this.button('⛶ Экран', undefined, () => { void this.fullscreen(); }));
     if (combat) toolbar.append(this.button('Ⅱ Пауза', ['KeyP']));
+    if (combat || mode === 'paused') toolbar.append(this.button('Карта', ['KeyM']));
     if (mode === 'road-rash') {
       this.tiltButton = this.button('', undefined, () => { void this.toggleTilt(); });
       toolbar.append(this.tiltButton, this.button('Центр руля', undefined, () => { this.neutral = null; this.tiltValue = 0; }));

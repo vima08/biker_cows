@@ -1051,6 +1051,7 @@ export class BeatEmUpStage {
     if(boss&&player){boss.hp=0;this.defeatEnemy(boss,player);}
   }
   getScore(): number { return this.score; }
+  get routeProgress(): number { return clamp(this.players[0].x / this.options.level.length, 0, 1); }
   getDefeatedCount(): number { return this.defeatedCount; }
   getMaxCombo(): number { return this.maxCombo; }
 }

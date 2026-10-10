@@ -59,7 +59,7 @@ try {
   await page.screenshot({ path: '.gauntlet/extras/heroines.png' });
   await page.setViewportSize({ width: 390, height: 844 });
   assert(await page.locator('.extras-reader').evaluate(node => node.clientHeight > 200));
-  assert(await page.locator('.extras').evaluate(node => node.scrollWidth <= node.clientWidth));
+  assert(await page.locator('.extras[aria-labelledby="extras-title"]').evaluate(node => node.scrollWidth <= node.clientWidth));
   await page.screenshot({ path: '.gauntlet/extras/mobile.png' });
   await page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'hidden' });

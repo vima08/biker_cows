@@ -115,6 +115,7 @@ function sweptObstacleContact(fromDepth: number, toDepth: number, fromLane: numb
  * It owns no DOM state and can be constructed before a canvas exists.
  */
 export class RoadRashStage {
+  get routeProgress(): number { return clamp(this.distance / this.courseLength, 0, 1); }
   readonly width = W;
   readonly height = H;
 

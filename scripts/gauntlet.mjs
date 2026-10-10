@@ -108,6 +108,8 @@ try {
   await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'intro', undefined, { polling: 'raf' });
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => window.__BCFV_DEBUG__.snapshot().state === 'playing');
+  await page.locator('.mission-journal').getByRole('button', { name: 'Начать миссию', exact: true }).click();
+  await page.waitForFunction(() => !window.__BCFV_DEBUG__.snapshot().journal.open);
   // Gameplay atlases load on demand after leaving the presentation screens.
   // Keep the full atlas contract gate before exercising gameplay rendering.
   await page.waitForFunction(expectedCount => {

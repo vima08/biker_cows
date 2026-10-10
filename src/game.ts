@@ -22,6 +22,7 @@ import { assetUrl } from './assetUrl';
 import { InputController } from './core/InputController';
 import { TabletControls } from './core/TabletControls';
 import { ExtrasView } from './extras/ExtrasView';
+import { MissionJournal } from './extras/MissionJournal';
 import { PresentationAssets, type PresentationLoadingStatus } from './core/PresentationAssets';
 import { ContinueSystem, type CampaignCheckpoint } from './core/ContinueSystem';
 import {
@@ -141,6 +142,8 @@ export class VenusGame {
   private readonly input: InputController;
   private readonly tablet: TabletControls;
   private readonly extras: ExtrasView;
+  private readonly journal: MissionJournal;
+  private storyEnabled: boolean;
   private readonly highScoreStore = new HighScoreStore();
   private readonly riderPose = new RiderPoseResolver();
   private readonly continues = new ContinueSystem({ levelId: VENUS_HIGHWAY.id, stage: 1, runtime: 'rider' });
@@ -234,6 +237,9 @@ export class VenusGame {
     this.pausedFrame.height = H;
     this.input = new InputController(canvas, () => ['title','select','intro','outro','continue','win','lose'].includes(this.mode));
     this.tablet = new TabletControls(this.input, canvas);
+    this.journal = new MissionJournal(canvas, () => this.input.clear());
+    const storyQuery = new URLSearchParams(location.search);
+    this.storyEnabled = !storyQuery.has('scene') || storyQuery.get('story') === '1';
     this.extras = new ExtrasView(canvas, () => { this.extras.close(); this.mode = 'title'; emitAudio('menu_back'); });
     canvas.addEventListener('pointerdown', event => {
       if (this.mode !== 'title' || this.presentation.status('title')) return;
@@ -307,11 +313,24 @@ export class VenusGame {
     const dt = Math.min(.034, rawDt);
     this.last = now;
     this.frameInterval = rawDt;
-    this.tablet.sync(this.mode);
-    if (this.mode !== 'paused' && !this.tablet.blocked) this.time += dt;
+    const inMission = ['playing','road-rash','brawler','paused'].includes(this.mode);
+    if (inMission && !this.journal.active) {
+      const runtime = this.mode === 'paused' ? this.pausedFrom : this.mode;
+      const segment = runtime === 'road-rash' ? 1 : runtime === 'brawler' ? 2 : this.campaignAct === 3 ? 3 : 0;
+      const progress = runtime === 'road-rash' ? this.roadRash?.routeProgress ?? 0
+        : runtime === 'brawler' ? this.brawler?.routeProgress ?? 0
+        : this.elapsed / (this.campaignAct === 3 ? ACT_THREE_BOSS_TIME : CAMPAIGN_TIMING.minibossAtSeconds);
+      this.journal.context(segment, Math.min(1, Math.max(0, progress)), this.selectedHeroes[0], this.storyEnabled && this.mode !== 'paused');
+    }
+    this.tablet.sync(this.mode, this.journal.active);
+    if (this.mode !== 'paused' && !this.tablet.blocked && !this.journal.active) this.time += dt;
     this.input.pollGamepads();
-    if (!this.tablet.blocked) this.update(dt);
-    this.tablet.sync(this.mode);
+    if (!this.tablet.blocked) {
+      if (this.journal.active) this.journal.update(this.input, dt);
+      else if (inMission && this.input.tap('KeyM')) this.journal.openMap();
+      else this.update(dt);
+    }
+    this.tablet.sync(this.mode, this.journal.active);
     this.draw();
     this.input.endFrame();
     requestAnimationFrame(this.loop);
@@ -473,6 +492,7 @@ export class VenusGame {
   }
 
   private beginRiderAct(act:1|3, newCampaign = false) {
+    if (newCampaign) this.journal.reset();
     this.clearTerminalTransients();
     this.debugScene = null;
     this.selected=this.selectedHeroes[0];
@@ -621,6 +641,7 @@ export class VenusGame {
 
   private completeActOne() {
     if(this.mode!=='playing'||this.campaignAct!==1||!this.minibossDefeated)return;
+    if(this.storyEnabled && this.journal.debrief(0, () => this.completeActOne())) return;
     // Include any weapon pickup collected during the miniboss clear hold in
     // the Act 3 checkpoint loadout.
     this.captureRiderLoadout();
@@ -685,6 +706,7 @@ export class VenusGame {
       this.finishClock+=dt;
       if(this.finishClock<1.8)return;
       if(state.completed){
+        if(this.storyEnabled && this.journal.debrief(1, () => this.updateRoadRash(0))) return;
         if(!this.roadRashScoreCommitted){this.score+=state.score;this.kills+=state.rivalsDefeated;this.roadRashScoreCommitted=true;}
         if(this.standaloneRoadRash)this.finishRun(true);
         else this.beginBrawler(false,FURNACE_DISTRICT);
@@ -694,6 +716,7 @@ export class VenusGame {
 
   private completeBrawlerAct() {
     if(!this.brawler||this.campaignAct!==2)return;
+    if(this.storyEnabled && this.journal.debrief(2, () => this.completeBrawlerAct())) return;
     if(!this.brawlerScoreCommitted){
       this.score+=this.brawler.getScore();this.kills+=this.brawler.getDefeatedCount();
       this.combo=Math.max(this.combo,this.brawler.getMaxCombo());this.brawlerScoreCommitted=true;
@@ -1059,6 +1082,7 @@ export class VenusGame {
 
   private finishRun(win:boolean){
     if(this.mode!=='playing'&&this.mode!=='road-rash'&&this.mode!=='brawler')return;
+    if(win && this.storyEnabled && this.journal.debrief(this.mode==='brawler'?2:this.mode==='road-rash'?1:3, () => this.finishRun(true)))return;
     const wasBrawler=this.mode==='brawler';
     if(wasBrawler&&this.brawler&&!this.brawlerScoreCommitted){this.score+=this.brawler.getScore();this.kills+=this.brawler.getDefeatedCount();this.combo=Math.max(this.combo,this.brawler.getMaxCombo());this.brawlerScoreCommitted=true;}
     // Terminal screens stop the gameplay update loop.  Clear transient camera
@@ -1393,7 +1417,7 @@ export class VenusGame {
     const sourceElapsed=riderSourceElapsed(this.campaignAct,this.elapsed);
     const loading = this.presentation.status(this.mode);
     return {
-      state: loading ? 'loading' : this.mode, loading, stage:this.campaignAct,act:this.campaignAct,segment,hero: HEROES[this.selected].id, score: Math.floor(this.score),
+      state: loading ? 'loading' : this.mode, loading, journal:this.journal.snapshot, stage:this.campaignAct,act:this.campaignAct,segment,hero: HEROES[this.selected].id, score: Math.floor(this.score),
       artEnabled:isArtEnabled(),renderMode:getRenderMode(),debugScene:this.debugScene,
       campaign:{
         act:this.campaignAct,segment,levelId:this.currentLevelId,transition:this.campaignTransition,history:[...this.campaignHistory],
@@ -1448,6 +1472,8 @@ export class VenusGame {
   }
 
   gotoScene(scene: string, time = 0) {
+    this.storyEnabled = new URLSearchParams(location.search).get('story') === '1';
+    this.journal.reset();
     if (scene === 'title') { this.mode = 'title'; emitMusic('title'); }
     else if (scene === 'select') { this.mode = 'select'; emitMusic('select'); }
     else if (scene === 'intro') { this.beginIntro(); this.introPanel=clamp(Math.floor(time),0,INTRO_PANELS.length-1); }
@@ -2375,7 +2401,15 @@ export class VenusGame {
     this.text('ESC  RETURN TO TITLE',480,447,10,'#9e8fa9','center');
   }
 
-  private drawPause(){const c=this.ctx;c.fillStyle='#07040cbb';c.fillRect(0,0,W,H);c.fillStyle='#160d25ee';c.fillRect(278,166,404,205);c.strokeStyle='#f7cf4e';c.lineWidth=3;c.strokeRect(278,166,404,205);this.text('PAUSED',480,218,41,'#fff071','center',true);this.text('VENUS CAN WAIT',480,248,13,'#bfacc8','center');this.text('ENTER / P',390,294,15,'#64eadb','right',true);this.text('RESUME',410,294,15,'#fff');this.text('R',390,324,15,'#ff667f','right',true);this.text(this.pausedFrom==='playing'?'RESTART RUN':'RESTART STAGE',410,324,15,'#fff');this.text('GAMEPAD: START TO RESUME',480,354,11,'#877b91','center');}
+  private drawPause(){
+    const c=this.ctx;c.fillStyle='#07040cbb';c.fillRect(0,0,W,H);c.fillStyle='#160d25ee';c.fillRect(278,166,404,235);
+    c.strokeStyle='#f7cf4e';c.lineWidth=3;c.strokeRect(278,166,404,235);
+    this.text('PAUSED',480,218,41,'#fff071','center',true);this.text('VENUS CAN WAIT',480,248,13,'#bfacc8','center');
+    this.text('ENTER / P',390,294,15,'#64eadb','right',true);this.text('RESUME',410,294,15,'#fff');
+    this.text('R',390,324,15,'#ff667f','right',true);this.text(this.pausedFrom==='playing'?'RESTART RUN':'RESTART STAGE',410,324,15,'#fff');
+    this.text('M',390,354,15,'#64eadb','right',true);this.text('MAP / DOSSIERS',410,354,15,'#fff');
+    this.text('GAMEPAD: START TO RESUME',480,382,11,'#877b91','center');
+  }
 
   private drawEnding(){
     const c=this.ctx,win=this.mode==='win',stageTwo=this.completedStage===2;c.fillStyle=win?'#09031cbb':'#100309c7';c.fillRect(0,0,W,H);

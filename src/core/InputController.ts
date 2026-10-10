@@ -73,6 +73,8 @@ export class InputController {
     this.pressed.clear();
   }
 
+  clear(): void { this.held.clear(); this.pressed.clear(); this.virtual.clear(); }
+
   private setAxis(key: string, active: boolean): void {
     if (active) this.held.add(key);
     else this.held.delete(key);
