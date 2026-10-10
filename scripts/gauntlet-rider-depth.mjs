@@ -22,6 +22,8 @@ try {
     const { setArtEnabled } = await import('./src/debug/runtime.ts');
     const { playerRoadDepth } = await import('./src/rider/depth.ts');
     const canvas = document.createElement('canvas');
+    const container = document.createElement('div');
+    container.append(canvas); // Tablet controls require a canvas parent.
     const game = new VenusGame(canvas); // No animation loop: deterministic frames.
     const ctx = canvas.getContext('2d');
     const p = game.players[0];
@@ -75,9 +77,9 @@ try {
     game.players.pop();
     game.spawnEnemy('tank', 220, 300);
     game.pickups = [{ x: 220, y: 400, kind: 'health', t: 0 }];
-    render(); check(before('tank', 'pickup'), 'Near pickup stays in front of distant tank');
+    render(); check(before('tank', 'pickup') && trace.at(-1) === 'pickup', 'Near pickup stays above actors and foreground scenery');
     game.pickups[0].y = 260;
-    render(); check(before('pickup', 'tank'), 'Distant pickup stays behind near tank');
+    render(); check(before('tank', 'pickup') && trace.at(-1) === 'pickup', 'Distant pickup stays above actors and foreground scenery');
     game.enemies = []; game.spawnEnemy('rider', 220, 280);
     game.riderImpacts = [{ enemyId: game.enemies[0].id, age: .3, localX: 0, localY: 0 }];
     const rear = game.drawImpactRear, front = game.drawImpactForeground;
@@ -96,7 +98,7 @@ try {
       for (const kind of ['drone', 'skimmer']) for (const altitude of [245, 295, 340]) {
         game.enemies = []; game.spawnEnemy(kind, 220, altitude);
         render();
-        check(before(authored ? 'prop:0' : 'fallback-rail', kind) && before('player:1', kind), `${kind} at y=${altitude} flies in front of rail (${authored ? 'bitmap' : 'fallback'})`);
+        check(before(authored ? 'prop:0' : 'fallback-rail', kind) && before('player:1', kind) && before(kind, 'pickup') && trace.at(-1) === 'pickup', `${kind} at y=${altitude} flies in front of rail and behind pickups (${authored ? 'bitmap' : 'fallback'})`);
       }
     }
     setArtEnabled(true); ctx.fillRect = fillRect;

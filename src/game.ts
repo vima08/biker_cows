@@ -1641,7 +1641,6 @@ export class VenusGame {
       if(p.alive)objects.push({y:playerRoadDepth(p),order:0,draw:()=>this.drawPlayer(p)});
       else if(p.downed)objects.push({y:playerRoadDepth(p)+7,order:0,draw:()=>this.drawDownedPlayer(p)});
     }
-    for(const q of this.pickups)objects.push({y:q.y,order:1,draw:()=>this.drawPickup(q)});
     for(const e of this.enemies)if(!e.aerial)objects.push({y:enemyRoadDepth(e),order:2,draw:()=>this.drawEnemyWithImpacts(e)});
     for(const layer of getEnvironmentDepthLayers())objects.push({y:layer.y,order:3,draw:()=>drawEnvironmentDepthLayer(c,environment,layer.id)});
     objects.sort((a,b)=>a.y-b.y||a.order-b.order).forEach(object=>object.draw());
@@ -1650,6 +1649,8 @@ export class VenusGame {
     for(const q of this.particles)this.drawParticle(q);
     if(bossEncounter)c.drawImage(this.bossForegroundCache,0,0);
     else drawEnvironmentForeground(c,environment);
+    // Collectibles stay readable above actors, effects and foreground scenery.
+    for(const q of this.pickups)this.drawPickup(q);
     for(const f of this.floaters){c.globalAlpha=clamp(f.life*2,0,1);this.text(f.text,f.x,f.y,17,f.color,'center',true);c.globalAlpha=1;}
   }
 
