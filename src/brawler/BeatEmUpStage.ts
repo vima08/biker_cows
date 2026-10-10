@@ -216,10 +216,10 @@ export class BeatEmUpStage {
     if (player.stun <= 0 && player.attackTimer <= 0) {
       const movementStartX = player.x;
       const movementStartY = player.y;
-      const horizontal = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
-      const vertical = (controls.down ? 1 : 0) - (controls.up ? 1 : 0);
+      const horizontal = controls.right || controls.left ? (controls.right ? 1 : 0) - (controls.left ? 1 : 0) : controls.movement?.x ?? 0;
+      const vertical = controls.down || controls.up ? (controls.down ? 1 : 0) - (controls.up ? 1 : 0) : controls.movement?.y ?? 0;
       const wantsMovement = horizontal !== 0 || vertical !== 0;
-      const length = Math.hypot(horizontal, vertical) || 1;
+      const length = Math.max(1, Math.hypot(horizontal, vertical));
       const speed = spec.speed * (player.z > 0 ? .72 : 1);
       player.x += horizontal / length * speed * dt;
       player.y += vertical / length * speed * .62 * dt;

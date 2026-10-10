@@ -232,7 +232,7 @@ export class VenusGame {
     this.bossBackgroundCache.height = this.bossForegroundCache.height = H;
     this.pausedFrame.width = W;
     this.pausedFrame.height = H;
-    this.input = new InputController(canvas);
+    this.input = new InputController(canvas, () => ['title','select','intro','outro','continue','win','lose'].includes(this.mode));
     this.tablet = new TabletControls(this.input, canvas);
     this.extras = new ExtrasView(canvas, () => { this.extras.close(); this.mode = 'title'; emitAudio('menu_back'); });
     canvas.addEventListener('pointerdown', event => {
@@ -560,7 +560,8 @@ export class VenusGame {
 
     const bossAlive = this.enemies.some(e => e.kind === 'boss' || e.kind === 'miniboss');
     const lead=this.players.find(r=>r.alive)??p,leadHero=HEROES[lead.heroIndex];
-    const mx=(lead.debugInput?.right||this.input.down(lead.id===1?'KeyD':'ArrowRight',`P${lead.id}PadRight`)?1:0)-(lead.debugInput?.left||this.input.down(lead.id===1?'KeyA':'ArrowLeft',`P${lead.id}PadLeft`)?1:0);
+    const digitalX=(lead.debugInput?.right||this.input.down(lead.id===1?'KeyD':'ArrowRight',`P${lead.id}PadRight`)?1:0)-(lead.debugInput?.left||this.input.down(lead.id===1?'KeyA':'ArrowLeft',`P${lead.id}PadLeft`)?1:0);
+    const mx=digitalX || (lead.id===1&&!lead.debugInput?this.tablet.movement?.x??0:0);
     const worldSpeed = (bossAlive ? 105 : leadHero.speed + mx * 45) * (lead.specialTime > 0 && leadHero.id === 'cassia' ? 1.28 : 1);
     this.worldSpeed = worldSpeed;
     for(const rider of this.players)if(rider.alive){rider.wheel+=worldSpeed*dt*.045;rider.kineticClock+=dt;}
@@ -713,6 +714,7 @@ export class VenusGame {
     return {
       left: this.input.down(...leftKeys), right: this.input.down(...rightKeys),
       up: this.input.down(...upKeys), down: this.input.down(...downKeys),
+      movement: id === 1 ? this.tablet.movement : undefined,
       attack: this.input.down(...attackKeys), attackPressed: this.input.tap(...attackKeys),
       jumpPressed: this.input.tap(...jumpKeys), specialPressed: this.input.tap(...specialKeys),
     };
@@ -742,7 +744,8 @@ export class VenusGame {
     const left=debug?.left??this.input.down(p.id===1?'KeyA':'ArrowLeft',`P${p.id}PadLeft`,...(solo?['ArrowLeft']:[]));
     const down=debug?.down??this.input.down(p.id===1?'KeyS':'ArrowDown',`P${p.id}PadDown`,...(solo?['ArrowDown']:[]));
     const up=debug?.up??this.input.down(p.id===1?'KeyW':'ArrowUp',`P${p.id}PadUp`,...(solo?['ArrowUp']:[]));
-    const mx=(right?1:0)-(left?1:0),my=(down?1:0)-(up?1:0),controlSpeed=hero.speed*(p.specialTime>0&&hero.id==='nova'?1.25:1);
+    const stick=p.id===1&&!debug?this.tablet.movement:undefined;
+    const mx=right||left?(right?1:0)-(left?1:0):stick?.x??0,my=down||up?(down?1:0)-(up?1:0):stick?.y??0,controlSpeed=hero.speed*(p.specialTime>0&&hero.id==='nova'?1.25:1);
     p.x=clamp(p.x+mx*controlSpeed*dt,72,410);p.y=clamp(p.y+my*controlSpeed*.64*dt,PLAYER_Y_MIN,PLAYER_Y_MAX);p.lean=lerp(p.lean,mx,dt*8);
     const jump=debug?.jump??this.input.tap(p.id===1?'KeyX':'Numpad2',`P${p.id}PadJump`,...(solo?['KeyK','ShiftLeft']:[]));
     if(jump&&p.jump===0){p.jumpV=390;emitAudio('jump');if(debug)debug.jump=false;}

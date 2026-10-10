@@ -20,17 +20,33 @@ try {
   const goto = async scene => {
     await page.goto(`${url}?scene=${scene}&art=vector`);
     await page.waitForFunction(() => window.venusGame && !window.venusGame.snapshot().loading);
+    await page.waitForTimeout(150);
   };
   const pointer = async (key, type, pointerId) => {
+    if (key === 'KeyA' || key === 'KeyD') {
+      await stick(type, pointerId, key === 'KeyD' ? 1 : -1);
+      return;
+    }
     await page.locator(`.tablet-controls button[data-keys="${key}"]`).evaluate((button, args) => {
       // Synthetic pointer IDs have no active browser pointer capture.
       button.setPointerCapture = () => {};
       button.dispatchEvent(new PointerEvent(args.type, { bubbles: true, pointerId: args.pointerId, pointerType: 'touch', button: 0 }));
     }, { type, pointerId });
   };
+  const stick = async (type, pointerId, x = 0, y = 0) => {
+    await page.locator('.tablet-stick').evaluate((node, args) => {
+      node.setPointerCapture = () => {};
+      const bounds = node.getBoundingClientRect();
+      node.dispatchEvent(new PointerEvent(args.type, { bubbles: true, pointerId: args.pointerId,
+        pointerType: 'touch', button: 0, clientX: bounds.left + bounds.width * (.5 + args.x * .32),
+        clientY: bounds.top + bounds.height * (.5 + args.y * .32) }));
+    }, { type, pointerId, x, y });
+  };
   await goto('select');
   const first = (await snapshot()).hero;
-  await page.locator('.tablet-controls button[data-keys="KeyD"]').tap();
+  await stick('pointerdown', 1, 1);
+  await page.waitForTimeout(100);
+  await stick('pointerup', 1);
   await page.waitForTimeout(100);
   assert.notEqual((await snapshot()).hero, first, 'Touch selection must change the heroine');
 
@@ -49,15 +65,59 @@ try {
   await page.waitForTimeout(120);
   assert.equal((await snapshot()).players[0].x, released.x, 'Cancelled pointer must stop movement');
   assert((await snapshot()).players[0].fireHeld, 'Cancelling movement must preserve the other finger');
+  const shotsBeforeJump = (await snapshot()).players[0].shotsFired;
+  await pointer('KeyX', 'pointerdown', 13);
+  await page.waitForTimeout(160);
+  const firingJump = (await snapshot()).players[0];
+  assert(firingJump.y < firingJump.groundY - 10, 'Touch jump must lift the rider while firing');
+  assert(firingJump.fireHeld && firingJump.shotsFired > shotsBeforeJump, 'Jump must preserve sustained fire');
+  await pointer('KeyX', 'pointerup', 13);
   await pointer('KeyZ', 'pointerup', 12);
+  const stickBounds = await page.locator('.tablet-stick').boundingBox();
+  const jumpBounds = await page.locator('.tablet-movement button[data-keys="KeyX"]').boundingBox();
+  assert(jumpBounds.y + jumpBounds.height < stickBounds.y, 'Jump must sit above the stick on the left');
+  assert.equal(await page.locator('.tablet-actions button[data-keys="KeyX"]').count(), 0);
+  await page.locator('#game').tap({ position: { x: 500, y: 250 } });
+  await page.locator('#game').click({ position: { x: 520, y: 260 } });
+  await page.waitForTimeout(80);
+  assert.equal((await snapshot()).state, 'playing', 'Touch and mouse taps on the playfield must never pause');
+  // A small stick displacement must move more slowly than a full displacement.
+  await stick('pointerdown', 14, -.4);
+  const slowStart = (await snapshot()).players[0].x;
+  await page.waitForTimeout(120);
+  const slowDistance = slowStart - (await snapshot()).players[0].x;
+  await stick('pointermove', 14, -1);
+  const fastStart = (await snapshot()).players[0].x;
+  await page.waitForTimeout(120);
+  const fastDistance = fastStart - (await snapshot()).players[0].x;
+  assert(slowDistance > 0 && fastDistance > slowDistance * 1.5, 'Stick displacement must control movement speed');
+  await stick('pointermove', 14, .05, .05);
+  const deadZoneX = (await snapshot()).players[0].x;
+  await page.waitForTimeout(90);
+  assert.equal((await snapshot()).players[0].x, deadZoneX, 'Stick center must have a dead zone');
+  await stick('lostpointercapture', 14);
+  await stick('pointerdown', 15, -.7, -.7);
+  const diagonalStart = (await snapshot()).players[0];
+  await page.waitForTimeout(100);
+  const diagonalEnd = (await snapshot()).players[0];
+  assert(diagonalEnd.x < diagonalStart.x && diagonalEnd.groundY < diagonalStart.groundY, 'Stick must support diagonal movement');
+  await stick('pointerup', 15);
   await page.locator('.tablet-controls button[data-keys="KeyP"]').tap();
   await page.waitForFunction(() => window.venusGame.snapshot().state === 'paused');
+  await page.locator('#game').tap({ position: { x: 500, y: 250 } });
+  await page.waitForTimeout(50);
+  assert.equal((await snapshot()).state, 'paused', 'Playfield taps must not accidentally resume');
   await page.getByRole('button', { name: 'Продолжить', exact: true }).tap();
   await page.waitForFunction(() => window.venusGame.snapshot().state === 'playing');
+  await mkdir('.gauntlet/tablet', { recursive: true });
+  await page.screenshot({ path: path.resolve('.gauntlet/tablet/rider-stick.png') });
 
   await goto('brawler');
   await page.waitForFunction(() => window.venusGame.snapshot().state === 'brawler');
   await page.waitForFunction(() => window.venusGame.snapshot().brawler.status === 'running');
+  await page.locator('#game').tap({ position: { x: 500, y: 250 } });
+  await page.waitForTimeout(50);
+  assert.equal((await snapshot()).state, 'brawler', 'Brawler playfield taps must not pause');
   assert.equal(await page.getByRole('button', { name: 'Удар', exact: true }).count(), 1);
   assert.equal(await page.getByRole('button', { name: 'Прыжок', exact: true }).count(), 1);
   const brawlerBefore = (await snapshot()).brawler.players[0];
@@ -71,6 +131,9 @@ try {
   await pointer('KeyX', 'pointerup', 22);
 
   await goto('road-rash-combat');
+  await page.locator('#game').tap({ position: { x: 500, y: 250 } });
+  await page.waitForTimeout(50);
+  assert.equal((await snapshot()).state, 'road-rash', 'Road Rash playfield taps must not pause');
   assert.equal(await page.getByRole('button', { name: 'Прыжок', exact: true }).count(), 0);
   await page.evaluate(() => Object.defineProperty(screen.orientation, 'angle', { configurable: true, value: 90 }));
   await page.getByRole('button', { name: 'Включить наклоны', exact: true }).tap();

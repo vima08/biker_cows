@@ -8,7 +8,7 @@ export class InputController {
   private readonly virtual = new Map<string, Set<string>>();
   private readonly padPrevious: boolean[][] = [[], []];
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, canConfirmPointer: () => boolean = () => true) {
     const blockedKeys = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']);
     addEventListener('keydown', (event) => {
       if (blockedKeys.has(event.code)) event.preventDefault();
@@ -19,7 +19,7 @@ export class InputController {
     addEventListener('blur', () => { this.held.clear(); this.pressed.clear(); this.virtual.clear(); });
     canvas.addEventListener('pointerdown', () => {
       canvas.focus();
-      this.pressed.add('Enter');
+      if (canConfirmPointer()) this.pressed.add('Enter');
     });
     canvas.tabIndex = 0;
   }

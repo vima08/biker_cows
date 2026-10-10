@@ -18,6 +18,13 @@ export class TabletControls {
   private tiltStatus = '';
   private tiltButton?: HTMLButtonElement;
   private status?: HTMLElement;
+  private stick?: HTMLElement;
+  private stickPointer: number | null = null;
+  private stickValue = { x: 0, y: 0 };
+
+  get movement(): { x: number; y: number } | undefined {
+    return this.stickPointer !== null && !this.blocked ? this.stickValue : undefined;
+  }
 
   constructor(private readonly input: InputController, canvas: HTMLCanvasElement) {
     this.root.className = 'tablet-controls';
@@ -53,13 +60,14 @@ export class TabletControls {
     }
     if (this.tiltEnabled && performance.now() - this.sensorStarted > 3000 && !this.sensorAt) {
       this.tiltEnabled = false;
-      this.tiltStatus = 'Нет данных датчика — используйте стрелки';
+      this.tiltStatus = 'Нет данных датчика — используйте стик';
       this.updateTiltLabel();
     }
   }
 
   /** Sensor input is analog; buttons/keyboard can still override it. */
   get steering(): number | undefined {
+    if (this.movement) return this.movement.x;
     return this.tiltEnabled && this.mode === 'road-rash' && !this.blocked && !document.hidden
       && performance.now() - this.sensorAt < 700 && this.neutral !== null ? this.tiltValue : undefined;
   }
@@ -70,8 +78,65 @@ export class TabletControls {
       button.classList.remove('is-held');
     }
     this.pointers.clear();
+    this.releaseStick();
     this.neutral = null;
     this.tiltValue = 0;
+  }
+
+  private releaseStick(): void {
+    const pointer = this.stickPointer;
+    this.stickPointer = null;
+    this.stickValue = { x: 0, y: 0 };
+    this.input.setVirtual('touch-stick-menu', []);
+    this.stick?.classList.remove('is-held');
+    this.stick?.style.setProperty('--stick-x', '0px');
+    this.stick?.style.setProperty('--stick-y', '0px');
+    if (pointer !== null && this.stick?.hasPointerCapture(pointer)) this.stick.releasePointerCapture(pointer);
+  }
+
+  private joystick(combat: boolean): HTMLElement {
+    const stick = document.createElement('div');
+    stick.className = 'tablet-stick';
+    stick.setAttribute('role', 'group');
+    stick.setAttribute('aria-label', 'Джойстик движения');
+    const thumb = document.createElement('span');
+    thumb.className = 'tablet-stick-thumb';
+    thumb.setAttribute('aria-hidden', 'true');
+    stick.append(thumb);
+    this.stick = stick;
+    const move = (event: PointerEvent) => {
+      if (event.pointerId !== this.stickPointer) return;
+      event.preventDefault();
+      const bounds = stick.getBoundingClientRect();
+      const radius = bounds.width * .32;
+      const dx = event.clientX - bounds.left - bounds.width / 2;
+      const dy = event.clientY - bounds.top - bounds.height / 2;
+      const distance = Math.hypot(dx, dy);
+      const travel = Math.min(radius, distance);
+      const magnitude = Math.max(0, (travel / radius - .12) / .88);
+      this.stickValue = { x: distance ? dx / distance * magnitude : 0, y: distance ? dy / distance * magnitude : 0 };
+      stick.style.setProperty('--stick-x', `${distance ? dx / distance * travel : 0}px`);
+      stick.style.setProperty('--stick-y', `${distance ? dy / distance * travel : 0}px`);
+      if (!combat) {
+        const { x, y } = this.stickValue;
+        this.input.setVirtual('touch-stick-menu', Math.max(Math.abs(x), Math.abs(y)) < .35 ? []
+          : Math.abs(x) >= Math.abs(y) ? [x > 0 ? 'KeyD' : 'KeyA'] : [y > 0 ? 'ArrowDown' : 'ArrowUp']);
+      }
+    };
+    stick.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      if (event.button !== 0 || this.stickPointer !== null) return;
+      this.stickPointer = event.pointerId;
+      stick.setPointerCapture(event.pointerId);
+      stick.classList.add('is-held');
+      move(event);
+    });
+    stick.addEventListener('pointermove', move);
+    const release = (event: PointerEvent) => { if (event.pointerId === this.stickPointer) this.releaseStick(); };
+    stick.addEventListener('pointerup', release);
+    stick.addEventListener('pointercancel', release);
+    stick.addEventListener('lostpointercapture', release);
+    return stick;
   }
 
   private button(label: string, keys?: string[], action?: () => void): HTMLButtonElement {
@@ -122,18 +187,14 @@ export class TabletControls {
       this.updateTiltLabel();
     }
     const directions = document.createElement('div');
-    directions.className = 'tablet-directions';
-    const menu = !combat;
-    directions.append(
-      this.button(mode === 'road-rash' ? 'Газ' : '↑', menu ? ['ArrowUp'] : ['KeyW']),
-      this.button('←', ['KeyA']),
-      this.button(mode === 'road-rash' ? 'Тормоз' : '↓', menu ? ['ArrowDown'] : ['KeyS']),
-      this.button('→', ['KeyD']),
-    );
+    directions.className = 'tablet-movement';
+    if (combat && mode !== 'road-rash') directions.append(this.button('Прыжок', ['KeyX']));
+    directions.append(this.joystick(combat));
     const actions = document.createElement('div');
     actions.className = 'tablet-actions';
     if (combat) {
-      if (mode !== 'road-rash') actions.append(this.button('Спец', ['KeyC']), this.button('Прыжок', ['KeyX']));
+      if (mode !== 'road-rash') actions.append(this.button('Спец', ['KeyC']));
+      else actions.append(this.button('Тормоз', ['KeyS']), this.button('Газ', ['KeyW']));
       actions.append(this.button(mode === 'playing' ? 'Огонь' : 'Удар', ['KeyZ']));
     } else if (mode === 'paused') {
       actions.append(this.button('Заново', ['KeyR']), this.button('Продолжить', ['KeyP']));
@@ -170,7 +231,7 @@ export class TabletControls {
         this.sensorStarted = performance.now();
         this.tiltStatus = 'Держите удобно • наклоняйте влево / вправо';
       } catch {
-        this.tiltStatus = 'Наклоны недоступны — используйте стрелки';
+        this.tiltStatus = 'Наклоны недоступны — используйте стик';
       } finally {
         this.tiltPending = false;
       }

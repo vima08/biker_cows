@@ -5,6 +5,7 @@ export type BrawlerHeroId = 'cassia' | 'bruna' | 'nova';
 export type BrawlerStatus = 'intro' | 'running' | 'victory' | 'defeat';
 
 export interface BrawlerControls {
+  movement?: { x: number; y: number };
   left: boolean;
   right: boolean;
   up: boolean;
