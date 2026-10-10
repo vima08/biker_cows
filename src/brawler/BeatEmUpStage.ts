@@ -954,7 +954,11 @@ export class BeatEmUpStage {
     const routeOpen = win && this.options.campaignContinuation;
     ctx.fillStyle = '#05030bcc'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#130b1fed'; ctx.fillRect(220, 154, 520, 220); ctx.strokeStyle = win ? '#ffe062' : '#ff4d69'; ctx.lineWidth = 4; ctx.strokeRect(220, 154, 520, 220);
-    ctx.fillStyle = win ? '#ffe868' : '#ff5873'; ctx.font = '900 38px Arial'; ctx.textAlign = 'center'; ctx.fillText(routeOpen ? 'ROUTE OPEN!' : win ? 'DISTRICT LIBERATED!' : 'CREW DOWN', 480, 224);
+    const title = routeOpen ? 'ROUTE OPEN!' : win ? 'DISTRICT LIBERATED!' : 'CREW DOWN';
+    ctx.fillStyle = win ? '#ffe868' : '#ff5873'; ctx.font = '900 38px Arial';
+    const titleWidth = ctx.measureText(title).width;
+    if (titleWidth > 472) ctx.font = `900 ${Math.floor(38 * 472 / titleWidth)}px Arial`;
+    ctx.textAlign = 'center'; ctx.fillText(title, 480, 224);
     ctx.fillStyle = '#fff'; ctx.font = '900 25px Arial'; ctx.fillText(this.score.toString().padStart(8, '0'), 480, 278);
     ctx.fillStyle = routeOpen ? '#65e9df' : '#c9b8ce'; ctx.font = '700 13px Arial'; ctx.fillText(routeOpen ? 'RETURN TO THE BIKES  //  FINAL RUN AHEAD' : win ? `${this.options.level.bossName} IS FINISHED` : 'VENUS STILL NEEDS ITS RIDERS', 480, 314);
   }

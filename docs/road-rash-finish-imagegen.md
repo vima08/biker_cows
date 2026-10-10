@@ -1,0 +1,9 @@
+# Finish gantry art
+
+Generated on 2026-10-10 for `public/assets/road-rash/finish-gantry-v1.png` using the image generation tool with `transparent_background=true`. The PNG is 2172×724 with a genuine alpha channel, including the open passage. No background keying or sprite regeneration is performed at runtime.
+
+Prompt:
+
+> Generate a single transparent-background game sprite: a tall monumental industrial finish-line gantry arch for a 16-bit pixel art motorcycle combat racing game set in volcanic Venus badlands. One gantry only, viewed squarely from the approaching racer at low road level with slight perspective on side columns. Match detailed arcade sprite art: dark purple-black forged steel, weathered brass/copper trims, restrained amber and cyan lamps, riveted plates, visible industrial structure. Two thick grounded pillars and a high overhead beam, enough wide empty clear space for motorcycles to pass underneath. Wide composition, overall aspect ratio 3:1, opening height about 75% of full gantry height, sign high above racers. Centered on the overhead beam, an inset dark rectangular blank signboard for the game to overlay FINISH lettering; no text or symbols on it. Structural feet align on one horizontal bottom baseline. Sprite fully within bounds with very little outer padding. True alpha transparency everywhere outside the gantry AND throughout the large opening inside it. Do not paint a white, black or checkerboard backdrop. No road, ground plane, horizon, scenery, people, vehicles, cast floor shadows, UI frame or watermark. Crisp deliberate pixels, cohesive premium 16-bit arcade art, not a smooth vector drawing. Output landscape.
+
+`RoadRashStage.drawFinish` anchors the gantry on the road projection, preserves its 3:1 aspect ratio, and renders `FINISH` on the inset sign. It shares the traffic/player depth order, appears after the boss crash resolves, and uses a taller vector fallback in vector mode or while the PNG is unavailable.

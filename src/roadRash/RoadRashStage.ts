@@ -51,6 +51,7 @@ interface RoadEntity {
   recoilSide: number;
   attackSide?: -1 | 1;
   attackTargetId?: 1 | 2;
+  obstacleCooldown?: number;
   wobble: number;
   color: string;
 }
@@ -89,6 +90,26 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const ease = (value: number) => value * value * (3 - 2 * value);
 const px = (value: number) => Math.round(value);
 
+const obstacleBounds = (kind: EntityKind) => kind === 'truck' ? { depth: 25, width: .38 }
+  : kind === 'car' ? { depth: 25, width: .3 }
+  : kind === 'oil' ? { depth: 14, width: .24 } : null;
+
+/** Swept contact in road coordinates, including fast or diagonal crossings. */
+function sweptObstacleContact(fromDepth: number, toDepth: number, fromLane: number, toLane: number, depth: number, width: number): boolean {
+  let enter = 0, exit = 1;
+  for (const [from, to, reach] of [[fromDepth, toDepth, depth], [fromLane, toLane, width]]) {
+    const delta = to - from;
+    if (Math.abs(delta) < 1e-8) {
+      if (Math.abs(from) >= reach) return false;
+      continue;
+    }
+    const a = (-reach - from) / delta, b = (reach - from) / delta;
+    enter = Math.max(enter, Math.min(a, b)); exit = Math.min(exit, Math.max(a, b));
+    if (enter > exit) return false;
+  }
+  return enter <= exit;
+}
+
 /**
  * Self-contained pseudo-3D highway combat stage inspired by the best 16-bit road games.
  * It owns no DOM state and can be constructed before a canvas exists.
@@ -124,6 +145,7 @@ export class RoadRashStage {
   private particles: Particle[] = [];
   private readonly panorama: HTMLImageElement | null;
   private readonly roadObjectsAtlas: HTMLImageElement | null;
+  private readonly finishArch: HTMLImageElement | null;
   private readonly ridersAtlas: HTMLImageElement | null;
   private ridersAtlasCanvas: RiderAtlas | null = null;
   private readonly heroinesAtlas: HTMLImageElement | null;
@@ -144,6 +166,8 @@ export class RoadRashStage {
     if (this.panorama) this.panorama.src = assetUrl('assets/road-rash/venus-badlands-panorama-v2-open-road.jpg');
     this.roadObjectsAtlas = typeof Image === 'undefined' ? null : new Image();
     if (this.roadObjectsAtlas) this.roadObjectsAtlas.src = assetUrl('assets/road-rash/road-objects-atlas-v1.png');
+    this.finishArch = typeof Image === 'undefined' ? null : new Image();
+    if (this.finishArch) this.finishArch.src = assetUrl('assets/road-rash/finish-gantry-v1.png');
     this.ridersAtlas = typeof Image === 'undefined' ? null : new Image();
     if(this.ridersAtlas){
       this.ridersAtlas.addEventListener('load',()=>this.prepareAtlas(this.ridersAtlas, canvas => { this.ridersAtlasCanvas = canvas; }),{once:true});
@@ -278,7 +302,9 @@ export class RoadRashStage {
     if (this.bossSpawned && !this.bossDefeatResolved) {
       this.distance = Math.min(this.distance, this.courseLength * .9);
     }
+    const previousPositions = new Map(this.entities.map(entity => [entity.id, { distance: entity.distance, lane: entity.lane }]));
     this.updateEntities(dt);
+    this.resolveEnemyObstacleContacts(previousPositions);
     for (const rider of living) { this.rider = rider; this.resolveContacts(); }
     this.rider = living[0] ?? this.riders[0];
     this.updateBossDefeat(dt);
@@ -361,6 +387,7 @@ export class RoadRashStage {
       entity.reactionTimer = Math.max(0, entity.reactionTimer - dt);
       entity.attackTimer = Math.max(0, entity.attackTimer - dt);
       entity.attackCooldown -= dt;
+      entity.obstacleCooldown = Math.max(0, (entity.obstacleCooldown ?? 0) - dt);
       entity.wobble += dt * (entity.kind === 'boss' ? 3.5 : 2.2);
 
       // Zero HP is a visible crash state, not an instant despawn. Keep the
@@ -429,6 +456,45 @@ export class RoadRashStage {
     }
   }
 
+  private resolveEnemyObstacleContacts(previous: Map<number, { distance: number; lane: number }>): void {
+    const obstacles = this.entities.filter(entity => entity.active && obstacleBounds(entity.kind));
+    for (const enemy of this.entities) {
+      if (!enemy.active || enemy.hp <= 0 || (enemy.kind !== 'rival' && enemy.kind !== 'boss')) continue;
+      for (const obstacle of obstacles) {
+        if (!enemy.active) break;
+        const bounds = obstacleBounds(obstacle.kind)!;
+        const before = previous.get(enemy.id) ?? enemy, obstacleBefore = previous.get(obstacle.id) ?? obstacle;
+        const fromDepth = before.distance - obstacleBefore.distance;
+        if (!sweptObstacleContact(fromDepth, enemy.distance - obstacle.distance,
+          before.lane - obstacleBefore.lane, enemy.lane - obstacle.lane, bounds.depth, bounds.width)) continue;
+
+        // Separate the bikes from solid traffic every frame, even during the
+        // damage cooldown. Oil causes a skid rather than acting as a wall.
+        const side = Math.sign(before.lane - obstacleBefore.lane) || Math.sign(enemy.lane - obstacle.lane) || (enemy.lane < 0 ? -1 : 1);
+        enemy.lane = clamp(obstacle.lane + side * (bounds.width + .16), -1.1, 1.1);
+        if (obstacle.kind !== 'oil') enemy.distance = obstacle.distance + (fromDepth > 0 ? 1 : -1) * (bounds.depth + 2);
+        if ((enemy.obstacleCooldown ?? 0) > 0) continue;
+        enemy.obstacleCooldown = .8;
+        enemy.speed *= obstacle.kind === 'truck' ? .4 : obstacle.kind === 'car' ? .56 : .72;
+        enemy.attackTimer = 0;
+        enemy.attackCooldown = Math.max(enemy.attackCooldown, 1);
+        enemy.reactionTimer = enemy.kind === 'boss' ? .68 : .54;
+        enemy.recoilSide = side; enemy.attackSide = side < 0 ? 1 : -1;
+        enemy.hitFlash = .065;
+        // Road King's armour absorbs traffic damage; obstacles still interrupt
+        // his swing and knock him away. His eight-hit combat gate stays intact.
+        if (enemy.kind === 'rival' && obstacle.kind !== 'oil') enemy.hp -= obstacle.kind === 'truck' ? 2 : 1;
+        const dz = enemy.distance - this.distance;
+        if (dz > -35 && dz < 620) {
+          const contact = this.project(dz, enemy.lane);
+          this.emitImpact(contact.x, contact.y - 30 * contact.scale, '#ffd66d');
+          this.emitSound(obstacle.kind === 'oil' ? 'road_skid' : 'road_collision', .65, .8);
+        }
+        if (enemy.hp <= 0) this.defeatRival(enemy, false);
+      }
+    }
+  }
+
   private resolveContacts(): void {
     for (const entity of this.entities) {
       if (!entity.active) continue;
@@ -478,9 +544,8 @@ export class RoadRashStage {
         this.damagePlayer(isBoss ? 14 : 10, entity.lane < this.rider.lane ? 1 : -1);
       }
 
-      const collisionWidth = entity.kind === 'truck' ? .38 : entity.kind === 'oil' ? .24 : .3;
-      if ((entity.kind === 'car' || entity.kind === 'truck' || entity.kind === 'oil') &&
-          Math.abs(dz) < (entity.kind === 'oil' ? 14 : 25) && lateral < collisionWidth) {
+      const bounds = obstacleBounds(entity.kind);
+      if (bounds && Math.abs(dz) < bounds.depth && lateral < bounds.width) {
         entity.active = false;
         if (entity.kind === 'oil') {
           this.rider.lane = clamp(this.rider.lane + (this.random() > .5 ? .62 : -.62), -1.1, 1.1);
@@ -495,9 +560,11 @@ export class RoadRashStage {
     }
   }
 
-  private defeatRival(entity: RoadEntity): void {
-    this.rivalsDefeated++;
-    this.score += entity.kind === 'boss' ? 5000 : 900;
+  private defeatRival(entity: RoadEntity, creditPlayer = true): void {
+    if (creditPlayer) {
+      this.rivalsDefeated++;
+      this.score += entity.kind === 'boss' ? 5000 : 900;
+    }
     for (let index = 0; index < 14; index++) {
       const impact = this.project(entity.distance - this.distance, entity.lane);
       this.particles.push({ x: impact.x, y: impact.y - 80 * impact.scale, vx: (this.random() - .5) * 190,
@@ -792,13 +859,17 @@ export class RoadRashStage {
       }
     }
 
-    const visible: Array<{ entity?: RoadEntity; rider?: RoadPlayer; dz: number }> = this.entities
+    const visible: Array<{ entity?: RoadEntity; rider?: RoadPlayer; finish?: boolean; dz: number }> = this.entities
       .map(entity => ({ entity, dz: entity.distance - this.distance }))
       .filter(item => item.entity.active && item.dz > -35 && item.dz < 620);
     for (const rider of this.riders) if (rider.hp > 0) visible.push({ rider, dz: 0 });
+    if (this.bossDefeatResolved && this.courseLength - this.distance < 620 && this.courseLength >= this.distance - 30) {
+      visible.push({ finish: true, dz: this.courseLength - this.distance });
+    }
     visible.sort((a, b) => b.dz - a.dz);
     const lead = this.rider;
     for (const item of visible) {
+      if (item.finish) { this.drawFinish(ctx, item.dz); continue; }
       if (item.rider) { this.rider = item.rider; this.drawPlayer(ctx); continue; }
       const entity = item.entity!;
       const pos = this.project(item.dz, entity.lane);
@@ -809,13 +880,27 @@ export class RoadRashStage {
     }
     this.rider = lead;
 
-    if (this.bossDefeatResolved && this.courseLength - this.distance < 620 && this.courseLength >= this.distance - 30) {
-      const p = this.project(this.courseLength - this.distance, 0); const s = p.scale;
-      ctx.fillStyle = '#d9e4e8'; ctx.fillRect(px(p.x - p.roadHalf), px(p.y - 60 * s), px(8 * s), px(60 * s));
-      ctx.fillRect(px(p.x + p.roadHalf - 8 * s), px(p.y - 60 * s), px(8 * s), px(60 * s));
-      ctx.fillStyle = '#121426'; ctx.fillRect(px(p.x - p.roadHalf), px(p.y - 62 * s), px(p.roadHalf * 2), px(17 * s));
-      ctx.fillStyle = '#f8d34e'; ctx.font = `bold ${Math.max(5, px(11 * s))}px monospace`; ctx.textAlign = 'center'; ctx.fillText('FINISH', px(p.x), px(p.y - 49 * s));
+  }
+
+  private drawFinish(ctx: CanvasRenderingContext2D, relativeDistance: number): void {
+    const p = this.project(relativeDistance, 0);
+    if (p.scale < .015) return;
+    const width = p.roadHalf * 2, height = width / 3;
+    const left = px(p.x - width / 2), top = px(p.y - height);
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    if (isArtEnabled() && this.finishArch?.complete && this.finishArch.naturalWidth > 0) {
+      ctx.drawImage(this.finishArch, left, top, px(width), px(height));
+    } else {
+      ctx.fillStyle = '#30233c';
+      ctx.fillRect(left, top, width * .08, height); ctx.fillRect(left + width * .92, top, width * .08, height);
+      ctx.fillRect(left, top, width, height * .23);
+      ctx.fillStyle = '#dbac4f'; ctx.fillRect(left, top + height * .2, width, Math.max(1, height * .02));
     }
+    // Keep the lettering crisp and centred on the art's inset signboard.
+    ctx.fillStyle = '#fff0a3'; ctx.font = `900 ${Math.max(1, px(height * .12))}px monospace`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('FINISH', px(p.x), top + height * .19);
+    ctx.restore();
   }
 
   private drawVehicle(ctx: CanvasRenderingContext2D, entity: RoadEntity, x: number, y: number, scale: number): void {

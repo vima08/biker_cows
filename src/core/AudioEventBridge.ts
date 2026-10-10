@@ -8,6 +8,7 @@ const SOUND_EFFECTS: Record<string, SoundEffectName> = {
   engine_start: 'jump', shoot: 'shoot', laser: 'shoot', rocket: 'explosion',
   melee_swing: 'melee', hit: 'hit', jump: 'jump', land: 'hit', special: 'boss',
   road_attack: 'melee', melee_hit: 'hit', rider_hurt: 'hurt', boss_down: 'explosion',
+  road_collision: 'hit', road_skid: 'hurt',
   enemy_shoot: 'shoot', boss_cannon: 'explosion', warning: 'boss',
   player_hit: 'hurt', explode: 'explosion', boss_explode: 'explosion',
   pickup: 'pickup', stage_clear: 'victory', game_over: 'defeat',
