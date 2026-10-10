@@ -23,6 +23,7 @@ import { InputController } from './core/InputController';
 import { TabletControls } from './core/TabletControls';
 import { ExtrasView } from './extras/ExtrasView';
 import { MissionJournal } from './extras/MissionJournal';
+import { BossDialogue, type DialogueBoss } from './core/BossDialogue';
 import { PresentationAssets, type PresentationLoadingStatus } from './core/PresentationAssets';
 import { ContinueSystem, type CampaignCheckpoint } from './core/ContinueSystem';
 import {
@@ -138,6 +139,7 @@ function emitMusic(cue: string, intensity = 1) {
 }
 
 export class VenusGame {
+  private readonly bossDialogue = new BossDialogue();
   private ctx: CanvasRenderingContext2D;
   private readonly input: InputController;
   private readonly tablet: TabletControls;
@@ -237,7 +239,12 @@ export class VenusGame {
     this.pausedFrame.height = H;
     this.input = new InputController(canvas, () => ['title','select','intro','outro','continue','win','lose'].includes(this.mode));
     this.tablet = new TabletControls(this.input, canvas);
-    this.journal = new MissionJournal(canvas, () => this.input.clear());
+    this.journal = new MissionJournal(canvas, () => this.input.clear(), {
+      names: HEROES.map(hero => hero.name),
+      selected: () => this.coopEnabled ? [...this.selectedHeroes] : [this.selectedHeroes[0]],
+      choose: (player, hero) => this.chooseBriefingHero(player, hero),
+      available: () => this.canChooseBriefingHero(),
+    });
     const storyQuery = new URLSearchParams(location.search);
     this.storyEnabled = !storyQuery.has('scene') || storyQuery.get('story') === '1';
     this.extras = new ExtrasView(canvas, () => { this.extras.close(); this.mode = 'title'; emitAudio('menu_back'); });
@@ -352,6 +359,15 @@ export class VenusGame {
       return;
     }
     this.loadingClock = 0;
+    if (['playing', 'road-rash', 'brawler'].includes(this.mode)) {
+      this.detectBossDialogue();
+      if (this.bossDialogue.active) {
+        if (this.input.tap('Escape','KeyP','P1PadStart','P2PadStart')) {
+          this.enterPause(this.mode as 'playing' | 'road-rash' | 'brawler');
+        } else this.bossDialogue.update(dt, this.input.tap('Enter','KeyZ','Space','Numpad1','P1PadFire','P2PadFire'));
+        return;
+      }
+    }
     this.presentation.warmNext(this.mode);
     // Critical menu artwork goes first on a slow connection. Optional gameplay
     // atlases begin once the intro is ready, or on a direct gameplay/debug URL.
@@ -470,6 +486,49 @@ export class VenusGame {
     const solo=!this.coopEnabled;
     const laneT=solo?.69:id===1?.58:.9,y=Math.round(lerp(PLAYER_Y_MIN,PLAYER_Y_MAX,laneT));
     return {id,heroIndex,alive:true,downed:false,x:solo?168:id===1?156:252,y,jump:0,jumpV:0,hp:hero.maxHp,armor:hero.maxArmor*.5,invuln:0,cooldown:0,weapon:hero.weapon,weaponRank:1,rapid:0,special:45,specialTime:0,lean:0,wheel:0,kineticClock:0,recoil:0,fireHeld:false,fireLoop:0,fireReleaseBlend:0,fireReleaseElapsed:-1,shotsFired:0,lastMuzzle:null,lastExhaust:null,exhaustClock:0};
+  }
+
+  private canChooseBriefingHero() {
+    if (this.mode === 'playing') return this.elapsed === 0 && this.enemies.length === 0;
+    if (this.mode === 'road-rash') return this.roadRash?.snapshot().elapsed === 0 && !this.standaloneRoadRash;
+    if (this.mode === 'brawler') return this.brawler?.snapshot().elapsed === 0 && !this.standaloneBrawler && !this.debugScene;
+    return false;
+  }
+
+  private chooseBriefingHero(player: number, hero: number) {
+    if (!this.canChooseBriefingHero() || !HEROES[hero] || player < 0 || player >= (this.coopEnabled ? 2 : 1)) return;
+    this.selectedHeroes[player] = hero;
+    this.selected = this.selectedHeroes[0];
+    if (this.mode === 'playing') {
+      const previous = this.players[player];
+      const replacement = this.makePlayer(previous.id, hero);
+      replacement.weapon = previous.weapon; replacement.weaponRank = previous.weaponRank; replacement.special = previous.special;
+      this.players[player] = replacement; this.player = this.players[0];
+      this.worldSpeed = HEROES[this.selected].speed;
+    } else if (this.mode === 'road-rash') this.beginRoadRash(false, false);
+    else if (this.mode === 'brawler') this.beginBrawler(false, FURNACE_DISTRICT);
+    this.input.clear();
+  }
+
+  private detectBossDialogue() {
+    const expected: DialogueBoss = this.mode === 'road-rash' ? 'road-king' : this.mode === 'brawler' ? 'overseer' : this.campaignAct === 3 ? 'dreadnought' : 'mauler';
+    if (this.bossDialogue.hasSeen(expected)) return;
+    let boss: DialogueBoss | undefined;
+    let heroes = (this.coopEnabled ? this.selectedHeroes : [this.selectedHeroes[0]]).map(index => HEROES[index].id);
+    if (this.mode === 'playing') {
+      const enemy = this.enemies.find(enemy => (enemy.kind === 'boss' || enemy.kind === 'miniboss') && enemy.hp > 0 && enemy.x < W - 30);
+      if (enemy) boss = enemy.kind === 'boss' ? 'dreadnought' : 'mauler';
+      heroes = this.players.filter(player => player.alive).map(player => HEROES[player.heroIndex].id);
+    } else if (this.mode === 'road-rash') {
+      const state = this.roadRash?.snapshot();
+      if (state?.boss && state.boss.hp > 0 && state.boss.relativeDistance < 300) boss = 'road-king';
+      heroes = state?.players.filter(player => player.alive).map(player => player.hero) ?? [];
+    } else if (this.mode === 'brawler') {
+      const state = this.brawler?.snapshot();
+      if (state?.boss && state.boss.hp > 0 && state.enemies.some(enemy => enemy.kind === 'boss' && enemy.x - state.cameraX < W - 30)) boss = 'overseer';
+      heroes = state?.players.filter(player => !player.downed).map(player => player.hero) ?? [];
+    }
+    if (boss) this.bossDialogue.encounter(boss, heroes);
   }
 
   private beginRun(newCampaign = true) {
@@ -1061,6 +1120,7 @@ export class VenusGame {
   }
 
   private clearTerminalTransients(){
+    this.bossDialogue.reset();
     this.shake=0;this.flash=0;this.hitStop=0;this.shots=[];this.particles=[];this.riderImpacts=[];this.floaters=[];
     for(const player of this.players){player.fireHeld=false;player.debugInput=undefined;}
   }
@@ -1417,7 +1477,7 @@ export class VenusGame {
     const sourceElapsed=riderSourceElapsed(this.campaignAct,this.elapsed);
     const loading = this.presentation.status(this.mode);
     return {
-      state: loading ? 'loading' : this.mode, loading, journal:this.journal.snapshot, stage:this.campaignAct,act:this.campaignAct,segment,hero: HEROES[this.selected].id, score: Math.floor(this.score),
+      state: loading ? 'loading' : this.mode, loading, journal:this.journal.snapshot, dialogue:this.bossDialogue.snapshot, stage:this.campaignAct,act:this.campaignAct,segment,hero: HEROES[this.selected].id, score: Math.floor(this.score),
       artEnabled:isArtEnabled(),renderMode:getRenderMode(),debugScene:this.debugScene,
       campaign:{
         act:this.campaignAct,segment,levelId:this.currentLevelId,transition:this.campaignTransition,history:[...this.campaignHistory],
@@ -1602,6 +1662,7 @@ export class VenusGame {
       if(this.mode==='continue')this.drawContinue();else if(this.mode==='win'||this.mode==='lose')this.drawEnding();
     }
     if(this.flash>0){c.fillStyle=`rgba(255,245,210,${this.flash})`;c.fillRect(0,0,W,H);}
+    if (this.mode === 'playing' || this.mode === 'road-rash' || this.mode === 'brawler') this.bossDialogue.draw(c);
   }
 
   private drawWorld(){

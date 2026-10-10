@@ -10,6 +10,7 @@
     "test:smoke": "node scripts/gauntlet.mjs",
     "test:tablet": "npm run build && node scripts/gauntlet-tablet.mjs",
     "test:missions": "npm run build && node scripts/gauntlet-missions.mjs",
+    "test:boss-dialogue": "npm run build && node scripts/gauntlet-boss-dialogue.mjs",
     "test:rider-depth": "node scripts/gauntlet-rider-depth.mjs",
     "test:extras": "node scripts/gauntlet-extras.mjs",
     "test:wave18": "node scripts/gauntlet-iteration18.mjs",

@@ -10,6 +10,8 @@
 .mission-actions { position: sticky; bottom: -1px; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; padding: 10px 0; background: #120e1cf5; }
 .mission-actions button:first-child { border-color: #d7ac53; color: #fff0c7; background: #493222; }
 .mission-journal button { min-height: 44px; }
+.mission-hero-options { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0; }
+.mission-hero-options button[aria-pressed="true"] { border-color: #65dfd4; background: #21453f; color: #d4fff8; }
 .mission-card .extras-map-viewport { height: clamp(180px, 30dvh, 360px); }
 .mission-card .world-map.is-fullscreen .extras-map-viewport { height: auto; }
 .mission-dossier { max-height: 60dvh; overflow-y: auto; margin-bottom: 18px; padding: 0 16px 0 2px; }

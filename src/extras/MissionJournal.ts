@@ -6,6 +6,8 @@ import { MISSIONS, missionLocation } from './missionContent';
 import { WorldMapView } from './WorldMapView';
 import './mission.css';
 
+type HeroSelection = { names: string[]; selected: () => number[]; choose: (player: number, hero: number) => void; available: () => boolean };
+
 function node(tag: string, className: string, text = '') {
   const element = document.createElement(tag); element.className = className; element.textContent = text; return element;
 }
@@ -24,7 +26,7 @@ export class MissionJournal {
   private previousFocus: HTMLElement | null = null;
   private readyAt = 0;
 
-  constructor(private readonly canvas: HTMLCanvasElement, private readonly resetControls: () => void) {
+  constructor(private readonly canvas: HTMLCanvasElement, private readonly resetControls: () => void, private readonly selection: HeroSelection) {
     this.root.hidden = true; this.root.lang = 'ru'; this.root.setAttribute('role', 'dialog');
     this.root.setAttribute('aria-modal', 'true'); this.root.setAttribute('aria-labelledby', 'mission-heading');
     this.root.append(this.card); document.body.append(this.root);
@@ -68,6 +70,25 @@ export class MissionJournal {
     text.append(node('p', 'mission-objective', mission.objective), node('p', 'mission-copy', mission.briefing),
       node('blockquote', 'mission-radio', mission.radio), node('p', 'mission-hint', mission.hint));
     this.map = new WorldMapView(missionLocation(this.segment, this.progress)); body.append(text, this.map.root); this.card.append(body);
+    if (this.selection.available()) {
+      const roster = node('div', 'mission-roster');
+      roster.append(node('p', 'mission-hint', 'Выберите героиню перед выездом. Оружие и прогресс сохраняются.'));
+      this.selection.selected().forEach((selected, player) => {
+        const group = node('div', 'mission-hero-options');
+        group.setAttribute('role', 'group'); group.setAttribute('aria-label', `Героиня P${player + 1}`);
+        group.append(node('span', 'mission-hint', `P${player + 1}`));
+        this.selection.names.forEach((name, hero) => {
+          const button = this.button(name, () => {
+            this.selection.choose(player, hero);
+            if (player === 0) this.hero = hero;
+            group.querySelectorAll('button').forEach((option, index) => option.setAttribute('aria-pressed', String(index === hero)));
+          });
+          button.setAttribute('aria-pressed', String(selected === hero)); group.append(button);
+        });
+        roster.append(group);
+      });
+      this.card.append(roster);
+    }
     const actions = node('div', 'mission-actions'); actions.append(
       this.button('Начать миссию', () => this.close()),
       this.button('О героине', () => this.dossier(0, this.hero, () => this.briefing())));
@@ -113,6 +134,16 @@ export class MissionJournal {
     if (this.map?.expanded && input.tap('Escape','P1PadJump')) { this.map.setFullscreen(false); return; }
     this.map?.update(input, dt);
     if (performance.now() < this.readyAt) return;
+    if (this.kind === 'briefing' && this.selection.available()) {
+      for (let player = 0; player < this.selection.selected().length; player++) {
+        const direction = input.tap(`P${player + 1}PadRight`) ? 1 : input.tap(`P${player + 1}PadLeft`) ? -1 : 0;
+        if (direction) {
+          const selected = this.selection.selected()[player];
+          const next = (selected + direction + this.selection.names.length) % this.selection.names.length;
+          this.card.querySelectorAll('.mission-hero-options')[player]?.querySelectorAll('button')[next]?.click();
+        }
+      }
+    }
     if (input.tap('Escape','KeyM','P1PadJump')) {
       if (this.kind === 'dossier') this.dossierBack?.();
       else if (this.kind === 'victory') this.continue();
